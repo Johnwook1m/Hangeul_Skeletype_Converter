@@ -9,6 +9,9 @@ __pycache__/
 *.glyphs.backup
 *.glyphsFile
 
+# Glyphs Plugins (개발 중인 플러그인은 포함)
+# *.glyphsPlugin
+
 # macOS
 .DS_Store
 .AppleDouble
