@@ -10,7 +10,7 @@ from pathlib import Path
 
 from GlyphsApp import Glyphs, EDIT_MENU
 from GlyphsApp.plugins import GeneralPlugin
-from AppKit import NSMenuItem
+from AppKit import NSMenuItem, NSAlert, NSAlertStyleWarning, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSButton
 from Foundation import NSMakeRect, NSURL, NSDataWritingAtomic
 from AppKit import (
     NSCalibratedRGBColorSpace, NSPNGFileType, NSBitmapImageRep,
@@ -407,7 +407,7 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 	def settings(self):
 		self.name = Glyphs.localize({
 			'en': 'Hanguel Skeletype Converter',
-			'ko': '한글 스켈레타입 변환기',
+			'ko': 'Hanguel Skeletype Converter',
 		})
 
 	@objc.python_method
@@ -416,7 +416,6 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		newMenuItem.setTarget_(self)
 		Glyphs.menu[EDIT_MENU].append(newMenuItem)
 
-	@objc.python_method
 	def showWindow_(self, sender):
 		"""플러그인 실행 시 메인 로직"""
 		Glyphs.clearLog()
@@ -463,6 +462,36 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		success_count = 0
 		failed_count = 0
 		
+		# "모두 적용" 플래그 변수
+		overwrite_all_existing = False  # 두 번째 다이얼로그용 (기존 레이어가 있는 경우)
+		
+		# 첫 번째 다이얼로그: 전체 선택한 글리프에 대한 확인 (한 번만 표시)
+		if len(selectedLayers) > 0:
+			firstGlyph = selectedLayers[0].parent
+			firstGlyphName = firstGlyph.name if firstGlyph else "unknown"
+			
+			# 메시지 구성
+			if len(selectedLayers) == 1:
+				messageText = f"'{firstGlyphName}' 글리프의 중심선을 추출하시겠습니까?"
+				informativeText = f"이 글리프에 'Converted Skeletype' 레이어가 생성됩니다."
+			else:
+				remainingCount = len(selectedLayers) - 1
+				messageText = f"'{firstGlyphName}' 글리프 외 {remainingCount}개 글리프의 중심선을 추출하시겠습니까?"
+				informativeText = f"총 {len(selectedLayers)}개 글리프에 'Converted Skeletype' 레이어가 생성됩니다."
+			
+			alert1 = NSAlert.alloc().init()
+			alert1.setAlertStyle_(NSAlertStyleWarning)
+			alert1.setMessageText_(messageText)
+			alert1.setInformativeText_(informativeText)
+			alert1.addButtonWithTitle_("추출")
+			alert1.addButtonWithTitle_("취소")
+			
+			response1 = alert1.runModal()
+			
+			if response1 == NSAlertSecondButtonReturn:  # "취소" 버튼
+				print("❌ 사용자가 취소했습니다.")
+				return
+		
 		# 각 선택한 글리프 처리
 		for idx, thisLayer in enumerate(selectedLayers, 1):
 			try:
@@ -470,6 +499,44 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 				glyphName = thisGlyph.name if thisGlyph else "unknown"
 				
 				print(f"[{idx}/{len(selectedLayers)}] 처리 중: {glyphName}")
+				
+				# Converted Skeletype 레이어가 이미 존재하는지 확인
+				svg_layer_name = "Converted Skeletype"
+				existing_svg_layer = None
+				for l in thisGlyph.layers:
+					if hasattr(l, 'name') and l.name == svg_layer_name:
+						existing_svg_layer = l
+						break
+				
+				# 첫 번째 다이얼로그는 이미 루프 시작 전에 처리했으므로 건너뜀
+				# (각 글리프마다 다시 묻지 않음)
+				
+				# 두 번째 다이얼로그: 이미 레이어가 있는 경우 (처음이거나 "모두 덮어쓰기"가 선택되지 않은 경우)
+				if existing_svg_layer and not overwrite_all_existing:
+					alert2 = NSAlert.alloc().init()
+					alert2.setAlertStyle_(NSAlertStyleWarning)
+					alert2.setMessageText_(f"'{glyphName}' 글리프에 이미 'Converted Skeletype' 레이어가 있습니다.")
+					alert2.setInformativeText_("이 글리프에 플러그인을 다시 실행하면 기존 중심선이 덮어씌워집니다.\n계속하시겠습니까?")
+					alert2.addButtonWithTitle_("덮어쓰기")
+					alert2.addButtonWithTitle_("건너뛰기")
+					
+					# "모두 덮어쓰기" 체크박스 추가
+					checkbox2 = NSButton.alloc().init()
+					checkbox2.setButtonType_(3)  # NSButtonTypeSwitch = 3
+					checkbox2.setTitle_("모든 중복 레이어에 대해 덮어쓰기")
+					checkbox2.setState_(0)  # 체크 해제 상태
+					alert2.setAccessoryView_(checkbox2)
+					
+					response2 = alert2.runModal()
+					
+					# 체크박스 상태 확인
+					if checkbox2.state() == 1:  # 체크됨
+						overwrite_all_existing = True
+					
+					if response2 == NSAlertSecondButtonReturn:  # "건너뛰기" 버튼
+						print(f"  ⏭️  사용자가 건너뛰기를 선택했습니다.")
+						print()
+						continue
 				
 				# 원본 레이어 정보 저장
 				original_layer = None
@@ -517,12 +584,12 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 				print(f"  3️⃣ SVG Import...")
 				
 				# SVG Import 레이어 생성 또는 가져오기
-				svg_layer_name = "SVG Import"
-				existing_svg_layer = None
-				for l in thisGlyph.layers:
-					if hasattr(l, 'name') and l.name == svg_layer_name:
-						existing_svg_layer = l
-						break
+				# (위에서 이미 확인했지만, 다시 확인)
+				if not existing_svg_layer:
+					for l in thisGlyph.layers:
+						if hasattr(l, 'name') and l.name == svg_layer_name:
+							existing_svg_layer = l
+							break
 				
 				if existing_svg_layer:
 					layer = existing_svg_layer
@@ -614,7 +681,7 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		
 		if success_count > 0:
 			Glyphs.redraw()
-			print(f"\n💡 SVG Import 레이어에서 변환된 중심선을 확인할 수 있습니다.")
+			print(f"\n💡 Converted Skeletype 레이어에서 변환된 중심선을 확인할 수 있습니다.")
 
 	@objc.python_method
 	def __file__(self):

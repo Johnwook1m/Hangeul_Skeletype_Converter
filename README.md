@@ -21,24 +21,21 @@ Glyphs 3용 플러그인: 한글 글리프를 스켈레톤 타입(SVG centerline
 
 ## 설치 방법
 
-### 방법 1: 스크립트로 설치 (현재)
+### 플러그인 설치
 
-1. `00_Hanguel_Skeletype_Converter.py` 파일을 Glyphs 3 Scripts 폴더에 복사:
-   ```
-   ~/Library/Application Support/Glyphs 3/Scripts/
-   ```
+1. `HanguelSkeletypeConverter.glyphsPlugin` 파일을 **Glyphs 3 앱 아이콘**에 드래그 앤 드롭
+2. "복사" 선택
+3. Glyphs 3 재시작
+4. `Edit` 메뉴에서 "Hanguel Skeletype Converter" 확인
 
-2. Glyphs 3를 재시작하거나 Script 메뉴에서 "Hanguel Skeletype Converter"를 실행
-
-### 방법 2: 플러그인으로 설치 (개발 중)
-
-플러그인 번들(.glyphsPlugin)로 제작 예정
+자세한 설치 방법은 [docs/PLUGIN_GUIDE.md](docs/PLUGIN_GUIDE.md)를 참고하세요.
 
 ## 사용 방법
 
 1. Glyphs 3에서 중심선을 추출하고 싶은 글리프 선택
-2. Script > Run Script... 또는 Script 메뉴에서 "Hanguel Skeletype Converter" 실행
-3. 자동으로 중심선이 추출되어 "SVG Import" 레이어에 생성됨
+2. `Edit` 메뉴 > **"Hanguel Skeletype Converter"** 클릭
+3. `Window` > `Macro Panel`에서 진행 상황 확인
+4. 자동으로 중심선이 추출되어 **"SVG Import" 레이어**에 생성됨
 
 ## 작동 원리
 
@@ -55,9 +52,14 @@ Glyphs 3용 플러그인: 한글 글리프를 스켈레톤 타입(SVG centerline
 - [x] SVG Import 레이어 자동 생성
 - [x] 원본 글리프에 맞춘 자동 정렬 및 스케일링
 - [x] 레이어 visibility 자동 설정
-- [ ] 플러그인 번들(.glyphsPlugin) 제작
+- [x] 플러그인 번들(.glyphsPlugin) 제작 완료
+- [x] 플러그인 테스트 완료
 - [ ] 베타 테스트
 - [ ] 공유 준비
+
+## 문서
+
+- [플러그인 가이드](docs/PLUGIN_GUIDE.md) - 개발, 설치, 사용, 배포 가이드
 
 ## 참고 자료
 

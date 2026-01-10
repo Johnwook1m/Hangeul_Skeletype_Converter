@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>HanguelSkeletypeConverter</string>
+	<string>plugin</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.hanguel.skeletypeConverter</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -24,11 +24,6 @@
 	<array>
 		<string>plugin.py</string>
 	</array>
-	<key>GlyphsPlugin</key>
-	<dict>
-		<key>MinimumGlyphsVersion</key>
-		<string>3000</string>
-	</dict>
 </dict>
 </plist>
 
