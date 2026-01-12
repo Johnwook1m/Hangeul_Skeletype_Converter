@@ -17,7 +17,7 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2025</string>
+	<string>Copyright © 2025 Jongwook Kim, Jangho Park. All Rights Reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string>HanguelSkeletypeConverter</string>
 	<key>PyMainFileNames</key>

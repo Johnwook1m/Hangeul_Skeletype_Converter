@@ -220,6 +220,21 @@ def convert_bmp_to_svg(bmp_path, svg_path, autotrace_cmd):
         if not Path(svg_path).exists():
             print(f"    ❌ SVG 파일이 생성되지 않았습니다: {svg_path}")
             return False
+        
+        # SVG 파일 내용 검증: 실제 경로가 있는지 확인
+        try:
+            with open(svg_path, 'r', encoding='utf-8') as f:
+                svg_content = f.read()
+                # SVG에 path, polygon, polyline, circle, ellipse, rect 등의 요소가 있는지 확인
+                has_paths = any(tag in svg_content for tag in ['<path', '<polygon', '<polyline', '<circle', '<ellipse', '<rect'])
+                if not has_paths:
+                    print(f"    ⚠️  SVG 파일이 생성되었지만 경로가 없습니다 (빈 SVG)")
+                    print(f"    💡 원인: 글리프가 너무 작거나, 중심선을 추출할 수 없습니다")
+                    return False
+        except Exception as e:
+            print(f"    ⚠️  SVG 파일 내용 확인 실패: {str(e)}")
+            # 파일은 존재하므로 일단 True 반환 (import 단계에서 실패할 수 있음)
+        
         return True
     except Exception as e:
         print(f"    ❌ SVG 변환 오류: {str(e)}")
@@ -293,7 +308,27 @@ def import_svg_to_layer(svg_path, layer):
                 pass
             return True, None
         else:
-            return False, f"Import failed or no paths added"
+            # 더 자세한 실패 원인 파악
+            error_msg = f"Import failed or no paths added"
+            if not success:
+                error_msg += " (import 메서드 실패)"
+            elif paths_after == paths_before:
+                error_msg += f" (경로 수 변화 없음: {paths_before} → {paths_after})"
+            
+            # SVG 파일 내용 확인 (디버깅용)
+            try:
+                with open(svg_path_str, 'r', encoding='utf-8') as f:
+                    svg_content = f.read()
+                    file_size = len(svg_content)
+                    has_paths = any(tag in svg_content for tag in ['<path', '<polygon', '<polyline'])
+                    if file_size < 500:
+                        error_msg += f" (SVG 파일이 너무 작음: {file_size} bytes)"
+                    elif not has_paths:
+                        error_msg += " (SVG에 경로 요소 없음)"
+            except:
+                pass
+            
+            return False, error_msg
             
     except Exception as e:
         import traceback
