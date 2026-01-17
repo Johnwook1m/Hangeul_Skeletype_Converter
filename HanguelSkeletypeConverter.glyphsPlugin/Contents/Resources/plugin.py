@@ -39,10 +39,53 @@ def saveLayerAsPNG(thisLayer, baseurl):
         # Get dimensions from master
         thisMaster = thisLayer.associatedFontMaster()
         if not thisMaster:
-            print(f"Error: No master found for glyph '{glyphName}'")
+            print(f"    ❌ Error: No master found for glyph '{glyphName}'")
             return None
         
-        glyphWidth = max(thisLayer.width, 100)  # Minimum width 100
+        # 컴포넌트가 있으면 임시 레이어를 만들어 분해
+        workingLayer = thisLayer
+        tempLayerCreated = False
+        
+        if hasattr(thisLayer, 'components') and len(thisLayer.components) > 0:
+            print(f"    🔧 컴포넌트 {len(thisLayer.components)}개 감지 - 분해 중...")
+            # 임시 레이어 생성
+            from GlyphsApp import GSLayer
+            tempLayer = thisLayer.copy()
+            
+            # 컴포넌트를 실제 경로로 분해
+            try:
+                # Glyphs 3 방식
+                if hasattr(tempLayer, 'decomposeComponents'):
+                    tempLayer.decomposeComponents()
+                else:
+                    # 수동 분해
+                    components_to_remove = list(tempLayer.components)
+                    for component in components_to_remove:
+                        try:
+                            # 컴포넌트의 베지어 경로 가져오기
+                            comp_layer = component.component.layers[thisMaster.id]
+                            if comp_layer:
+                                comp_paths = comp_layer.copyDecomposedLayer().paths
+                                for path in comp_paths:
+                                    tempLayer.paths.append(path.copy())
+                        except:
+                            pass
+                    # 컴포넌트 제거
+                    for component in reversed(components_to_remove):
+                        try:
+                            tempLayer.removeComponent_(component)
+                        except:
+                            pass
+                
+                workingLayer = tempLayer
+                tempLayerCreated = True
+                print(f"    ✅ 분해 완료 - 경로 {len(workingLayer.paths)}개")
+            except Exception as e:
+                print(f"    ⚠️  컴포넌트 분해 실패: {str(e)}")
+                # 분해 실패 시 원본 레이어 사용
+                workingLayer = thisLayer
+        
+        glyphWidth = max(workingLayer.width, 100)  # Minimum width 100
         glyphHeight = thisMaster.ascender - thisMaster.descender
         if glyphHeight <= 0:
             glyphHeight = 1000
@@ -71,17 +114,38 @@ def saveLayerAsPNG(thisLayer, baseurl):
         NSBezierPath.bezierPathWithRect_(offscreenRect).addClip()
         NSColor.blackColor().set()
         
+        # Fill background with white first
+        NSColor.whiteColor().setFill()
+        NSBezierPath.bezierPathWithRect_(offscreenRect).fill()
+        NSColor.blackColor().setFill()
+        
         # Transform and draw glyph
         baselineShift = -thisMaster.descender
         shiftTransform = NSAffineTransform.transform()
         shiftTransform.translateXBy_yBy_(0.0, baselineShift)
         
-        bezierPath = thisLayer.completeBezierPath.copy()
-        if bezierPath:
-            bezierPath.transformUsingAffineTransform_(shiftTransform)
-            bezierPath.fill()
-        else:
-            print(f"Warning: No bezier path found for glyph '{glyphName}'")
+        # 작업 레이어에서 베지어 경로 가져오기
+        bezierPath = workingLayer.completeBezierPath
+        
+        # 경로가 없거나 비어있는지 확인
+        if not bezierPath or bezierPath.isEmpty():
+            # 디버깅: 레이어 정보 출력
+            has_paths = len(workingLayer.paths) if hasattr(workingLayer, 'paths') else 0
+            has_components = len(workingLayer.components) if hasattr(workingLayer, 'components') else 0
+            print(f"    🔍 Debug: paths={has_paths}, components={has_components}")
+            
+            # space나 빈 글리프는 건너뛰기
+            if glyphName and glyphName.lower() in ['space', '.notdef', 'null', 'cr']:
+                return None
+            
+            # 다른 글리프는 경고 표시
+            print(f"    ⚠️  Warning: No bezier path found for glyph '{glyphName}'")
+            return None
+        
+        # 경로 복사 및 변환
+        bezierPath = bezierPath.copy()
+        bezierPath.transformUsingAffineTransform_(shiftTransform)
+        bezierPath.fill()
         
         # Restore context
         NSGraphicsContext.restoreGraphicsState()
@@ -101,7 +165,15 @@ def saveLayerAsPNG(thisLayer, baseurl):
         success = pngData.writeToURL_options_error_(url, NSDataWritingAtomic, None)
         
         if not success or not os.path.exists(fullPath):
-            print(f"Error: Failed to write PNG file for '{glyphName}'")
+            print(f"    ❌ Error: Failed to write PNG file for '{glyphName}'")
+            return None
+        
+        # PNG 파일 크기 확인 (빈 PNG 감지)
+        file_size = os.path.getsize(fullPath)
+        if file_size < 200:  # 200 bytes 미만이면 빈 이미지일 가능성 높음
+            print(f"    ⚠️  PNG 파일이 너무 작습니다 ({file_size} bytes)")
+            print(f"    💡 글리프에 경로가 없거나 컴포넌트만 있을 수 있습니다")
+            os.remove(fullPath)  # 빈 파일 삭제
             return None
         
         return fullPath
@@ -607,7 +679,8 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 				print(f"  1️⃣ PNG 내보내기...")
 				png_path = saveLayerAsPNG(thisLayer, temp_dir)
 				if not png_path:
-					print(f"  ❌ PNG 내보내기 실패")
+					print(f"  ⏭️  빈 글리프이거나 경로가 없습니다. 건너뜁니다.")
+					print()
 					failed_count += 1
 					continue
 				
@@ -708,9 +781,9 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 					print(f"  ❌ Import 실패: {error}")
 					failed_count += 1
 				
-				# 임시 파일 정리
-				if os.path.exists(png_path):
-					os.remove(png_path)
+				# 임시 파일 정리 (디버그: PNG 보존)
+				# if os.path.exists(png_path):
+				# 	os.remove(png_path)
 				if os.path.exists(svg_path):
 					os.remove(svg_path)
 				
@@ -723,11 +796,14 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 				failed_count += 1
 				print()
 		
-		# 임시 폴더 정리
-		try:
-			shutil.rmtree(temp_dir)
-		except:
-			pass
+		# 임시 폴더 정리 (디버그: 일단 보존)
+		print(f"\n🔍 디버그: 임시 파일이 보존되었습니다:")
+		print(f"   {temp_dir}")
+		print(f"   PNG 파일을 직접 확인해보세요.")
+		# try:
+		# 	shutil.rmtree(temp_dir)
+		# except:
+		# 	pass
 		
 		# 결과 요약
 		print("=" * 60)

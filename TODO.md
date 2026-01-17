@@ -4,6 +4,39 @@
 - 기본적인 SVG 변환 및 Import 기능 구현 완료
 - 시각적 중심(visual center) 기반 정렬 로직 구현
 - 중심선 기준 스케일링 로직 구현
+- 컴포넌트 자동 분해 기능 추가 (2025-01-17)
+- PNG 생성 및 BMP 변환 검증 완료
+
+## 긴급 문제 (Critical)
+
+### 0. Autotrace + pstoedit 호환성 문제 🔴
+**현재 상태:**
+- PNG 생성: ✅ 정상 (21KB, 2 colors)
+- BMP 변환: ✅ 정상 (3.5MB)
+- SVG 변환: ❌ 실패 - Autotrace 0.40.0 + pstoedit 4.3 버전 불일치
+- 에러: `wrong version of pstoedit`
+- 결과: 빈 SVG (113 bytes)만 생성됨
+
+**영향:**
+- 일부 글리프 (`ba-ko`, `kwi-ko`, `go-ko`, `pa-ko` 등)에서 중심선 추출 실패
+- Autotrace의 `-centerline` 옵션이 작동하지 않음
+
+**해결 방안:**
+1. **ImageMagick + Potrace로 전환** (권장) ⭐
+   - `magick -morphology Thinning:-1 Skeleton` + `potrace -s`
+   - pstoedit 의존성 제거
+   - 더 안정적이고 최신 도구
+   - 구현 예상 시간: 1-2시간
+
+2. Autotrace 다운그레이드
+   - 오래된 버전 사용
+   - 장기적으로 유지보수 어려움
+
+3. 수동 워크플로우 (임시)
+   - 문제 글리프만 Glyphs에서 컴포넌트 분해 후 재시도
+
+**우선순위:** 최우선 (플러그인 핵심 기능 차단)
+**예상 작업 시간:** 1-2시간
 
 ## 알려진 문제점
 
@@ -42,6 +75,17 @@
 
 ## 향후 작업 계획
 
+### 우선순위 0: Autotrace 문제 해결 (긴급) 🔴
+**목표:** SVG 변환 실패 문제 해결
+1. ImageMagick Skeleton morphology + Potrace로 변환 로직 재구현
+2. `convert_bmp_to_svg` 함수 수정
+3. 테스트 및 검증
+4. 문서 업데이트
+
+**예상 시간:** 1-2시간
+**담당:** 개발자
+**완료 조건:** 모든 한글 자소가 중심선 추출 성공
+
 ### 우선순위 1: Registration 정확도 개선
 1. 현재 정렬 로직의 문제점 분석
 2. 다양한 글리프 형태에 대한 테스트
@@ -77,3 +121,18 @@
 - Glyphs API 문서: 시각적 중심 계산 관련 메서드 확인 필요
 - Typography 관련 자료: Optical center 계산 방법 연구
 - 기존 플러그인 분석: 유사한 기능을 가진 플러그인의 구현 방법 참고
+- ImageMagick Morphology: https://imagemagick.org/Usage/morphology/#skeleton
+- Potrace: http://potrace.sourceforge.net/
+
+## 진행 상황 로그
+
+### 2025-01-17
+- ✅ 컴포넌트 자동 분해 기능 추가
+- ✅ PNG 생성 검증 (21KB, 2 colors)
+- ✅ BMP 변환 검증 (3.5MB)
+- ❌ Autotrace + pstoedit 호환성 문제 발견
+  - 에러: `wrong version of pstoedit`
+  - Autotrace 0.40.0 + pstoedit 4.3 버전 불일치
+  - 재설치 시도했으나 해결 안됨
+- 📋 ImageMagick + Potrace로 전환 검토 중
+- 📁 디버그 모드 추가: 임시 파일 보존 기능
