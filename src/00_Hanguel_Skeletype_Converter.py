@@ -463,6 +463,17 @@ thisFont = Glyphs.font
 if not thisFont:
     print("❌ 폰트가 열려있지 않습니다.")
 else:
+    # 폰트 정보 출력
+    fontName = thisFont.familyName if thisFont.familyName else "Unknown Font"
+    print(f"📖 폰트: {fontName}")
+    
+    # 마스터 정보 출력
+    master = thisFont.masters[0] if thisFont.masters else None
+    if master:
+        masterName = master.name if master.name else "Master"
+        print(f"🎨 마스터: {masterName}")
+    print()
+    
     selectedLayers = thisFont.selectedLayers
     
     if not selectedLayers or len(selectedLayers) == 0:
