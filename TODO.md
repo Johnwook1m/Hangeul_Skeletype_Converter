@@ -7,36 +7,16 @@
 - 컴포넌트 자동 분해 기능 추가 (2025-01-17)
 - PNG 생성 및 BMP 변환 검증 완료
 
-## 긴급 문제 (Critical)
+## ~~긴급 문제 (Critical)~~ ✅ 해결 완료
 
-### 0. Autotrace + pstoedit 호환성 문제 🔴
-**현재 상태:**
-- PNG 생성: ✅ 정상 (21KB, 2 colors)
-- BMP 변환: ✅ 정상 (3.5MB)
-- SVG 변환: ❌ 실패 - Autotrace 0.40.0 + pstoedit 4.3 버전 불일치
-- 에러: `wrong version of pstoedit`
-- 결과: 빈 SVG (113 bytes)만 생성됨
+### ~~0. Autotrace + pstoedit 호환성 문제~~ ✅ 해결됨 (2025-01-29)
+**원인:** 일부 글리프가 2색 이진 이미지로 렌더링되어 Autotrace 중심선 추출 실패
 
-**영향:**
-- 일부 글리프 (`ba-ko`, `kwi-ko`, `go-ko`, `pa-ko` 등)에서 중심선 추출 실패
-- Autotrace의 `-centerline` 옵션이 작동하지 않음
-
-**해결 방안:**
-1. **ImageMagick + Potrace로 전환** (권장) ⭐
-   - `magick -morphology Thinning:-1 Skeleton` + `potrace -s`
-   - pstoedit 의존성 제거
-   - 더 안정적이고 최신 도구
-   - 구현 예상 시간: 1-2시간
-
-2. Autotrace 다운그레이드
-   - 오래된 버전 사용
-   - 장기적으로 유지보수 어려움
-
-3. 수동 워크플로우 (임시)
-   - 문제 글리프만 Glyphs에서 컴포넌트 분해 후 재시도
-
-**우선순위:** 최우선 (플러그인 핵심 기능 차단)
-**예상 작업 시간:** 1-2시간
+**해결 방법:** 이진 이미지 감지 + ImageMagick blur 후처리
+- PNG 렌더링 후 색상 수 확인 (2색 이하면 이진 이미지)
+- ImageMagick `-blur 0x0.3`으로 안티앨리어싱 강제 적용
+- Glyphs 플러그인 환경에서 ImageMagick 전체 경로 사용
+- 버전 1.4로 업데이트
 
 ## 알려진 문제점
 

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git restore:*)",
+      "Bash(plutil:*)",
+      "Bash(find:*)",
+      "Bash(open:*)",
+      "Bash(autotrace:*)",
+      "Bash(pstoedit:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(brew info:*)",
+      "Bash(/opt/homebrew/bin/autotrace:*)",
+      "Bash(python3:*)",
+      "Bash(/opt/homebrew/bin/magick:*)",
+      "Bash(cd:*)",
+      "Bash(brew search:*)",
+      "Bash(brew uninstall:*)",
+      "Bash(tar:*)",
+      "Bash(./configure:*)",
+      "Bash(make:*)",
+      "Bash(brew install:*)",
+      "Bash(magick:*)",
+      "Bash(ls:*)",
+      "Bash(for f in *.png)",
+      "Bash(do echo -n \"$f: \")",
+      "Bash(done)"
+    ]
+  }
+}

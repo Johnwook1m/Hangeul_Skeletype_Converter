@@ -24,13 +24,76 @@ from AppKit import NSMenuItem, NSAlert, NSAlertStyleWarning, NSAlertFirstButtonR
 from Foundation import NSMakeRect, NSURL, NSDataWritingAtomic
 from AppKit import (
     NSCalibratedRGBColorSpace, NSPNGFileType, NSBitmapImageRep,
-    NSGraphicsContext, NSBezierPath, NSAffineTransform, NSColor
+    NSGraphicsContext, NSBezierPath, NSAffineTransform, NSColor,
+    NSImageInterpolationHigh
 )
 
 
 # ===== 1단계: PNG 내보내기 함수 =====
 
-def saveLayerAsPNG(thisLayer, baseurl):
+def decompose_layer_recursive(layer, master_id):
+    """
+    레이어의 모든 컴포넌트를 재귀적으로 분해
+
+    중첩된 컴포넌트도 완전히 처리하여 모든 베지어 경로를 추출합니다.
+    각 컴포넌트의 변환(transform) 정보를 보존하여 정확한 위치에 경로를 배치합니다.
+
+    Args:
+        layer: 분해할 GSLayer 객체
+        master_id: 마스터 ID (컴포넌트의 올바른 레이어를 찾기 위해 필요)
+
+    Returns:
+        GSLayer: 모든 컴포넌트가 경로로 변환된 새 레이어
+    """
+    from GlyphsApp import GSLayer
+
+    # 새로운 레이어 생성
+    decomposed_layer = GSLayer()
+    decomposed_layer.width = layer.width
+
+    # 기존 경로 복사 (컴포넌트가 아닌 직접 그려진 경로들)
+    for path in layer.paths:
+        decomposed_layer.paths.append(path.copy())
+
+    # 컴포넌트 재귀 처리
+    for component in layer.components:
+        try:
+            # 컴포넌트의 원본 글리프 가져오기
+            comp_glyph = component.component
+            if not comp_glyph:
+                continue
+
+            # 해당 마스터의 레이어 가져오기
+            comp_layer = comp_glyph.layers[master_id]
+            if not comp_layer:
+                continue
+
+            # 컴포넌트도 컴포넌트를 가질 수 있으므로 재귀 호출
+            if hasattr(comp_layer, 'components') and len(comp_layer.components) > 0:
+                comp_layer = decompose_layer_recursive(comp_layer, master_id)
+
+            # 변환 정보 적용하여 경로 추가
+            transform = component.transform
+
+            for path in comp_layer.paths:
+                try:
+                    path_copy = path.copy()
+                    # transform 적용 (위치, 크기, 회전)
+                    if transform and hasattr(path_copy, 'applyTransform'):
+                        path_copy.applyTransform(transform)
+                    decomposed_layer.paths.append(path_copy)
+                except Exception as e:
+                    print(f"    ⚠️  경로 변환 중 오류 (무시): {str(e)}")
+                    continue
+
+        except Exception as e:
+            print(f"    ⚠️  컴포넌트 처리 중 오류 (무시): {str(e)}")
+            continue
+
+    return decomposed_layer
+
+
+def saveLayerAsPNG(thisLayer, baseurl, imagemagick_cmd=None):
     """Save a glyph layer as PNG file."""
     try:
         thisGlyph = thisLayer.parent
@@ -42,48 +105,37 @@ def saveLayerAsPNG(thisLayer, baseurl):
             print(f"    ❌ Error: No master found for glyph '{glyphName}'")
             return None
         
-        # 컴포넌트가 있으면 임시 레이어를 만들어 분해
+        # 컴포넌트가 있으면 재귀적으로 완전히 분해
         workingLayer = thisLayer
         tempLayerCreated = False
-        
+
         if hasattr(thisLayer, 'components') and len(thisLayer.components) > 0:
-            print(f"    🔧 컴포넌트 {len(thisLayer.components)}개 감지 - 분해 중...")
-            # 임시 레이어 생성
-            from GlyphsApp import GSLayer
-            tempLayer = thisLayer.copy()
-            
-            # 컴포넌트를 실제 경로로 분해
+            print(f"    🔧 컴포넌트 {len(thisLayer.components)}개 감지")
+            print(f"    📊 분해 전: 경로 {len(thisLayer.paths)}개, 컴포넌트 {len(thisLayer.components)}개")
+
             try:
-                # Glyphs 3 방식
-                if hasattr(tempLayer, 'decomposeComponents'):
-                    tempLayer.decomposeComponents()
-                else:
-                    # 수동 분해
-                    components_to_remove = list(tempLayer.components)
-                    for component in components_to_remove:
-                        try:
-                            # 컴포넌트의 베지어 경로 가져오기
-                            comp_layer = component.component.layers[thisMaster.id]
-                            if comp_layer:
-                                comp_paths = comp_layer.copyDecomposedLayer().paths
-                                for path in comp_paths:
-                                    tempLayer.paths.append(path.copy())
-                        except:
-                            pass
-                    # 컴포넌트 제거
-                    for component in reversed(components_to_remove):
-                        try:
-                            tempLayer.removeComponent_(component)
-                        except:
-                            pass
-                
-                workingLayer = tempLayer
+                # 재귀적 분해 수행
+                workingLayer = decompose_layer_recursive(thisLayer, thisMaster.id)
                 tempLayerCreated = True
-                print(f"    ✅ 분해 완료 - 경로 {len(workingLayer.paths)}개")
+
+                print(f"    ✅ 분해 완료: 경로 {len(workingLayer.paths)}개")
+
+                # 분해 검증: 베지어 경로가 실제로 생성되었는지 확인
+                bezier_test = workingLayer.completeBezierPath
+                if not bezier_test or bezier_test.isEmpty():
+                    print(f"    ⚠️  분해 후에도 베지어 경로가 비어있음!")
+                    print(f"    💡 원본 레이어 사용으로 폴백")
+                    workingLayer = thisLayer
+                    tempLayerCreated = False
+                else:
+                    print(f"    ✅ 베지어 경로 검증 성공")
+
             except Exception as e:
-                print(f"    ⚠️  컴포넌트 분해 실패: {str(e)}")
-                # 분해 실패 시 원본 레이어 사용
+                print(f"    ❌ 컴포넌트 분해 실패: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 workingLayer = thisLayer
+                tempLayerCreated = False
         
         glyphWidth = max(workingLayer.width, 100)  # Minimum width 100
         glyphHeight = thisMaster.ascender - thisMaster.descender
@@ -108,7 +160,11 @@ def saveLayerAsPNG(thisLayer, baseurl):
         
         NSGraphicsContext.setCurrentContext_(bitmapContext)
         NSGraphicsContext.saveGraphicsState()
-        
+
+        # 안티앨리어싱 강제 활성화 (autotrace 호환성)
+        bitmapContext.setShouldAntialias_(True)
+        bitmapContext.setImageInterpolation_(NSImageInterpolationHigh)
+
         # Set clipping and fill color
         offscreenRect = NSMakeRect(0.0, 0.0, glyphWidth, glyphHeight)
         NSBezierPath.bezierPathWithRect_(offscreenRect).addClip()
@@ -126,21 +182,38 @@ def saveLayerAsPNG(thisLayer, baseurl):
         
         # 작업 레이어에서 베지어 경로 가져오기
         bezierPath = workingLayer.completeBezierPath
-        
-        # 경로가 없거나 비어있는지 확인
+
+        # 상세 검증 및 디버깅 정보
         if not bezierPath or bezierPath.isEmpty():
-            # 디버깅: 레이어 정보 출력
-            has_paths = len(workingLayer.paths) if hasattr(workingLayer, 'paths') else 0
-            has_components = len(workingLayer.components) if hasattr(workingLayer, 'components') else 0
-            print(f"    🔍 Debug: paths={has_paths}, components={has_components}")
-            
-            # space나 빈 글리프는 건너뛰기
-            if glyphName and glyphName.lower() in ['space', '.notdef', 'null', 'cr']:
+            print(f"    ❌ 베지어 경로가 비어있습니다!")
+            print(f"    🔍 디버깅 정보:")
+            print(f"       - 경로 수: {len(workingLayer.paths)}")
+            print(f"       - 컴포넌트 수: {len(workingLayer.components)}")
+            print(f"       - 레이어 너비: {workingLayer.width}")
+            print(f"       - 마스터: {thisMaster.name}")
+
+            # 경로는 있는데 베지어가 비어있는 경우 (이상한 케이스)
+            if len(workingLayer.paths) > 0:
+                print(f"    ⚠️  경로는 존재하지만 completeBezierPath가 비어있음")
+                print(f"    💡 이는 Glyphs 내부 버그일 수 있습니다")
+                # 강제로 경로 재계산 시도
+                try:
+                    workingLayer.updateMetrics()
+                    bezierPath = workingLayer.completeBezierPath
+                    if bezierPath and not bezierPath.isEmpty():
+                        print(f"    ✅ updateMetrics() 후 베지어 경로 복구됨")
+                except:
+                    pass
+
+            # 여전히 비어있으면 실패
+            if not bezierPath or bezierPath.isEmpty():
+                # space나 빈 글리프는 조용히 건너뛰기
+                if glyphName and glyphName.lower() in ['space', '.notdef', 'null', 'cr']:
+                    return None
+
+                # 다른 글리프는 경고 표시
+                print(f"    ⚠️  Warning: No bezier path found for glyph '{glyphName}'")
                 return None
-            
-            # 다른 글리프는 경고 표시
-            print(f"    ⚠️  Warning: No bezier path found for glyph '{glyphName}'")
-            return None
         
         # 경로 복사 및 변환
         bezierPath = bezierPath.copy()
@@ -170,12 +243,43 @@ def saveLayerAsPNG(thisLayer, baseurl):
         
         # PNG 파일 크기 확인 (빈 PNG 감지)
         file_size = os.path.getsize(fullPath)
-        if file_size < 200:  # 200 bytes 미만이면 빈 이미지일 가능성 높음
-            print(f"    ⚠️  PNG 파일이 너무 작습니다 ({file_size} bytes)")
-            print(f"    💡 글리프에 경로가 없거나 컴포넌트만 있을 수 있습니다")
-            os.remove(fullPath)  # 빈 파일 삭제
+        print(f"    📊 PNG 파일 크기: {file_size} bytes")
+
+        if file_size < 200:  # 200 bytes 미만이면 빈 이미지
+            print(f"    ❌ PNG 파일이 너무 작습니다 (빈 이미지)")
+            print(f"    🔍 원인 분석:")
+            print(f"       1. 컴포넌트 분해 실패 가능성")
+            print(f"       2. 글리프 크기가 0에 가까움")
+            print(f"       3. 렌더링 영역 계산 오류")
+            print(f"    💾 PNG 파일 보존: {fullPath}")
+            # 파일 삭제하지 않고 보존 (디버깅용)
+            # os.remove(fullPath)
             return None
-        
+
+        print(f"    ✅ PNG 생성 성공 ({file_size} bytes)")
+
+        # 이진화된 이미지 감지 및 블러 처리 (autotrace 호환성)
+        if imagemagick_cmd:
+            try:
+                result = subprocess.run(
+                    [imagemagick_cmd, fullPath, '-format', '%[colors]', 'info:'],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    color_count = int(result.stdout.strip())
+                    if color_count <= 2:
+                        print(f"    ⚠️  이진화된 이미지 감지 ({color_count} colors)")
+                        print(f"    🔧 안티앨리어싱 적용 중...")
+                        # 약간의 블러로 안티앨리어싱 효과 추가
+                        subprocess.run(
+                            [imagemagick_cmd, fullPath, '-blur', '0x0.3', fullPath],
+                            capture_output=True, timeout=10
+                        )
+                        print(f"    ✅ 안티앨리어싱 적용 완료")
+            except Exception as e:
+                # 블러 처리 실패해도 계속 진행
+                print(f"    ⚠️  블러 처리 실패 (계속 진행): {str(e)}")
+
         return fullPath
         
     except Exception as e:
@@ -266,15 +370,15 @@ def convert_png_to_bmp(png_path, bmp_path, imagemagick_cmd):
         return False
 
 
-def convert_bmp_to_svg(bmp_path, svg_path, autotrace_cmd):
-    """BMP를 SVG로 변환"""
+def convert_png_to_svg(png_path, svg_path, autotrace_cmd):
+    """PNG를 SVG로 직접 변환 (BMP 단계 제거)"""
     command = [
         autotrace_cmd,
         '-centerline',
         '-output-file', svg_path,
         '-background-color=FFFFFF',
         '-color-count', '2',
-        bmp_path
+        png_path
     ]
     
     try:
@@ -624,9 +728,22 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 			try:
 				thisGlyph = thisLayer.parent
 				glyphName = thisGlyph.name if thisGlyph else "unknown"
-				
+
+				print(f"\n{'='*60}")
 				print(f"[{idx}/{len(selectedLayers)}] 처리 중: {glyphName}")
-				
+				print(f"🔍 글리프 '{glyphName}' 상세 정보:")
+				print(f"   - 서체: {thisFont.familyName if thisFont.familyName else 'Unknown'}")
+				print(f"   - 마스터: {master.name if master.name else 'Unknown'}")
+				print(f"   - 레이어 수: {len(thisGlyph.layers)}")
+				print(f"   - 경로 수: {len(thisLayer.paths)}")
+				print(f"   - 컴포넌트 수: {len(thisLayer.components)}")
+				if len(thisLayer.components) > 0:
+					print(f"   - 컴포넌트 목록:")
+					for comp in thisLayer.components:
+						comp_name = comp.componentName if hasattr(comp, 'componentName') else str(comp.component.name if comp.component else 'unknown')
+						print(f"      * {comp_name}")
+				print(f"{'='*60}\n")
+
 				# Converted Skeletype 레이어가 이미 존재하는지 확인
 				svg_layer_name = "Converted Skeletype"
 				existing_svg_layer = None
@@ -677,7 +794,7 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 				
 				# 1단계: PNG 내보내기
 				print(f"  1️⃣ PNG 내보내기...")
-				png_path = saveLayerAsPNG(thisLayer, temp_dir)
+				png_path = saveLayerAsPNG(thisLayer, temp_dir, imagemagick_cmd)
 				if not png_path:
 					print(f"  ⏭️  빈 글리프이거나 경로가 없습니다. 건너뜁니다.")
 					print()
@@ -685,28 +802,15 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 					continue
 				
 				png_name = Path(png_path).stem
-				
-				# 2단계: PNG → SVG 변환
+
+				# 2단계: PNG → SVG 직접 변환 (BMP 단계 제거)
 				print(f"  2️⃣ SVG 변환...")
-				bmp_path = os.path.join(temp_dir, f"{png_name}.bmp")
 				svg_path = os.path.join(temp_dir, f"{png_name}.svg")
-				
-				if not convert_png_to_bmp(png_path, bmp_path, imagemagick_cmd):
-					print(f"  ❌ BMP 변환 실패")
-					failed_count += 1
-					continue
-				
-				if not convert_bmp_to_svg(bmp_path, svg_path, autotrace_cmd):
+
+				if not convert_png_to_svg(png_path, svg_path, autotrace_cmd):
 					print(f"  ❌ SVG 변환 실패")
 					failed_count += 1
-					# BMP 파일 정리
-					if os.path.exists(bmp_path):
-						os.remove(bmp_path)
 					continue
-				
-				# BMP 파일 정리
-				if os.path.exists(bmp_path):
-					os.remove(bmp_path)
 				
 				# 3단계: SVG Import
 				print(f"  3️⃣ SVG Import...")
