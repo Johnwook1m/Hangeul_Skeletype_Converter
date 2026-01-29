@@ -16,6 +16,7 @@ import os
 import subprocess
 import tempfile
 import shutil
+import time
 from pathlib import Path
 
 from GlyphsApp import Glyphs, EDIT_MENU
@@ -641,7 +642,7 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		"""플러그인 실행 시 메인 로직"""
 		Glyphs.clearLog()
 		print("=" * 60)
-		print("Hanguel Skeletype Converter: 중심선 추출")
+		print("Hanguel Skeletype Converter v1.5")
 		print("=" * 60)
 		
 		# 현재 폰트 확인
@@ -692,7 +693,9 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		master = thisFont.masters[0]
 		success_count = 0
 		failed_count = 0
-		
+		glyph_times = []  # 각 글리프 처리 시간 저장
+		total_start_time = time.time()  # 전체 작업 시작 시간
+
 		# "모두 적용" 플래그 변수
 		overwrite_all_existing = False  # 두 번째 다이얼로그용 (기존 레이어가 있는 경우)
 		
@@ -725,6 +728,7 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		
 		# 각 선택한 글리프 처리
 		for idx, thisLayer in enumerate(selectedLayers, 1):
+			glyph_start_time = time.time()  # 글리프 처리 시작 시간
 			try:
 				thisGlyph = thisLayer.parent
 				glyphName = thisGlyph.name if thisGlyph else "unknown"
@@ -879,18 +883,20 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 						except:
 							pass
 					
-					print(f"  ✅ 완료!")
+					glyph_elapsed = time.time() - glyph_start_time
+					glyph_times.append(glyph_elapsed)
+					print(f"  ✅ 완료! ({glyph_elapsed:.2f}초)")
 					success_count += 1
 				else:
 					print(f"  ❌ Import 실패: {error}")
 					failed_count += 1
-				
-				# 임시 파일 정리 (디버그: PNG 보존)
-				# if os.path.exists(png_path):
-				# 	os.remove(png_path)
+
+				# 임시 파일 정리
+				if os.path.exists(png_path):
+					os.remove(png_path)
 				if os.path.exists(svg_path):
 					os.remove(svg_path)
-				
+
 				print()
 				
 			except Exception as e:
@@ -900,20 +906,24 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 				failed_count += 1
 				print()
 		
-		# 임시 폴더 정리 (디버그: 일단 보존)
-		print(f"\n🔍 디버그: 임시 파일이 보존되었습니다:")
-		print(f"   {temp_dir}")
-		print(f"   PNG 파일을 직접 확인해보세요.")
-		# try:
-		# 	shutil.rmtree(temp_dir)
-		# except:
-		# 	pass
-		
+		# 임시 폴더 정리
+		try:
+			shutil.rmtree(temp_dir)
+		except:
+			pass
+
 		# 결과 요약
+		total_elapsed = time.time() - total_start_time
 		print("=" * 60)
 		print(f"✅ 완료: 성공 {success_count}개, 실패 {failed_count}개")
+		print(f"⏱️  총 소요 시간: {total_elapsed:.2f}초")
+		if glyph_times:
+			avg_time = sum(glyph_times) / len(glyph_times)
+			min_time = min(glyph_times)
+			max_time = max(glyph_times)
+			print(f"📊 글리프당 평균: {avg_time:.2f}초 (최소: {min_time:.2f}초, 최대: {max_time:.2f}초)")
 		print("=" * 60)
-		
+
 		if success_count > 0:
 			Glyphs.redraw()
 			print(f"\n💡 Converted Skeletype 레이어에서 변환된 중심선을 확인할 수 있습니다.")

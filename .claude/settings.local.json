@@ -24,7 +24,11 @@
       "Bash(ls:*)",
       "Bash(for f in *.png)",
       "Bash(do echo -n \"$f: \")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(git pull:*)",
+      "Bash(md5:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: v1.5 - 글리프 처리 시간 측정 기능 추가\n\n- 각 글리프별 처리 시간 표시\n- 총 소요 시간 및 평균/최소/최대 통계 출력\n- 소스 파일과 플러그인 번들 동기화\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

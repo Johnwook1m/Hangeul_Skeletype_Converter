@@ -24,10 +24,13 @@ import os
 import subprocess
 import tempfile
 import shutil
+import time
 from pathlib import Path
 
 # GlyphsApp imports
 from GlyphsApp import *
+from GlyphsApp.plugins import GeneralPlugin
+import objc
 from Foundation import NSMakeRect, NSURL, NSDataWritingAtomic
 from AppKit import (
     NSCalibratedRGBColorSpace, NSPNGFileType, NSBitmapImageRep,
@@ -627,34 +630,49 @@ def align_svg_to_original_layer(svg_layer, original_layer):
         return False, f"Exception: {str(e)}"
 
 
-# ===== 메인 실행 코드 =====
+# ===== Glyphs 3 GeneralPlugin 클래스 =====
 
-Glyphs.clearLog()
-print("=" * 60)
-print("통합 스크립트: 선택한 글리프를 SVG로 변환하여 Import")
-print("=" * 60)
-
-# 현재 폰트 확인
-thisFont = Glyphs.font
-if not thisFont:
-    print("❌ 폰트가 열려있지 않습니다.")
-else:
-    # 폰트 정보 출력
-    fontName = thisFont.familyName if thisFont.familyName else "Unknown Font"
-    print(f"📖 폰트: {fontName}")
+class HanguelSkeletypeConverter(GeneralPlugin):
+    """
+    Glyphs 3 플러그인: 한글 글리프를 스켈레톤 타입으로 변환
+    """
     
-    # 마스터 정보 출력
-    master = thisFont.masters[0] if thisFont.masters else None
-    if master:
-        masterName = master.name if master.name else "Master"
-        print(f"🎨 마스터: {masterName}")
-    print()
+    @objc.python_method
+    def settings(self):
+        """플러그인 설정"""
+        self.name = "Hanguel Skeletype Converter"
     
-    selectedLayers = thisFont.selectedLayers
-    
-    if not selectedLayers or len(selectedLayers) == 0:
-        print("❌ 선택한 글리프가 없습니다.")
-    else:
+    @objc.python_method  
+    def start(self):
+        """플러그인 실행 - Edit 메뉴에서 선택 시 호출됨"""
+        Glyphs.clearLog()
+        print("=" * 60)
+        print("Hanguel Skeletype Converter v1.5")
+        print("=" * 60)
+        
+        # 현재 폰트 확인
+        thisFont = Glyphs.font
+        if not thisFont:
+            print("❌ 폰트가 열려있지 않습니다.")
+            return
+        
+        # 폰트 정보 출력
+        fontName = thisFont.familyName if thisFont.familyName else "Unknown Font"
+        print(f"📖 폰트: {fontName}")
+        
+        # 마스터 정보 출력
+        master = thisFont.masters[0] if thisFont.masters else None
+        if master:
+            masterName = master.name if master.name else "Master"
+            print(f"🎨 마스터: {masterName}")
+        print()
+        
+        selectedLayers = thisFont.selectedLayers
+        
+        if not selectedLayers or len(selectedLayers) == 0:
+            print("❌ 선택한 글리프가 없습니다.")
+            return
+        
         print(f"📝 선택한 글리프: {len(selectedLayers)}개\n")
         
         # 필수 도구 확인
@@ -664,246 +682,259 @@ else:
         if not imagemagick_cmd:
             print("❌ ImageMagick이 설치되어 있지 않습니다.")
             print("   설치: brew install imagemagick")
-        elif not autotrace_cmd:
+            return
+        if not autotrace_cmd:
             print("❌ Autotrace가 설치되어 있지 않습니다.")
             print("   설치: brew install autotrace")
-        else:
-            print(f"✅ ImageMagick: {imagemagick_cmd}")
-            print(f"✅ Autotrace: {autotrace_cmd}")
-            print()
+            return
+        
+        print(f"✅ ImageMagick: {imagemagick_cmd}")
+        print(f"✅ Autotrace: {autotrace_cmd}")
+        print()
+        
+        # 임시 폴더 생성
+        temp_dir = tempfile.mkdtemp(prefix="glyphs_svg_")
+        print(f"📁 임시 폴더: {temp_dir}\n")
+        
+        master = thisFont.masters[0]
+        success_count = 0
+        failed_count = 0
+        glyph_times = []  # 각 글리프 처리 시간 저장
+        total_start_time = time.time()  # 전체 작업 시작 시간
+        
+        # "모두 적용" 플래그 변수
+        overwrite_all_existing = False  # 두 번째 다이얼로그용 (기존 레이어가 있는 경우)
+        
+        # 첫 번째 다이얼로그: 전체 선택한 글리프에 대한 확인 (한 번만 표시)
+        if len(selectedLayers) > 0:
+            firstGlyph = selectedLayers[0].parent
+            firstGlyphName = firstGlyph.name if firstGlyph else "unknown"
             
-            # 임시 폴더 생성
-            temp_dir = tempfile.mkdtemp(prefix="glyphs_svg_")
-            print(f"📁 임시 폴더: {temp_dir}\n")
+            # 메시지 구성
+            if len(selectedLayers) == 1:
+                messageText = f"'{firstGlyphName}' 글리프의 중심선을 추출하시겠습니까?"
+                informativeText = f"이 글리프에 'Converted Skeletype' 레이어가 생성됩니다."
+            else:
+                remainingCount = len(selectedLayers) - 1
+                messageText = f"'{firstGlyphName}' 글리프 외 {remainingCount}개 글리프의 중심선을 추출하시겠습니까?"
+                informativeText = f"총 {len(selectedLayers)}개 글리프에 'Converted Skeletype' 레이어가 생성됩니다."
             
-            master = thisFont.masters[0]
-            success_count = 0
-            failed_count = 0
+            alert1 = NSAlert.alloc().init()
+            alert1.setAlertStyle_(NSAlertStyleWarning)
+            alert1.setMessageText_(messageText)
+            alert1.setInformativeText_(informativeText)
+            alert1.addButtonWithTitle_("추출")
+            alert1.addButtonWithTitle_("취소")
             
-            # "모두 적용" 플래그 변수
-            overwrite_all_existing = False  # 두 번째 다이얼로그용 (기존 레이어가 있는 경우)
+            response1 = alert1.runModal()
             
-            # 첫 번째 다이얼로그: 전체 선택한 글리프에 대한 확인 (한 번만 표시)
-            if len(selectedLayers) > 0:
-                firstGlyph = selectedLayers[0].parent
-                firstGlyphName = firstGlyph.name if firstGlyph else "unknown"
+            if response1 == NSAlertSecondButtonReturn:  # "취소" 버튼
+                print("❌ 사용자가 취소했습니다.")
+                # 임시 폴더 정리
+                try:
+                    shutil.rmtree(temp_dir)
+                except:
+                    pass
+                return
+        
+        # 각 선택한 글리프 처리
+        for idx, thisLayer in enumerate(selectedLayers, 1):
+            glyph_start_time = time.time()  # 글리프 처리 시작 시간
+            try:
+                thisGlyph = thisLayer.parent
+                glyphName = thisGlyph.name if thisGlyph else "unknown"
+
+                print(f"\n{'='*60}")
+                print(f"[{idx}/{len(selectedLayers)}] 처리 중: {glyphName}")
+                print(f"🔍 글리프 '{glyphName}' 상세 정보:")
+                print(f"   - 서체: {thisFont.familyName if thisFont.familyName else 'Unknown'}")
+                print(f"   - 마스터: {master.name if master.name else 'Unknown'}")
+                print(f"   - 레이어 수: {len(thisGlyph.layers)}")
+                print(f"   - 경로 수: {len(thisLayer.paths)}")
+                print(f"   - 컴포넌트 수: {len(thisLayer.components)}")
+                if len(thisLayer.components) > 0:
+                    print(f"   - 컴포넌트 목록:")
+                    for comp in thisLayer.components:
+                        comp_name = comp.componentName if hasattr(comp, 'componentName') else str(comp.component.name if comp.component else 'unknown')
+                        print(f"      * {comp_name}")
+                print(f"{'='*60}\n")
+
+                # Converted Skeletype 레이어가 이미 존재하는지 확인
+                svg_layer_name = "Converted Skeletype"
+                existing_svg_layer = None
+                for l in thisGlyph.layers:
+                    if hasattr(l, 'name') and l.name == svg_layer_name:
+                        existing_svg_layer = l
+                        break
                 
-                # 메시지 구성
-                if len(selectedLayers) == 1:
-                    messageText = f"'{firstGlyphName}' 글리프의 중심선을 추출하시겠습니까?"
-                    informativeText = f"이 글리프에 'Converted Skeletype' 레이어가 생성됩니다."
-                else:
-                    remainingCount = len(selectedLayers) - 1
-                    messageText = f"'{firstGlyphName}' 글리프 외 {remainingCount}개 글리프의 중심선을 추출하시겠습니까?"
-                    informativeText = f"총 {len(selectedLayers)}개 글리프에 'Converted Skeletype' 레이어가 생성됩니다."
+                # 두 번째 다이얼로그: 이미 레이어가 있는 경우
+                if existing_svg_layer and not overwrite_all_existing:
+                    alert2 = NSAlert.alloc().init()
+                    alert2.setAlertStyle_(NSAlertStyleWarning)
+                    alert2.setMessageText_(f"'{glyphName}' 글리프에 이미 'Converted Skeletype' 레이어가 있습니다.")
+                    alert2.setInformativeText_("이 글리프에 플러그인을 다시 실행하면 기존 중심선이 덮어씌워집니다.\n계속하시겠습니까?")
+                    alert2.addButtonWithTitle_("덮어쓰기")
+                    alert2.addButtonWithTitle_("건너뛰기")
+                    
+                    # "모두 덮어쓰기" 체크박스 추가
+                    checkbox2 = NSButton.alloc().init()
+                    checkbox2.setButtonType_(3)  # NSButtonTypeSwitch = 3
+                    checkbox2.setTitle_("모든 중복 레이어에 대해 덮어쓰기")
+                    checkbox2.setState_(0)  # 체크 해제 상태
+                    alert2.setAccessoryView_(checkbox2)
+                    
+                    response2 = alert2.runModal()
+                    
+                    # 체크박스 상태 확인
+                    if checkbox2.state() == 1:  # 체크됨
+                        overwrite_all_existing = True
+                    
+                    if response2 == NSAlertSecondButtonReturn:  # "건너뛰기" 버튼
+                        print(f"  ⏭️  사용자가 건너뛰기를 선택했습니다.")
+                        print()
+                        continue
                 
-                alert1 = NSAlert.alloc().init()
-                alert1.setAlertStyle_(NSAlertStyleWarning)
-                alert1.setMessageText_(messageText)
-                alert1.setInformativeText_(informativeText)
-                alert1.addButtonWithTitle_("추출")
-                alert1.addButtonWithTitle_("취소")
+                # 원본 레이어 정보 저장
+                original_layer = None
+                for l in thisGlyph.layers:
+                    if l.associatedMasterId == master.id:
+                        original_layer = l
+                        break
                 
-                response1 = alert1.runModal()
+                if not original_layer:
+                    original_layer = thisLayer
                 
-                if response1 == NSAlertSecondButtonReturn:  # "취소" 버튼
-                    print("❌ 사용자가 취소했습니다.")
-                    # 임시 폴더 정리
+                # 1단계: PNG 내보내기
+                print(f"  1️⃣ PNG 내보내기...")
+                png_path = saveLayerAsPNG(thisLayer, temp_dir, imagemagick_cmd)
+                if not png_path:
+                    print(f"  ⏭️  빈 글리프이거나 경로가 없습니다. 건너뜁니다.")
+                    print()
+                    failed_count += 1
+                    continue
+                
+                png_name = Path(png_path).stem
+
+                # 2단계: PNG → SVG 직접 변환
+                print(f"  2️⃣ SVG 변환...")
+                svg_path = os.path.join(temp_dir, f"{png_name}.svg")
+
+                if not convert_png_to_svg(png_path, svg_path, autotrace_cmd):
+                    print(f"  ❌ SVG 변환 실패")
+                    failed_count += 1
+                    continue
+                
+                # 3단계: SVG Import
+                print(f"  3️⃣ SVG Import...")
+                
+                # SVG Import 레이어 생성 또는 가져오기
+                svg_layer_name = "Converted Skeletype"
+                existing_svg_layer = None
+                for l in thisGlyph.layers:
+                    if hasattr(l, 'name') and l.name == svg_layer_name:
+                        existing_svg_layer = l
+                        break
+                
+                if existing_svg_layer:
+                    layer = existing_svg_layer
+                    # 기존 경로 제거
                     try:
-                        shutil.rmtree(temp_dir)
+                        existing_paths = list(layer.paths)
+                        for path in reversed(existing_paths):
+                            try:
+                                layer.removePath_(path)
+                            except:
+                                try:
+                                    layer.paths.remove(path)
+                                except:
+                                    pass
                     except:
                         pass
-                    # 스크립트 종료 (함수가 아니므로 return 대신 조건으로 제어)
-                    selectedLayers = []  # 빈 리스트로 만들어 루프를 실행하지 않도록 함
-            
-            # 각 선택한 글리프 처리
-            for idx, thisLayer in enumerate(selectedLayers, 1):
-                try:
-                    thisGlyph = thisLayer.parent
-                    glyphName = thisGlyph.name if thisGlyph else "unknown"
-
-                    print(f"\n{'='*60}")
-                    print(f"[{idx}/{len(selectedLayers)}] 처리 중: {glyphName}")
-                    print(f"🔍 글리프 '{glyphName}' 상세 정보:")
-                    print(f"   - 서체: {thisFont.familyName if thisFont.familyName else 'Unknown'}")
-                    print(f"   - 마스터: {master.name if master.name else 'Unknown'}")
-                    print(f"   - 레이어 수: {len(thisGlyph.layers)}")
-                    print(f"   - 경로 수: {len(thisLayer.paths)}")
-                    print(f"   - 컴포넌트 수: {len(thisLayer.components)}")
-                    if len(thisLayer.components) > 0:
-                        print(f"   - 컴포넌트 목록:")
-                        for comp in thisLayer.components:
-                            comp_name = comp.componentName if hasattr(comp, 'componentName') else str(comp.component.name if comp.component else 'unknown')
-                            print(f"      * {comp_name}")
-                    print(f"{'='*60}\n")
-
-                    # Converted Skeletype 레이어가 이미 존재하는지 확인
-                    svg_layer_name = "Converted Skeletype"
-                    existing_svg_layer = None
-                    for l in thisGlyph.layers:
-                        if hasattr(l, 'name') and l.name == svg_layer_name:
-                            existing_svg_layer = l
-                            break
+                    try:
+                        layer.visible = True
+                    except:
+                        pass
+                else:
+                    layer = GSLayer()
+                    layer.associatedMasterId = master.id
+                    try:
+                        layer.name = svg_layer_name
+                    except:
+                        pass
+                    thisGlyph.layers.append(layer)
+                    try:
+                        layer.visible = True
+                    except:
+                        pass
+                
+                # SVG import
+                success, error = import_svg_to_layer(svg_path, layer)
+                if success:
+                    # 정렬 및 LSB 조정
+                    if original_layer:
+                        align_success, align_error = align_svg_to_original_layer(layer, original_layer)
+                        if align_success:
+                            print(f"  ✅ 정렬 완료")
+                        else:
+                            print(f"  ⚠️  정렬 실패: {align_error}")
                     
-                    # 첫 번째 다이얼로그는 이미 루프 시작 전에 처리했으므로 건너뜀
-                    # (각 글리프마다 다시 묻지 않음)
-                    
-                    # 두 번째 다이얼로그: 이미 레이어가 있는 경우 (처음이거나 "모두 덮어쓰기"가 선택되지 않은 경우)
-                    if existing_svg_layer and not overwrite_all_existing:
-                        alert2 = NSAlert.alloc().init()
-                        alert2.setAlertStyle_(NSAlertStyleWarning)
-                        alert2.setMessageText_(f"'{glyphName}' 글리프에 이미 'Converted Skeletype' 레이어가 있습니다.")
-                        alert2.setInformativeText_("이 글리프에 플러그인을 다시 실행하면 기존 중심선이 덮어씌워집니다.\n계속하시겠습니까?")
-                        alert2.addButtonWithTitle_("덮어쓰기")
-                        alert2.addButtonWithTitle_("건너뛰기")
-                        
-                        # "모두 덮어쓰기" 체크박스 추가
-                        checkbox2 = NSButton.alloc().init()
-                        checkbox2.setButtonType_(3)  # NSButtonTypeSwitch = 3
-                        checkbox2.setTitle_("모든 중복 레이어에 대해 덮어쓰기")
-                        checkbox2.setState_(0)  # 체크 해제 상태
-                        alert2.setAccessoryView_(checkbox2)
-                        
-                        response2 = alert2.runModal()
-                        
-                        # 체크박스 상태 확인
-                        if checkbox2.state() == 1:  # 체크됨
-                            overwrite_all_existing = True
-                        
-                        if response2 == NSAlertSecondButtonReturn:  # "건너뛰기" 버튼
-                            print(f"  ⏭️  사용자가 건너뛰기를 선택했습니다.")
-                            print()
-                            continue
-                    
-                    # 원본 레이어 정보 저장
-                    original_layer = None
-                    for l in thisGlyph.layers:
-                        if l.associatedMasterId == master.id:
-                            original_layer = l
-                            break
-                    
-                    if not original_layer:
-                        original_layer = thisLayer
-                    
-                    # 1단계: PNG 내보내기
-                    print(f"  1️⃣ PNG 내보내기...")
-                    png_path = saveLayerAsPNG(thisLayer, temp_dir, imagemagick_cmd)
-                    if not png_path:
-                        print(f"  ⏭️  빈 글리프이거나 경로가 없습니다. 건너뜁니다.")
-                        print()
-                        failed_count += 1
-                        continue
-                    
-                    png_name = Path(png_path).stem
-
-                    # 2단계: PNG → SVG 직접 변환 (BMP 단계 제거)
-                    print(f"  2️⃣ SVG 변환...")
-                    svg_path = os.path.join(temp_dir, f"{png_name}.svg")
-
-                    if not convert_png_to_svg(png_path, svg_path, autotrace_cmd):
-                        print(f"  ❌ SVG 변환 실패")
-                        failed_count += 1
-                        continue
-                    
-                    # 3단계: SVG Import
-                    print(f"  3️⃣ SVG Import...")
-                    
-                    # SVG Import 레이어 생성 또는 가져오기
-                    svg_layer_name = "Converted Skeletype"
-                    existing_svg_layer = None
-                    for l in thisGlyph.layers:
-                        if hasattr(l, 'name') and l.name == svg_layer_name:
-                            existing_svg_layer = l
-                            break
-                    
-                    if existing_svg_layer:
-                        layer = existing_svg_layer
-                        # 기존 경로 제거
+                    # 원본 메트릭 적용
+                    if original_layer:
                         try:
-                            existing_paths = list(layer.paths)
-                            for path in reversed(existing_paths):
-                                try:
-                                    layer.removePath_(path)
-                                except:
-                                    try:
-                                        layer.paths.remove(path)
-                                    except:
-                                        pass
-                        except:
-                            pass
-                        # SVG Import 레이어를 보이게 설정
-                        try:
-                            layer.visible = True
-                        except:
-                            pass
-                    else:
-                        layer = GSLayer()
-                        layer.associatedMasterId = master.id
-                        try:
-                            layer.name = svg_layer_name
-                        except:
-                            pass
-                        thisGlyph.layers.append(layer)
-                        # SVG Import 레이어를 보이게 설정
-                        try:
-                            layer.visible = True
+                            layer.LSB = original_layer.LSB
+                            layer.width = original_layer.width
+                            layer.RSB = original_layer.RSB
+                            layer.updateMetrics()
                         except:
                             pass
                     
-                    # SVG import
-                    success, error = import_svg_to_layer(svg_path, layer)
-                    if success:
-                        # 정렬 및 LSB 조정
-                        if original_layer:
-                            align_success, align_error = align_svg_to_original_layer(layer, original_layer)
-                            if align_success:
-                                print(f"  ✅ 정렬 완료")
-                            else:
-                                print(f"  ⚠️  정렬 실패: {align_error}")
-                        
-                        # 원본 메트릭 적용
-                        if original_layer:
-                            try:
-                                layer.LSB = original_layer.LSB
-                                layer.width = original_layer.width
-                                layer.RSB = original_layer.RSB
-                                layer.updateMetrics()
-                            except:
-                                pass
-                        
-                        print(f"  ✅ 완료!")
-                        success_count += 1
-                    else:
-                        print(f"  ❌ Import 실패: {error}")
-                        failed_count += 1
-                    
-                    # 임시 파일 정리
-                    if os.path.exists(png_path):
-                        os.remove(png_path)
-                    if os.path.exists(svg_path):
-                        os.remove(svg_path)
-                    
-                    print()
-                    
-                except Exception as e:
-                    print(f"  ❌ 처리 실패: {str(e)}")
-                    import traceback
-                    traceback.print_exc()
+                    glyph_elapsed = time.time() - glyph_start_time
+                    glyph_times.append(glyph_elapsed)
+                    print(f"  ✅ 완료! ({glyph_elapsed:.2f}초)")
+                    success_count += 1
+                else:
+                    print(f"  ❌ Import 실패: {error}")
                     failed_count += 1
-                    print()
-            
-            # 임시 폴더 정리
-            try:
-                shutil.rmtree(temp_dir)
-            except:
-                pass
-            
-            # 결과 요약
-            print("=" * 60)
-            print(f"✅ 완료: 성공 {success_count}개, 실패 {failed_count}개")
-            print("=" * 60)
-            
-            if success_count > 0:
-                Glyphs.redraw()
-                print(f"\n💡 Converted Skeletype 레이어에서 변환된 중심선을 확인할 수 있습니다.")
+                
+                # 임시 파일 정리
+                if os.path.exists(png_path):
+                    os.remove(png_path)
+                if os.path.exists(svg_path):
+                    os.remove(svg_path)
+                
+                print()
+                
+            except Exception as e:
+                print(f"  ❌ 처리 실패: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                failed_count += 1
+                print()
+        
+        # 임시 폴더 정리
+        try:
+            shutil.rmtree(temp_dir)
+        except:
+            pass
+        
+        # 결과 요약
+        total_elapsed = time.time() - total_start_time
+        print("=" * 60)
+        print(f"✅ 완료: 성공 {success_count}개, 실패 {failed_count}개")
+        print(f"⏱️  총 소요 시간: {total_elapsed:.2f}초")
+        if glyph_times:
+            avg_time = sum(glyph_times) / len(glyph_times)
+            min_time = min(glyph_times)
+            max_time = max(glyph_times)
+            print(f"📊 글리프당 평균: {avg_time:.2f}초 (최소: {min_time:.2f}초, 최대: {max_time:.2f}초)")
+        print("=" * 60)
+        
+        if success_count > 0:
+            Glyphs.redraw()
+            print(f"\n💡 Converted Skeletype 레이어에서 변환된 중심선을 확인할 수 있습니다.")
+
+    def __file__(self):
+        """Required for Glyphs to find this plugin"""
+        return __file__
+
 
