@@ -696,9 +696,6 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 		glyph_times = []  # 각 글리프 처리 시간 저장
 		total_start_time = time.time()  # 전체 작업 시작 시간
 
-		# "모두 적용" 플래그 변수
-		overwrite_all_existing = False  # 두 번째 다이얼로그용 (기존 레이어가 있는 경우)
-		
 		# 첫 번째 다이얼로그: 전체 선택한 글리프에 대한 확인 (한 번만 표시)
 		if len(selectedLayers) > 0:
 			firstGlyph = selectedLayers[0].parent
@@ -756,35 +753,11 @@ class HanguelSkeletypeConverter(GeneralPlugin):
 						existing_svg_layer = l
 						break
 				
-				# 첫 번째 다이얼로그는 이미 루프 시작 전에 처리했으므로 건너뜀
-				# (각 글리프마다 다시 묻지 않음)
-				
-				# 두 번째 다이얼로그: 이미 레이어가 있는 경우 (처음이거나 "모두 덮어쓰기"가 선택되지 않은 경우)
-				if existing_svg_layer and not overwrite_all_existing:
-					alert2 = NSAlert.alloc().init()
-					alert2.setAlertStyle_(NSAlertStyleWarning)
-					alert2.setMessageText_(f"'{glyphName}' 글리프에 이미 'Converted Skeletype' 레이어가 있습니다.")
-					alert2.setInformativeText_("이 글리프에 플러그인을 다시 실행하면 기존 중심선이 덮어씌워집니다.\n계속하시겠습니까?")
-					alert2.addButtonWithTitle_("덮어쓰기")
-					alert2.addButtonWithTitle_("건너뛰기")
-					
-					# "모두 덮어쓰기" 체크박스 추가
-					checkbox2 = NSButton.alloc().init()
-					checkbox2.setButtonType_(3)  # NSButtonTypeSwitch = 3
-					checkbox2.setTitle_("모든 중복 레이어에 대해 덮어쓰기")
-					checkbox2.setState_(0)  # 체크 해제 상태
-					alert2.setAccessoryView_(checkbox2)
-					
-					response2 = alert2.runModal()
-					
-					# 체크박스 상태 확인
-					if checkbox2.state() == 1:  # 체크됨
-						overwrite_all_existing = True
-					
-					if response2 == NSAlertSecondButtonReturn:  # "건너뛰기" 버튼
-						print(f"  ⏭️  사용자가 건너뛰기를 선택했습니다.")
-						print()
-						continue
+				# 이미 레이어가 있으면 자동으로 건너뛰기
+				if existing_svg_layer:
+					print(f"  ⏭️  이미 'Converted Skeletype' 레이어가 존재합니다. 건너뜁니다.")
+					print()
+					continue
 				
 				# 원본 레이어 정보 저장
 				original_layer = None
