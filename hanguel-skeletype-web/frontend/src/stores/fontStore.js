@@ -6,6 +6,8 @@ const useFontStore = create((set) => ({
   fontName: '',
   glyphCount: 0,
   unitsPerEm: 1000,
+  ascender: null,
+  descender: null,
 
   // Glyph data
   glyphs: [],
@@ -44,6 +46,8 @@ const useFontStore = create((set) => ({
       fontName: data.family_name,
       glyphCount: data.glyph_count,
       unitsPerEm: data.units_per_em,
+      ascender: data.ascender ?? null,
+      descender: data.descender ?? null,
       glyphs: [],
       centerlines: {},
       selectedGlyph: null,
@@ -150,6 +154,8 @@ const useFontStore = create((set) => ({
         fontId: null,
         fontName: '',
         glyphCount: 0,
+        ascender: null,
+        descender: null,
         glyphs: [],
         selectedGlyph: null,
         selectedGlyphs: new Set(),

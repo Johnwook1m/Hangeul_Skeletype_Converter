@@ -75,9 +75,13 @@ export default function ExtractButton() {
                 view_box: event.view_box,
                 glyph_height: event.glyph_height,
                 glyph_width: event.glyph_width,
+                advance_width: event.advance_width,
                 raster_scale: event.raster_scale,
                 bounds: event.bounds,
                 outline: event.outline,
+                ascender: event.ascender,
+                descender: event.descender,
+                font_height: event.font_height,
               });
               // Auto-select the first extracted glyph for preview
               if (!firstExtractedGlyph) {

@@ -1,19 +1,6 @@
 import { useMemo } from 'react';
 import useFontStore from '../stores/fontStore';
 
-// Parse SVG view_box string (e.g., "0 0 800 1040") to get dimensions
-function parseViewBox(viewBox) {
-  if (!viewBox) return { minX: 0, minY: 0, width: 1000, height: 1000 };
-  const parts = viewBox.split(/\s+/).map(Number);
-  if (parts.length !== 4) return { minX: 0, minY: 0, width: 1000, height: 1000 };
-  return {
-    minX: parts[0],
-    minY: parts[1],
-    width: parts[2],
-    height: parts[3],
-  };
-}
-
 export default function GlyphPreview({ large = false }) {
   const {
     glyphs,
@@ -21,12 +8,19 @@ export default function GlyphPreview({ large = false }) {
     centerlines,
     strokeParams,
     unitsPerEm,
+    ascender,
+    descender,
     showFlesh,
     glyphSize,
   } = useFontStore();
 
   // Standard em unit for font metrics (use font's unitsPerEm or default 1000)
   const EM_UNIT = unitsPerEm || 1000;
+
+  // Font vertical metrics (from OS/2 or hhea table)
+  const fontAscender = ascender ?? EM_UNIT * 0.8;
+  const fontDescender = descender ?? -(EM_UNIT * 0.2);
+  const fontHeight = fontAscender - fontDescender;
 
   // Build character -> glyph info map
   const charToGlyph = useMemo(() => {
@@ -42,18 +36,24 @@ export default function GlyphPreview({ large = false }) {
   // Apply size scaling
   const sizeScale = glyphSize / 100;
 
+  // Display scale: maps font units to display units
+  // fontHeight font units → EM_UNIT * sizeScale display units
+  const fontToDisplay = (EM_UNIT / fontHeight) * sizeScale;
+
+  // Rasterizer padding (must match backend rasterizer.py padding=20)
+  const RASTER_PADDING = 20;
+
   // Get glyph data for each character in previewText
   const glyphsToRender = useMemo(() => {
     if (!previewText) return [];
 
     const result = [];
     let xOffset = 0;
-    const spacing = 50 * sizeScale; // Space between glyphs
 
     for (const char of previewText) {
       if (char === ' ') {
-        // Add space (half em width)
-        xOffset += EM_UNIT * 0.5 * sizeScale;
+        // Space: use half-em width (matches typical space glyph)
+        xOffset += (EM_UNIT / 2) * fontToDisplay;
         continue;
       }
 
@@ -68,58 +68,34 @@ export default function GlyphPreview({ large = false }) {
           glyphName,
           centerline: null,
           xOffset,
-          scale: sizeScale,
-          translateX: 0,
-          translateY: 0,
         });
-        xOffset += EM_UNIT * sizeScale + spacing;
+        xOffset += EM_UNIT * fontToDisplay;
         continue;
       }
 
-      // Parse view_box to calculate proper scaling
-      const vb = parseViewBox(centerline.view_box);
+      const rasterScale = centerline.raster_scale || 1;
+      const advanceWidth = centerline.advance_width || EM_UNIT;
 
-      // Get original glyph height from rasterization info
-      const originalGlyphHeight = centerline.glyph_height || EM_UNIT;
-
-      // Calculate normalized scale:
-      // 1. First, scale SVG to EM_UNIT based on view_box height
-      // 2. Then, apply correction factor based on original glyph height
-      // 3. Apply user size scaling
-      const svgToEmScale = EM_UNIT / vb.height;
-      const heightCorrection = originalGlyphHeight / EM_UNIT;
-      const scale = svgToEmScale * heightCorrection * sizeScale;
-
-      // Calculate scaled dimensions for this glyph
-      const scaledWidth = vb.width * scale;
-      const scaledHeight = vb.height * scale;
-
-      // Center the glyph horizontally within EM_UNIT
-      const horizontalOffset = (EM_UNIT * sizeScale - scaledWidth) / 2;
-      // Vertically center based on height difference
-      const verticalOffset = (EM_UNIT * sizeScale - scaledHeight) / 2;
+      // Pixel-to-display scale factor
+      // Maps Autotrace SVG pixel coordinates to display coordinates
+      const K = fontToDisplay / rasterScale;
 
       result.push({
         char,
         glyphName,
         centerline,
-        xOffset: xOffset + Math.max(0, horizontalOffset),
-        yOffset: Math.max(0, verticalOffset),
-        scale,
-        translateX: -vb.minX,
-        translateY: -vb.minY,
-        viewBox: vb,
-        scaledWidth,
-        scaledHeight,
-        originalGlyphHeight,
+        xOffset,
+        K,
+        rasterScale,
+        advanceWidth,
       });
 
-      // Use EM_UNIT for consistent spacing
-      xOffset += EM_UNIT * sizeScale + spacing;
+      // Use actual advance width for spacing (matches original font metrics)
+      xOffset += advanceWidth * fontToDisplay;
     }
 
     return { glyphs: result, totalWidth: xOffset };
-  }, [previewText, charToGlyph, centerlines, sizeScale, EM_UNIT]);
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT]);
 
   if (!previewText) {
     return (
@@ -170,9 +146,10 @@ export default function GlyphPreview({ large = false }) {
   }
 
   // Calculate viewBox to fit all glyphs
-  const viewBoxHeight = EM_UNIT * sizeScale + 200;
-  const padding = 100;
-  const viewBox = `${-padding} ${-padding} ${totalWidth + padding * 2} ${viewBoxHeight + padding * 2}`;
+  // Display height = fontHeight * fontToDisplay = EM_UNIT * sizeScale
+  const viewBoxHeight = EM_UNIT * sizeScale;
+  const svgPadding = 100;
+  const viewBox = `${-svgPadding} ${-svgPadding} ${totalWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
 
   return (
     <div className="flex items-center justify-center h-full w-full relative">
@@ -185,11 +162,12 @@ export default function GlyphPreview({ large = false }) {
         {glyphList.map((glyph, index) => {
           if (!glyph.centerline) {
             // Show placeholder for missing centerline
+            const cellWidth = EM_UNIT * fontToDisplay;
             return (
               <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
                 <text
-                  x={EM_UNIT * sizeScale / 2}
-                  y={EM_UNIT * sizeScale / 2}
+                  x={cellWidth / 2}
+                  y={viewBoxHeight / 2}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="#666"
@@ -198,8 +176,8 @@ export default function GlyphPreview({ large = false }) {
                   {glyph.char}
                 </text>
                 <text
-                  x={EM_UNIT * sizeScale / 2}
-                  y={EM_UNIT * sizeScale * 0.8}
+                  x={cellWidth / 2}
+                  y={viewBoxHeight * 0.8}
                   textAnchor="middle"
                   fill="#666"
                   fontSize={60 * sizeScale}
@@ -210,25 +188,44 @@ export default function GlyphPreview({ large = false }) {
             );
           }
 
-          // Calculate adjusted stroke width (scale inversely with glyph scale)
-          const adjustedStrokeWidth = strokeParams.width / glyph.scale * sizeScale;
-
-          // Get outline data for "show flesh" feature
+          const { K, rasterScale } = glyph;
           const outline = glyph.centerline.outline;
-          const rasterScale = glyph.centerline.raster_scale || 1;
+          const bounds = glyph.centerline.bounds || {};
+          const xMin = bounds.xMin || 0;
+          const glyphAscender = glyph.centerline.ascender ?? fontAscender;
 
-          // Calculate transform for the original glyph outline
-          // Maps font coordinates to match the centerline's coordinate space
-          // The rasterizer used: offset = 20px padding on each side
-          const outlineTransform = outline ? (() => {
-            const { xMin, yMax } = outline.bounds;
-            const combinedScale = rasterScale * glyph.scale;
-            const paddingOffset = 20 * glyph.scale;
-            return `translate(${paddingOffset}, ${paddingOffset}) scale(${combinedScale}, ${-combinedScale}) translate(${-xMin}, ${-yMax})`;
-          })() : '';
+          // Centerline transform: pixel/SVG coords → display coords
+          //
+          // Rasterizer mapping (font → pixel):
+          //   px = (fx - xMin) * rasterScale + padding
+          //   py = (ascender - fy) * rasterScale + padding
+          //
+          // Inverse (pixel → font → display):
+          //   display_x = ((px - padding) / rasterScale + xMin) * fontToDisplay
+          //   display_y = ((py - padding) / rasterScale) * fontToDisplay
+          //
+          // As SVG transform (applied right-to-left):
+          //   translate(xMin * fontToDisplay - padding * K, -padding * K) scale(K, K)
+          const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
+          const clTranslateY = -RASTER_PADDING * K;
+
+          // Outline transform: font coords → display coords
+          //   display_x = fx * fontToDisplay
+          //   display_y = (ascender - fy) * fontToDisplay
+          //
+          // As SVG transform: scale(ftd, -ftd) translate(0, -ascender)
+          const outlineTransform = outline
+            ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
+            : '';
+
+          // Stroke width in pixel space (inside scale(K) transform)
+          // strokeParams.width is in font units → display = width * fontToDisplay
+          // Inside scale(K): strokeWidth * K = width * fontToDisplay
+          // → strokeWidth = width * fontToDisplay / K = width * rasterScale
+          const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
 
           return (
-            <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset || 0})`}>
+            <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
               {/* Original glyph outline (flesh) - rendered behind skeleton */}
               {showFlesh && outline && outline.path && (
                 <g transform={outlineTransform}>
@@ -241,8 +238,8 @@ export default function GlyphPreview({ large = false }) {
                 </g>
               )}
 
-              {/* Apply scaling and translation to normalize glyph */}
-              <g transform={`scale(${glyph.scale}) translate(${glyph.translateX}, ${glyph.translateY})`}>
+              {/* Centerline paths (in Autotrace pixel coordinates) */}
+              <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
                 {/* Centerline with stroke applied */}
                 {glyph.centerline.paths.map((d, i) => (
                   <path
@@ -250,7 +247,7 @@ export default function GlyphPreview({ large = false }) {
                     d={d}
                     fill="none"
                     stroke={showFlesh ? 'rgba(255,255,255,0.9)' : '#fff'}
-                    strokeWidth={adjustedStrokeWidth / sizeScale}
+                    strokeWidth={strokeWidthInPixelSpace}
                     strokeLinecap={strokeParams.cap}
                     strokeLinejoin={strokeParams.join}
                   />
@@ -263,7 +260,7 @@ export default function GlyphPreview({ large = false }) {
                       d={d}
                       fill="none"
                       stroke="#a855f7"
-                      strokeWidth={3 / glyph.scale}
+                      strokeWidth={3 / K}
                       opacity={0.9}
                     />
                   ))}

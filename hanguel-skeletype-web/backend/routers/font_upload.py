@@ -52,4 +52,6 @@ async def upload_font(file: UploadFile = File(...)):
         family_name=session.family_name,
         glyph_count=len(session.glyph_names),
         units_per_em=session.units_per_em,
+        ascender=session.ascender,
+        descender=session.descender,
     )

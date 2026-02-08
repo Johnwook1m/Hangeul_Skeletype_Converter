@@ -6,6 +6,8 @@ class FontUploadResponse(BaseModel):
     family_name: str
     glyph_count: int
     units_per_em: int
+    ascender: int
+    descender: int
 
 
 class GlyphInfo(BaseModel):

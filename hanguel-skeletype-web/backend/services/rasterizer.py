@@ -11,21 +11,30 @@ from fontTools.pens.freetypePen import FreeTypePen
 from fontTools.pens.boundsPen import BoundsPen
 from PIL import Image
 
+from .component_decomposer import has_components, get_component_info
+
 
 def rasterize_glyph(
     tt_font: TTFont,
     glyph_name: str,
     output_path: Path,
     target_height: int = 1000,
+    ascender: int | None = None,
+    descender: int | None = None,
 ) -> dict | None:
     """
     Render a single glyph to a PNG file.
+
+    Uses font-level ascender/descender when provided to ensure all glyphs
+    share the same coordinate frame (consistent scale and baseline position).
 
     Args:
         tt_font: Parsed font object
         glyph_name: Name of the glyph to render
         output_path: Where to save the PNG
         target_height: Target height in pixels
+        ascender: Font ascender in font units (for consistent Y positioning)
+        descender: Font descender in font units (negative value)
 
     Returns:
         Dict with path, bounds, scale info, or None if rendering failed
@@ -36,6 +45,14 @@ def rasterize_glyph(
             return None
 
         glyph = glyph_set[glyph_name]
+
+        # Check for components and log (for debugging)
+        if has_components(tt_font, glyph_name):
+            comp_info = get_component_info(tt_font, glyph_name)
+            print(f"    🔧 Component detected in '{glyph_name}'")
+            print(f"       - Component count: {comp_info['count']}")
+            print(f"       - Components: {', '.join(comp_info['names'])}")
+            # Note: fontTools' glyph.draw() automatically decomposes components
 
         # Skip empty glyphs
         bounds_pen = BoundsPen(glyph_set)
@@ -52,27 +69,35 @@ def rasterize_glyph(
         if glyph_width <= 0 or glyph_height <= 0:
             return None
 
-        # Calculate scale to fit target height
-        scale = target_height / glyph_height if glyph_height > 0 else 1.0
-        pixel_width = max(int(glyph_width * scale) + 40, 100)
-        pixel_height = target_height + 40
+        padding = 20
+
+        # Use font-level metrics for consistent coordinate frame across all glyphs
+        if ascender is not None and descender is not None:
+            font_height = ascender - descender
+            scale = target_height / font_height if font_height > 0 else 1.0
+            # Baseline-relative Y offset: places descender at bottom padding
+            offset_y = -descender * scale + padding
+        else:
+            # Fallback: per-glyph scaling (legacy behavior)
+            font_height = glyph_height
+            scale = target_height / glyph_height if glyph_height > 0 else 1.0
+            offset_y = -yMin * scale + padding
+
+        pixel_width = max(int(glyph_width * scale) + 2 * padding, 100)
+        pixel_height = target_height + 2 * padding
+        offset_x = -xMin * scale + padding
 
         # Render using FreeTypePen
         pen = FreeTypePen(glyph_set)
         glyph.draw(pen)
 
-        # Calculate transform to position glyph in image
-        # FreeTypePen uses bottom-left origin, we need to shift the glyph
-        offset_x = -xMin * scale + 20
-        offset_y = -yMin * scale + 20
-
         # Render to image with transformation
-        # contain=True ensures the glyph fits within the bounds
+        # contain=False so our exact transform is used (consistent baseline positioning)
         img = pen.image(
             width=pixel_width,
             height=pixel_height,
             transform=(scale, 0, 0, scale, offset_x, offset_y),
-            contain=True,
+            contain=False,
         )
 
         # FreeTypePen returns LA (grayscale + alpha) or RGBA image
@@ -102,6 +127,9 @@ def rasterize_glyph(
 
         background.save(str(output_path), "PNG")
 
+        # Get advance width from glyph metrics
+        advance_width = glyph.width if hasattr(glyph, 'width') else glyph_width
+
         # Return path along with glyph metrics for proper scaling
         return {
             "path": output_path,
@@ -113,9 +141,13 @@ def rasterize_glyph(
             },
             "glyph_width": glyph_width,
             "glyph_height": glyph_height,
+            "advance_width": advance_width,
             "scale": scale,
             "pixel_width": pixel_width,
             "pixel_height": pixel_height,
+            "ascender": ascender,
+            "descender": descender,
+            "font_height": font_height,
         }
 
     except Exception as e:

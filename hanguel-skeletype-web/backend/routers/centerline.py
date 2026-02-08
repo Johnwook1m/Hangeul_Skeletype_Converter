@@ -68,10 +68,12 @@ async def extract_centerlines(font_id: str, request: ExtractRequest):
             }
             yield f"data: {json.dumps(event)}\n\n"
 
-            # Step 1: Rasterize to PNG
+            # Step 1: Rasterize to PNG (with font metrics for consistent Y positioning)
             png_path = work_dir / f"{name}.png"
             raster_result = await asyncio.to_thread(
-                rasterize_glyph, session.tt_font, name, png_path
+                rasterize_glyph, session.tt_font, name, png_path,
+                ascender=session.ascender,
+                descender=session.descender,
             )
 
             if raster_result is None:
@@ -121,9 +123,13 @@ async def extract_centerlines(font_id: str, request: ExtractRequest):
                 **svg_data,
                 "glyph_height": raster_result["glyph_height"],
                 "glyph_width": raster_result["glyph_width"],
+                "advance_width": raster_result["advance_width"],
                 "raster_scale": raster_result["scale"],
                 "bounds": raster_result["bounds"],
                 "outline": outline_data,  # Original glyph outline
+                "ascender": session.ascender,
+                "descender": session.descender,
+                "font_height": raster_result["font_height"],
             }
 
             # Store centerline data in session
@@ -139,9 +145,13 @@ async def extract_centerlines(font_id: str, request: ExtractRequest):
                 "view_box": svg_data["view_box"],
                 "glyph_height": raster_result["glyph_height"],
                 "glyph_width": raster_result["glyph_width"],
+                "advance_width": raster_result["advance_width"],
                 "raster_scale": raster_result["scale"],
                 "bounds": raster_result["bounds"],
                 "outline": outline_data,  # Original glyph outline
+                "ascender": session.ascender,
+                "descender": session.descender,
+                "font_height": raster_result["font_height"],
             }
             yield f"data: {json.dumps(event)}\n\n"
 

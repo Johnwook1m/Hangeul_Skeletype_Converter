@@ -4,6 +4,8 @@ from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.boundsPen import BoundsPen
 
+from .component_decomposer import has_components
+
 
 def parse_font(file_path: Path) -> TTFont:
     """Parse a TTF/OTF font file and return a TTFont object."""
@@ -40,6 +42,7 @@ def get_glyph_info(tt_font: TTFont) -> list[dict]:
             "unicode": unicode_val,
             "character": character,
             "has_outline": has_outline,
+            "has_components": has_components(tt_font, name),
         })
 
     return glyphs
