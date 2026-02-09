@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { exportFont } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
-export default function ExportButton() {
+export default function ExportButton({ inline = false }) {
   const { fontId, fontName, strokeParams, centerlines } = useFontStore();
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
@@ -40,6 +40,18 @@ export default function ExportButton() {
   }
 
   if (centerlineCount === 0) return null;
+
+  if (inline) {
+    return (
+      <button
+        onClick={() => handleExport('otf')}
+        disabled={exporting}
+        className="shrink-0 px-3 py-1.5 text-xs font-medium bg-gray-800 text-white rounded-full hover:bg-gray-700 disabled:opacity-50 transition-colors"
+      >
+        {exporting ? '...' : `.otf`}
+      </button>
+    );
+  }
 
   return (
     <div className="space-y-2">

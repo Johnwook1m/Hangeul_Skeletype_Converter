@@ -1,13 +1,75 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { uploadFont, getGlyphs } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
 export default function FontUpload() {
+  const [visible, setVisible] = useState(true);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
-  const { setFont, setGlyphs, setFontBlobUrl } = useFontStore();
+  const hideTimer = useRef(null);
+  const dragCounter = useRef(0);
+  const { fontId, setFont, setGlyphs, setFontBlobUrl } = useFontStore();
+
+  // Auto-hide after 5 seconds on initial load (only when no font loaded)
+  useEffect(() => {
+    if (!fontId) {
+      hideTimer.current = setTimeout(() => {
+        setVisible(false);
+      }, 5000);
+    }
+    return () => clearTimeout(hideTimer.current);
+  }, [fontId]);
+
+  // Window-level drag events to detect file dragging anywhere
+  const handleWindowDragEnter = useCallback((e) => {
+    e.preventDefault();
+    dragCounter.current++;
+    if (dragCounter.current === 1) {
+      // Check if dragged items contain files
+      if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+        setVisible(true);
+        setDragging(true);
+        clearTimeout(hideTimer.current);
+      }
+    }
+  }, []);
+
+  const handleWindowDragLeave = useCallback((e) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setDragging(false);
+      // If font is loaded, hide after leaving
+      if (fontId) {
+        setVisible(false);
+      }
+    }
+  }, [fontId]);
+
+  const handleWindowDragOver = useCallback((e) => {
+    e.preventDefault();
+  }, []);
+
+  const handleWindowDrop = useCallback((e) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragging(false);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('drop', handleWindowDrop);
+    return () => {
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('drop', handleWindowDrop);
+    };
+  }, [handleWindowDragEnter, handleWindowDragLeave, handleWindowDragOver, handleWindowDrop]);
 
   async function handleFile(file) {
     if (!file) return;
@@ -24,11 +86,9 @@ export default function FontUpload() {
       const data = await uploadFont(file);
       setFont(data);
 
-      // Create blob URL for font preview (to show original glyphs)
       const fontBlobUrl = URL.createObjectURL(file);
       setFontBlobUrl(fontBlobUrl);
 
-      // Load all glyphs (Korean fonts can have 11,172+ glyphs)
       const allGlyphs = [];
       let page = 1;
       const perPage = 500;
@@ -36,12 +96,12 @@ export default function FontUpload() {
       while (true) {
         const glyphData = await getGlyphs(data.font_id, page, perPage);
         allGlyphs.push(...glyphData.glyphs);
-
         if (allGlyphs.length >= glyphData.total) break;
         page++;
       }
 
       setGlyphs(allGlyphs);
+      setVisible(false);
     } catch (err) {
       setError(err.response?.data?.detail || '폰트 업로드에 실패했습니다.');
     } finally {
@@ -51,54 +111,76 @@ export default function FontUpload() {
 
   function handleDrop(e) {
     e.preventDefault();
+    e.stopPropagation();
     setDragging(false);
+    dragCounter.current = 0;
     const file = e.dataTransfer.files[0];
     handleFile(file);
   }
 
-  function handleDragOver(e) {
-    e.preventDefault();
-    setDragging(true);
+  function handleOverlayClick() {
+    if (loading) return;
+    if (!fontId) {
+      // No font loaded: click to select file
+      fileRef.current?.click();
+    } else {
+      // Font loaded: click to dismiss
+      setVisible(false);
+    }
   }
+
+  const isActive = visible || dragging;
 
   return (
     <div
       onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={() => setDragging(false)}
-      onClick={() => fileRef.current?.click()}
+      onDragOver={(e) => e.preventDefault()}
+      onClick={handleOverlayClick}
       className={`
-        border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
-        transition-colors
-        ${dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-        ${loading ? 'opacity-50 pointer-events-none' : ''}
+        fixed inset-0 z-50 flex items-center justify-center
+        transition-opacity duration-500 cursor-pointer
+        ${isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
       `}
+      style={{ background: 'rgba(0, 0, 0, 0.6)' }}
     >
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".ttf,.otf,.woff"
-        className="hidden"
-        onChange={(e) => handleFile(e.target.files[0])}
+      {/* Dropzone border */}
+      <div
+        className={`
+          absolute m-3 rounded-2xl
+          border-2 border-dashed transition-colors duration-300
+          ${dragging ? 'border-purple-400' : 'border-gray-500'}
+        `}
+        style={{ inset: '8px' }}
       />
 
-      {loading ? (
-        <div className="text-gray-500">
-          <div className="animate-spin inline-block w-6 h-6 border-2 border-gray-400 border-t-blue-500 rounded-full mb-2" />
-          <p>폰트 분석 중...</p>
-        </div>
-      ) : (
-        <div>
-          <p className="text-lg font-medium text-gray-600 mb-1">
-            폰트 파일을 드래그하거나 클릭하여 업로드
-          </p>
-          <p className="text-sm text-gray-400">.ttf, .otf, .woff</p>
-        </div>
-      )}
+      {/* Content */}
+      <div className="relative text-center z-10">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".ttf,.otf,.woff"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files[0])}
+        />
 
-      {error && (
-        <p className="mt-3 text-red-500 text-sm">{error}</p>
-      )}
+        {loading ? (
+          <div className="text-white">
+            <div className="animate-spin inline-block w-10 h-10 border-3 border-white/30 border-t-white rounded-full mb-4" />
+            <p className="text-xl font-light">폰트 분석 중...</p>
+          </div>
+        ) : (
+          <div>
+            <p className={`text-xl font-light mb-2 ${dragging ? 'text-purple-300' : 'text-gray-300'}`}>
+              {fontId ? '새 폰트를 드래그하세요' : '폰트 파일을 드래그하거나 클릭하여 업로드'}
+            </p>
+            <p className="text-sm text-gray-500">.ttf, .otf, .woff</p>
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-4 text-red-400 text-sm">{error}</p>
+        )}
+      </div>
     </div>
   );
 }

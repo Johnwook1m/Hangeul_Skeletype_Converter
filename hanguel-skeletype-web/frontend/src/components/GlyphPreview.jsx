@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import useFontStore from '../stores/fontStore';
 
 export default function GlyphPreview({ large = false }) {
@@ -13,6 +13,18 @@ export default function GlyphPreview({ large = false }) {
     showFlesh,
     glyphSize,
   } = useFontStore();
+
+  // Pan state for trackpad/mouse navigation
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+  const containerRef = useRef(null);
+  const sizeScaleRef = useRef(1);
+
+  // Reset pan when preview text changes
+  useEffect(() => {
+    setPan({ x: 0, y: 0 });
+  }, [previewText]);
 
   // Standard em unit for font metrics (use font's unitsPerEm or default 1000)
   const EM_UNIT = unitsPerEm || 1000;
@@ -33,19 +45,78 @@ export default function GlyphPreview({ large = false }) {
     return map;
   }, [glyphs]);
 
-  // Apply size scaling
+  // Size scaling — pure display transform (like SkeleText's scale(sc))
+  // No coordinate recalculation needed; applied as CSS transform on the SVG element
   const sizeScale = glyphSize / 100;
 
-  // Display scale: maps font units to display units
-  // fontHeight font units → EM_UNIT * sizeScale display units
-  const fontToDisplay = (EM_UNIT / fontHeight) * sizeScale;
+  // Display scale: maps font units to display units (base scale, without size)
+  const fontToDisplay = EM_UNIT / fontHeight;
+
+  // Keep sizeScale in ref for native event listeners
+  sizeScaleRef.current = sizeScale;
+
+  // Clamp pan so content stays partially visible
+  const clampPan = (newPan) => {
+    const el = containerRef.current;
+    if (!el) return newPan;
+    const { width, height } = el.getBoundingClientRect();
+    const sc = sizeScaleRef.current;
+    const maxX = width * ((sc - 1) / 2 + 0.3);
+    const maxY = height * ((sc - 1) / 2 + 0.3);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, newPan.x)),
+      y: Math.max(-maxY, Math.min(maxY, newPan.y)),
+    };
+  };
+
+  // Native mouse drag listeners (registered once, stable)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleMouseDown = (e) => {
+      e.preventDefault();
+      isPanning.current = true;
+      lastPos.current = { x: e.clientX, y: e.clientY };
+    };
+    const handleMouseMove = (e) => {
+      if (!isPanning.current) return;
+      const dx = e.clientX - lastPos.current.x;
+      const dy = e.clientY - lastPos.current.y;
+      lastPos.current = { x: e.clientX, y: e.clientY };
+      setPan((p) => {
+        const el2 = containerRef.current;
+        if (!el2) return { x: p.x + dx, y: p.y + dy };
+        const { width, height } = el2.getBoundingClientRect();
+        const sc = sizeScaleRef.current;
+        const maxX = width * ((sc - 1) / 2 + 0.3);
+        const maxY = height * ((sc - 1) / 2 + 0.3);
+        return {
+          x: Math.max(-maxX, Math.min(maxX, p.x + dx)),
+          y: Math.max(-maxY, Math.min(maxY, p.y + dy)),
+        };
+      });
+    };
+    const handleMouseUp = () => {
+      isPanning.current = false;
+    };
+
+    el.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      el.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   // Rasterizer padding (must match backend rasterizer.py padding=20)
   const RASTER_PADDING = 20;
 
   // Get glyph data for each character in previewText
   const glyphsToRender = useMemo(() => {
-    if (!previewText) return [];
+    if (!previewText) return { glyphs: [], totalWidth: 0 };
 
     const result = [];
     let xOffset = 0;
@@ -97,186 +168,184 @@ export default function GlyphPreview({ large = false }) {
     return { glyphs: result, totalWidth: xOffset };
   }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT]);
 
-  if (!previewText) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        <div className="text-center">
-          <p className={large ? 'text-xl mb-2' : 'text-lg mb-2'}>
-            문구를 입력하세요
-          </p>
-          <p className="text-sm">
-            위 입력창에 문구를 입력하고
-            <br />
-            "선택" 버튼을 클릭하세요
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const { glyphs: glyphList, totalWidth } = glyphsToRender;
-
-  if (glyphList.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        <div className="text-center">
-          <p className="text-lg mb-2">"{previewText}"</p>
-          <p>해당 글자의 글리프가 폰트에 없습니다.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if any centerlines are missing
   const missingCenterlines = glyphList.filter((g) => !g.centerline);
   const hasCenterlines = glyphList.some((g) => g.centerline);
+  const showSvg = previewText && glyphList.length > 0 && hasCenterlines;
 
-  if (!hasCenterlines) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        <div className="text-center">
-          <p className="text-xl mb-3">"{previewText}"</p>
-          <p>중심선이 추출되지 않았습니다.</p>
-          <p className="text-sm mt-1">
-            오른쪽 "선택한 글리프 추출" 버튼을 클릭하세요.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate viewBox to fit all glyphs
-  // Display height = fontHeight * fontToDisplay = EM_UNIT * sizeScale
-  const viewBoxHeight = EM_UNIT * sizeScale;
+  // Calculate viewBox to fit all glyphs (base scale, no sizeScale)
+  const viewBoxHeight = EM_UNIT;
   const svgPadding = 100;
   const viewBox = `${-svgPadding} ${-svgPadding} ${totalWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
 
+  // Determine placeholder content
+  let placeholder = null;
+  if (!previewText) {
+    placeholder = glyphs.length > 0 ? (
+      <p className="text-lg font-light text-gray-500">하단 메뉴에서 문구를 입력하세요</p>
+    ) : null;
+  } else if (glyphList.length === 0) {
+    placeholder = (
+      <div className="text-center text-gray-500">
+        <p className="text-lg mb-2">"{previewText}"</p>
+        <p className="text-sm">해당 글자의 글리프가 폰트에 없습니다.</p>
+      </div>
+    );
+  } else if (!hasCenterlines) {
+    placeholder = (
+      <div className="text-center text-gray-500">
+        <p className="text-xl mb-3 font-light">"{previewText}"</p>
+        <p className="text-sm">중심선이 추출되지 않았습니다.</p>
+        <p className="text-xs mt-1 text-gray-600">
+          하단 메뉴의 "추출" 버튼을 클릭하세요.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center h-full w-full relative">
-      <svg
-        viewBox={viewBox}
-        className="w-full h-full"
-        style={{ background: '#1a1a1a' }}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {glyphList.map((glyph, index) => {
-          if (!glyph.centerline) {
-            // Show placeholder for missing centerline
-            const cellWidth = EM_UNIT * fontToDisplay;
-            return (
-              <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
-                <text
-                  x={cellWidth / 2}
-                  y={viewBoxHeight / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#666"
-                  fontSize={200 * sizeScale}
-                >
-                  {glyph.char}
-                </text>
-                <text
-                  x={cellWidth / 2}
-                  y={viewBoxHeight * 0.8}
-                  textAnchor="middle"
-                  fill="#666"
-                  fontSize={60 * sizeScale}
-                >
-                  (추출 필요)
-                </text>
-              </g>
-            );
-          }
+    <div
+      ref={containerRef}
+      className={`flex items-center justify-center h-full w-full relative select-none ${
+        showSvg ? 'cursor-grab active:cursor-grabbing' : ''
+      }`}
+      style={{ background: '#1a1a1a' }}
+      onWheel={showSvg ? (e) => setPan((p) => clampPan({ x: p.x - e.deltaX, y: p.y - e.deltaY })) : undefined}
+      onDoubleClick={showSvg ? () => setPan({ x: 0, y: 0 }) : undefined}
+    >
+      {placeholder ? (
+        <div className="text-center">{placeholder}</div>
+      ) : showSvg ? (
+        <>
+          <svg
+            viewBox={viewBox}
+            className="w-full h-full"
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${sizeScale})`,
+              transformOrigin: 'center center',
+            }}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {glyphList.map((glyph, index) => {
+              if (!glyph.centerline) {
+                // Show placeholder for missing centerline
+                const cellWidth = EM_UNIT * fontToDisplay;
+                return (
+                  <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
+                    <text
+                      x={cellWidth / 2}
+                      y={viewBoxHeight / 2}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#666"
+                      fontSize={200}
+                    >
+                      {glyph.char}
+                    </text>
+                    <text
+                      x={cellWidth / 2}
+                      y={viewBoxHeight * 0.8}
+                      textAnchor="middle"
+                      fill="#666"
+                      fontSize={60}
+                    >
+                      (추출 필요)
+                    </text>
+                  </g>
+                );
+              }
 
-          const { K, rasterScale } = glyph;
-          const outline = glyph.centerline.outline;
-          const bounds = glyph.centerline.bounds || {};
-          const xMin = bounds.xMin || 0;
-          const glyphAscender = glyph.centerline.ascender ?? fontAscender;
+              const { K, rasterScale } = glyph;
+              const outline = glyph.centerline.outline;
+              const bounds = glyph.centerline.bounds || {};
+              const xMin = bounds.xMin || 0;
+              const glyphAscender = glyph.centerline.ascender ?? fontAscender;
 
-          // Centerline transform: pixel/SVG coords → display coords
-          //
-          // Rasterizer mapping (font → pixel):
-          //   px = (fx - xMin) * rasterScale + padding
-          //   py = (ascender - fy) * rasterScale + padding
-          //
-          // Inverse (pixel → font → display):
-          //   display_x = ((px - padding) / rasterScale + xMin) * fontToDisplay
-          //   display_y = ((py - padding) / rasterScale) * fontToDisplay
-          //
-          // As SVG transform (applied right-to-left):
-          //   translate(xMin * fontToDisplay - padding * K, -padding * K) scale(K, K)
-          const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
-          const clTranslateY = -RASTER_PADDING * K;
+              // Centerline transform: pixel/SVG coords → display coords
+              //
+              // Rasterizer mapping (font → pixel):
+              //   px = (fx - xMin) * rasterScale + padding
+              //   py = (ascender - fy) * rasterScale + padding
+              //
+              // Inverse (pixel → font → display):
+              //   display_x = ((px - padding) / rasterScale + xMin) * fontToDisplay
+              //   display_y = ((py - padding) / rasterScale) * fontToDisplay
+              //
+              // As SVG transform (applied right-to-left):
+              //   translate(xMin * fontToDisplay - padding * K, -padding * K) scale(K, K)
+              const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
+              const clTranslateY = -RASTER_PADDING * K;
 
-          // Outline transform: font coords → display coords
-          //   display_x = fx * fontToDisplay
-          //   display_y = (ascender - fy) * fontToDisplay
-          //
-          // As SVG transform: scale(ftd, -ftd) translate(0, -ascender)
-          const outlineTransform = outline
-            ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
-            : '';
+              // Outline transform: font coords → display coords
+              //   display_x = fx * fontToDisplay
+              //   display_y = (ascender - fy) * fontToDisplay
+              //
+              // As SVG transform: scale(ftd, -ftd) translate(0, -ascender)
+              const outlineTransform = outline
+                ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
+                : '';
 
-          // Stroke width in pixel space (inside scale(K) transform)
-          // strokeParams.width is in font units → display = width * fontToDisplay
-          // Inside scale(K): strokeWidth * K = width * fontToDisplay
-          // → strokeWidth = width * fontToDisplay / K = width * rasterScale
-          const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
+              // Stroke width in pixel space (inside scale(K) transform)
+              // strokeParams.width is in font units → display = width * fontToDisplay
+              // Inside scale(K): strokeWidth * K = width * fontToDisplay
+              // → strokeWidth = width * fontToDisplay / K = width * rasterScale
+              const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
 
-          return (
-            <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
-              {/* Original glyph outline (flesh) - rendered behind skeleton */}
-              {showFlesh && outline && outline.path && (
-                <g transform={outlineTransform}>
-                  <path
-                    d={outline.path}
-                    fill="#ffffff"
-                    fillOpacity={0.3}
-                    stroke="none"
-                  />
+              return (
+                <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
+                  {/* Original glyph outline (flesh) - rendered behind skeleton */}
+                  {showFlesh && outline && outline.path && (
+                    <g transform={outlineTransform}>
+                      <path
+                        d={outline.path}
+                        fill="#ffffff"
+                        fillOpacity={0.3}
+                        stroke="none"
+                      />
+                    </g>
+                  )}
+
+                  {/* Centerline paths (in Autotrace pixel coordinates) */}
+                  <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
+                    {/* Centerline with stroke applied */}
+                    {glyph.centerline.paths.map((d, i) => (
+                      <path
+                        key={i}
+                        d={d}
+                        fill="none"
+                        stroke={showFlesh ? 'rgba(255,255,255,0.9)' : '#fff'}
+                        strokeWidth={strokeWidthInPixelSpace}
+                        strokeLinecap={strokeParams.cap}
+                        strokeLinejoin={strokeParams.join}
+                      />
+                    ))}
+                    {/* Thin centerline reference (colored) */}
+                    <g>
+                      {glyph.centerline.paths.map((d, i) => (
+                        <path
+                          key={`ref-${i}`}
+                          d={d}
+                          fill="none"
+                          stroke="#a855f7"
+                          strokeWidth={3 / K}
+                          opacity={0.9}
+                        />
+                      ))}
+                    </g>
+                  </g>
                 </g>
-              )}
+              );
+            })}
+          </svg>
 
-              {/* Centerline paths (in Autotrace pixel coordinates) */}
-              <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
-                {/* Centerline with stroke applied */}
-                {glyph.centerline.paths.map((d, i) => (
-                  <path
-                    key={i}
-                    d={d}
-                    fill="none"
-                    stroke={showFlesh ? 'rgba(255,255,255,0.9)' : '#fff'}
-                    strokeWidth={strokeWidthInPixelSpace}
-                    strokeLinecap={strokeParams.cap}
-                    strokeLinejoin={strokeParams.join}
-                  />
-                ))}
-                {/* Thin centerline reference (colored) */}
-                <g>
-                  {glyph.centerline.paths.map((d, i) => (
-                    <path
-                      key={`ref-${i}`}
-                      d={d}
-                      fill="none"
-                      stroke="#a855f7"
-                      strokeWidth={3 / K}
-                      opacity={0.9}
-                    />
-                  ))}
-                </g>
-              </g>
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* Status indicator */}
-      {missingCenterlines.length > 0 && (
-        <div className="absolute bottom-4 left-4 bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded-lg text-sm">
-          {missingCenterlines.length}개 글자 추출 필요
-        </div>
-      )}
+          {/* Status indicator - positioned above bottom bar */}
+          {missingCenterlines.length > 0 && (
+            <div className="absolute bottom-16 left-4 bg-yellow-900/80 text-yellow-200 px-3 py-1.5 rounded-lg text-sm">
+              {missingCenterlines.length}개 글자 추출 필요
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

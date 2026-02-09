@@ -1,7 +1,7 @@
 import { extractCenterlines } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
-export default function ExtractButton() {
+export default function ExtractButton({ inline = false }) {
   const {
     fontId,
     glyphs,
@@ -108,6 +108,24 @@ export default function ExtractButton() {
       setExtractionStatus({ status: 'idle' });
       console.error('Extraction failed:', err);
     }
+  }
+
+  if (inline) {
+    return (
+      <button
+        onClick={() => handleExtract(false)}
+        disabled={isRunning || selectedCount === 0}
+        className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+          isRunning
+            ? 'bg-purple-400 text-white cursor-wait'
+            : 'bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-40'
+        }`}
+      >
+        {isRunning
+          ? `${extraction.current}/${extraction.total}`
+          : `추출 (${selectedCount})`}
+      </button>
+    );
   }
 
   return (
