@@ -23,6 +23,8 @@ const useFontStore = create((set) => ({
     width: 80,
     cap: 'round',
     join: 'round',
+    strokeColor: '#0cd0fc',
+    centerlineColor: '#0cd0fc',
   },
 
   // Display options

@@ -55,19 +55,6 @@ export default function GlyphPreview({ large = false }) {
   // Keep sizeScale in ref for native event listeners
   sizeScaleRef.current = sizeScale;
 
-  // Clamp pan so content stays partially visible
-  const clampPan = (newPan) => {
-    const el = containerRef.current;
-    if (!el) return newPan;
-    const { width, height } = el.getBoundingClientRect();
-    const sc = sizeScaleRef.current;
-    const maxX = width * ((sc - 1) / 2 + 0.3);
-    const maxY = height * ((sc - 1) / 2 + 0.3);
-    return {
-      x: Math.max(-maxX, Math.min(maxX, newPan.x)),
-      y: Math.max(-maxY, Math.min(maxY, newPan.y)),
-    };
-  };
 
   // Native mouse drag listeners (registered once, stable)
   useEffect(() => {
@@ -101,11 +88,35 @@ export default function GlyphPreview({ large = false }) {
       isPanning.current = false;
     };
 
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const { setGlyphSize, glyphSize: curSize } = useFontStore.getState();
+        const delta = -e.deltaY * 0.5;
+        setGlyphSize(Math.round(Math.max(50, Math.min(500, curSize + delta))));
+      } else {
+        setPan((p) => {
+          const el2 = containerRef.current;
+          if (!el2) return { x: p.x - e.deltaX, y: p.y - e.deltaY };
+          const { width, height } = el2.getBoundingClientRect();
+          const sc = sizeScaleRef.current;
+          const maxX = width * ((sc - 1) / 2 + 0.3);
+          const maxY = height * ((sc - 1) / 2 + 0.3);
+          return {
+            x: Math.max(-maxX, Math.min(maxX, p.x - e.deltaX)),
+            y: Math.max(-maxY, Math.min(maxY, p.y - e.deltaY)),
+          };
+        });
+      }
+    };
+
     el.addEventListener('mousedown', handleMouseDown);
+    el.addEventListener('wheel', handleWheel, { passive: false });
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
       el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('wheel', handleWheel);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -114,17 +125,35 @@ export default function GlyphPreview({ large = false }) {
   // Rasterizer padding (must match backend rasterizer.py padding=20)
   const RASTER_PADDING = 20;
 
-  // Get glyph data for each character in previewText
+  // Line wrapping: width-based (handles mixed English/Korean glyph widths)
+  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay; // max row width in display units
+  const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
+
+  // Get glyph data for each character in previewText (with width-based row wrapping)
   const glyphsToRender = useMemo(() => {
-    if (!previewText) return { glyphs: [], totalWidth: 0 };
+    if (!previewText) return { glyphs: [], maxRowWidth: 0, totalRows: 1 };
 
     const result = [];
     let xOffset = 0;
+    let row = 0;
+    let maxRowWidth = 0;
+    const rowHeight = EM_UNIT + ROW_GAP;
 
     for (const char of previewText) {
+      if (char === '\n') {
+        maxRowWidth = Math.max(maxRowWidth, xOffset);
+        row++;
+        xOffset = 0;
+        continue;
+      }
       if (char === ' ') {
-        // Space: use half-em width (matches typical space glyph)
-        xOffset += (EM_UNIT / 2) * fontToDisplay;
+        const spaceWidth = (EM_UNIT / 2) * fontToDisplay;
+        if (xOffset + spaceWidth > MAX_ROW_WIDTH && xOffset > 0) {
+          maxRowWidth = Math.max(maxRowWidth, xOffset);
+          row++;
+          xOffset = 0;
+        }
+        xOffset += spaceWidth;
         continue;
       }
 
@@ -132,51 +161,62 @@ export default function GlyphPreview({ large = false }) {
       if (!glyphName) continue;
 
       const centerline = centerlines[glyphName];
+      const glyphWidth = centerline
+        ? (centerline.advance_width || EM_UNIT) * fontToDisplay
+        : EM_UNIT * fontToDisplay;
+
+      // Wrap if adding this glyph would exceed max width
+      if (xOffset + glyphWidth > MAX_ROW_WIDTH && xOffset > 0) {
+        maxRowWidth = Math.max(maxRowWidth, xOffset);
+        row++;
+        xOffset = 0;
+      }
+
+      const yOffset = row * rowHeight;
       if (!centerline) {
-        // Glyph exists but centerline not extracted yet - show placeholder
         result.push({
           char,
           glyphName,
           centerline: null,
           xOffset,
+          yOffset,
         });
-        xOffset += EM_UNIT * fontToDisplay;
-        continue;
+      } else {
+        const rasterScale = centerline.raster_scale || 1;
+        const advanceWidth = centerline.advance_width || EM_UNIT;
+        const K = fontToDisplay / rasterScale;
+
+        result.push({
+          char,
+          glyphName,
+          centerline,
+          xOffset,
+          yOffset,
+          K,
+          rasterScale,
+          advanceWidth,
+        });
       }
 
-      const rasterScale = centerline.raster_scale || 1;
-      const advanceWidth = centerline.advance_width || EM_UNIT;
-
-      // Pixel-to-display scale factor
-      // Maps Autotrace SVG pixel coordinates to display coordinates
-      const K = fontToDisplay / rasterScale;
-
-      result.push({
-        char,
-        glyphName,
-        centerline,
-        xOffset,
-        K,
-        rasterScale,
-        advanceWidth,
-      });
-
-      // Use actual advance width for spacing (matches original font metrics)
-      xOffset += advanceWidth * fontToDisplay;
+      xOffset += glyphWidth;
     }
 
-    return { glyphs: result, totalWidth: xOffset };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT]);
+    // Account for the last (possibly partial) row
+    maxRowWidth = Math.max(maxRowWidth, xOffset);
+    const totalRows = xOffset > 0 ? row + 1 : Math.max(row, 1);
 
-  const { glyphs: glyphList, totalWidth } = glyphsToRender;
+    return { glyphs: result, maxRowWidth, totalRows };
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP]);
+
+  const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
   const missingCenterlines = glyphList.filter((g) => !g.centerline);
   const hasCenterlines = glyphList.some((g) => g.centerline);
   const showSvg = previewText && glyphList.length > 0 && hasCenterlines;
 
-  // Calculate viewBox to fit all glyphs (base scale, no sizeScale)
-  const viewBoxHeight = EM_UNIT;
+  // Calculate viewBox to fit all rows of glyphs
+  const viewBoxHeight = totalRows * EM_UNIT + (totalRows - 1) * (EM_UNIT * 0.15);
   const svgPadding = 100;
-  const viewBox = `${-svgPadding} ${-svgPadding} ${totalWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
+  const viewBox = `${-svgPadding} ${-svgPadding} ${maxRowWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
 
   // Determine placeholder content
   let placeholder = null;
@@ -210,7 +250,7 @@ export default function GlyphPreview({ large = false }) {
         showSvg ? 'cursor-grab active:cursor-grabbing' : ''
       }`}
       style={{ background: '#1a1a1a' }}
-      onWheel={showSvg ? (e) => setPan((p) => clampPan({ x: p.x - e.deltaX, y: p.y - e.deltaY })) : undefined}
+      onWheel={undefined}
       onDoubleClick={showSvg ? () => setPan({ x: 0, y: 0 }) : undefined}
     >
       {placeholder ? (
@@ -231,7 +271,7 @@ export default function GlyphPreview({ large = false }) {
                 // Show placeholder for missing centerline
                 const cellWidth = EM_UNIT * fontToDisplay;
                 return (
-                  <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
+                  <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
                     <text
                       x={cellWidth / 2}
                       y={viewBoxHeight / 2}
@@ -292,14 +332,14 @@ export default function GlyphPreview({ large = false }) {
               const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
 
               return (
-                <g key={index} transform={`translate(${glyph.xOffset}, 0)`}>
+                <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
                   {/* Original glyph outline (flesh) - rendered behind skeleton */}
                   {showFlesh && outline && outline.path && (
                     <g transform={outlineTransform}>
                       <path
                         d={outline.path}
                         fill="#ffffff"
-                        fillOpacity={0.3}
+                        fillOpacity={0.4}
                         stroke="none"
                       />
                     </g>
@@ -313,7 +353,7 @@ export default function GlyphPreview({ large = false }) {
                         key={i}
                         d={d}
                         fill="none"
-                        stroke={showFlesh ? 'rgba(255,255,255,0.9)' : '#fff'}
+                        stroke={strokeParams.strokeColor}
                         strokeWidth={strokeWidthInPixelSpace}
                         strokeLinecap={strokeParams.cap}
                         strokeLinejoin={strokeParams.join}
@@ -326,7 +366,7 @@ export default function GlyphPreview({ large = false }) {
                           key={`ref-${i}`}
                           d={d}
                           fill="none"
-                          stroke="#a855f7"
+                          stroke={strokeParams.centerlineColor}
                           strokeWidth={3 / K}
                           opacity={0.9}
                         />

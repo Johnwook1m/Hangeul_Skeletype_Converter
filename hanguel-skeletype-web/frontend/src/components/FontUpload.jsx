@@ -148,7 +148,7 @@ export default function FontUpload() {
         className={`
           absolute m-3 rounded-2xl
           border-2 border-dashed transition-colors duration-300
-          ${dragging ? 'border-purple-400' : 'border-gray-500'}
+          ${dragging ? 'border-[#0cd0fc]' : 'border-gray-500'}
         `}
         style={{ inset: '8px' }}
       />
@@ -170,7 +170,7 @@ export default function FontUpload() {
           </div>
         ) : (
           <div>
-            <p className={`text-xl font-light mb-2 ${dragging ? 'text-purple-300' : 'text-gray-300'}`}>
+            <p className={`text-xl font-light mb-2 ${dragging ? 'text-[#0cd0fc]' : 'text-gray-300'}`}>
               {fontId ? '새 폰트를 드래그하세요' : '폰트 파일을 드래그하거나 클릭하여 업로드'}
             </p>
             <p className="text-sm text-gray-500">.ttf, .otf, .woff</p>

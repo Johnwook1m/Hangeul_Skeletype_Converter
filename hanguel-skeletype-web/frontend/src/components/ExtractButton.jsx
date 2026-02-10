@@ -117,8 +117,8 @@ export default function ExtractButton({ inline = false }) {
         disabled={isRunning || selectedCount === 0}
         className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
           isRunning
-            ? 'bg-purple-400 text-white cursor-wait'
-            : 'bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-40'
+            ? 'bg-[#0cd0fc]/80 text-white cursor-wait'
+            : 'bg-[#0cd0fc] text-white hover:bg-[#0cd0fc]/80 disabled:opacity-40'
         }`}
       >
         {isRunning

@@ -31,7 +31,7 @@ export default function StrokeControls({ compact = false }) {
           className={`
             w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors
             ${showFlesh
-              ? 'bg-purple-500 text-white'
+              ? 'bg-[#0cd0fc] text-white'
               : 'bg-white text-gray-600 border border-gray-300'
             }
           `}
@@ -52,7 +52,7 @@ export default function StrokeControls({ compact = false }) {
             step={5}
             value={glyphSize}
             onChange={(e) => setGlyphSize(+e.target.value)}
-            className="w-full accent-purple-500 h-1.5"
+            className="w-full accent-[#0cd0fc] h-1.5"
           />
         </div>
 

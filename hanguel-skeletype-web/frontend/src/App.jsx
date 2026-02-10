@@ -39,7 +39,7 @@ function BottomBar() {
   return (
     <>
       {/* Bottom Menu Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-3 px-3 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
         <div className="pointer-events-auto bg-gray-200/90 backdrop-blur-md rounded-full px-4 py-2 flex items-center gap-1 shadow-lg max-w-screen-xl overflow-x-auto">
 
           {/* Font info + Load */}
@@ -54,23 +54,30 @@ function BottomBar() {
           <Divider />
 
           {/* Text Input */}
-          <form onSubmit={handleSubmit} className="flex items-center gap-1 shrink-0">
-            <input
-              type="text"
+          <div className="flex items-center gap-1 shrink-0">
+            <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (hasGlyphs && text.trim()) handleSubmit(e);
+                }
+              }}
               placeholder={hasGlyphs ? '문구 입력' : '폰트를 먼저 업로드'}
               disabled={!hasGlyphs}
-              className="w-32 px-3 py-1.5 text-xs border border-gray-300 rounded-full bg-white focus:outline-none focus:border-purple-400 disabled:bg-gray-100"
+              rows={2}
+              className="w-32 px-3 py-1.5 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none"
             />
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={!hasGlyphs || !text.trim()}
               className="px-3 py-1.5 text-xs font-medium bg-gray-300 hover:bg-gray-400 rounded-full disabled:opacity-40 transition-colors"
             >
               선택
             </button>
-          </form>
+          </div>
 
           <Divider />
 
@@ -79,7 +86,7 @@ function BottomBar() {
             onClick={() => setShowFlesh(!showFlesh)}
             className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               showFlesh
-                ? 'bg-purple-500 text-white'
+                ? 'bg-[#0cd0fc] text-white'
                 : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
             }`}
           >
@@ -96,7 +103,7 @@ function BottomBar() {
               step={10}
               value={glyphSize}
               onChange={(e) => setGlyphSize(+e.target.value)}
-              className="w-16 accent-purple-500 h-1"
+              className="w-16 h-1 slider-white appearance-none bg-transparent"
             />
           </div>
 
@@ -105,12 +112,12 @@ function BottomBar() {
             <span className="text-xs text-gray-500">Stroke</span>
             <input
               type="range"
-              min={0}
+              min={10}
               max={300}
               step={1}
               value={strokeParams.width}
               onChange={(e) => setStrokeParams({ width: +e.target.value })}
-              className="w-16 accent-purple-500 h-1"
+              className="w-16 h-1 slider-white appearance-none bg-transparent"
             />
           </div>
 
@@ -124,15 +131,31 @@ function BottomBar() {
             <option value="round">Round</option>
             <option value="square">Square</option>
           </select>
-          <select
-            value={strokeParams.join}
-            onChange={(e) => setStrokeParams({ join: e.target.value })}
-            className="text-xs px-2 py-1.5 border border-gray-300 rounded-full bg-white shrink-0"
-          >
-            <option value="miter">Miter</option>
-            <option value="round">Round</option>
-            <option value="bevel">Bevel</option>
-          </select>
+          {/* Stroke Color */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs text-gray-500">S</span>
+            <input
+              type="color"
+              value={strokeParams.strokeColor}
+              onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
+              className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
+              style={{ padding: 0 }}
+              title="Stroke 색상"
+            />
+          </div>
+
+          {/* Centerline Color */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs text-gray-500">C</span>
+            <input
+              type="color"
+              value={strokeParams.centerlineColor}
+              onChange={(e) => setStrokeParams({ centerlineColor: e.target.value })}
+              className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
+              style={{ padding: 0 }}
+              title="중심선 색상"
+            />
+          </div>
 
           <Divider />
 
