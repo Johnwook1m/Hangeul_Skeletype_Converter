@@ -18,6 +18,7 @@ function BottomBar() {
     setShowFlesh,
     glyphSize,
     setGlyphSize,
+    clearGlyphSelection,
     selectGlyphsByText,
     setPreviewText,
     glyphs,
@@ -32,6 +33,13 @@ function BottomBar() {
   const hasAnimated = useRef(false);
 
   const hasCenterlines = Object.keys(centerlines).length > 0;
+
+  // Reset local state when font changes
+  useEffect(() => {
+    setText('');
+    hasAnimated.current = false;
+    setAnimating(false);
+  }, [fontId]);
 
   // Start animation when centerlines first appear
   useEffect(() => {
@@ -76,11 +84,13 @@ function BottomBar() {
 
   const hasGlyphs = glyphs.length > 0;
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    selectGlyphsByText(text);
-    setPreviewText(text);
+  function handleTextChange(newText) {
+    setText(newText);
+    clearGlyphSelection();
+    if (newText.trim()) {
+      selectGlyphsByText(newText);
+    }
+    setPreviewText(newText);
   }
 
   if (!fontId) return null;
@@ -106,26 +116,12 @@ function BottomBar() {
           <div className="flex items-center gap-1 shrink-0">
             <textarea
               value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (hasGlyphs && text.trim()) handleSubmit(e);
-                }
-              }}
+              onChange={(e) => handleTextChange(e.target.value)}
               placeholder={hasGlyphs ? '문구 입력' : '폰트를 먼저 업로드'}
               disabled={!hasGlyphs}
               rows={2}
               className="w-32 px-3 py-1.5 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none"
             />
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!hasGlyphs || !text.trim()}
-              className="px-3 py-1.5 text-xs font-medium bg-gray-300 hover:bg-gray-400 rounded-full disabled:opacity-40 transition-colors"
-            >
-              선택
-            </button>
           </div>
 
           <Divider />

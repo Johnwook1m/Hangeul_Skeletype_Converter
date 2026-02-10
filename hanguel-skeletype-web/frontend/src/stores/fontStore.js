@@ -30,7 +30,7 @@ const useFontStore = create((set) => ({
   },
 
   // Display options
-  showFlesh: true, // Show original glyph outline behind skeleton
+  showFlesh: false, // Show original glyph outline behind skeleton
   glyphSize: 100, // Glyph size percentage (50-200)
   fontBlobUrl: null, // Blob URL for loading original font in preview
 
@@ -165,8 +165,17 @@ const useFontStore = create((set) => ({
         selectedGlyphs: new Set(),
         previewText: '',
         centerlines: {},
+        strokeParams: {
+          width: 80,
+          cap: 'round',
+          join: 'round',
+          strokeColor: '#0cd0fc',
+          centerlineColor: '#ffffff',
+          scaleX: 1.0,
+          scaleY: 1.0,
+        },
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
-        showFlesh: true,
+        showFlesh: false,
         glyphSize: 100,
         fontBlobUrl: null,
       };
