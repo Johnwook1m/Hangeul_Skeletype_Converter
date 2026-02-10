@@ -12,9 +12,10 @@ export default function FontUpload() {
   const dragCounter = useRef(0);
   const { fontId, setFont, setGlyphs, setFontBlobUrl } = useFontStore();
 
-  // Auto-hide after 5 seconds on initial load (only when no font loaded)
+  // Show overlay when font is reset (fontId becomes null); auto-hide after 5s on initial load
   useEffect(() => {
     if (!fontId) {
+      setVisible(true);
       hideTimer.current = setTimeout(() => {
         setVisible(false);
       }, 5000);
