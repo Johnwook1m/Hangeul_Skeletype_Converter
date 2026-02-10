@@ -20,6 +20,7 @@ class FontSession:
     created_at: float = field(default_factory=time.time)
     centerlines: dict[str, dict] = field(default_factory=dict)
     temp_dir: Path | None = None
+    glyph_info: list[dict] = field(default_factory=list)  # cached glyph metadata
 
 
 class SessionStore:
@@ -62,6 +63,10 @@ class SessionStore:
                     except Exception:
                         pass
 
+        # Pre-compute glyph info (fast — reads tables directly, no drawing)
+        from services.font_parser import get_glyph_info
+        glyph_info = get_glyph_info(tt_font)
+
         session = FontSession(
             font_id=font_id,
             font_path=font_path,
@@ -73,6 +78,7 @@ class SessionStore:
             descender=descender,
             units_per_em=head.unitsPerEm,
             temp_dir=temp_dir,
+            glyph_info=glyph_info,
         )
         self._sessions[font_id] = session
         self._cleanup_expired()

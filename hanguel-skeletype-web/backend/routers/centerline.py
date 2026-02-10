@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -14,12 +15,15 @@ from services.font_parser import get_glyph_outline_svg
 
 router = APIRouter(prefix="/api/font", tags=["centerline"])
 
+MAX_WORKERS = min(os.cpu_count() or 4, 8)
+
 
 @router.post("/{font_id}/extract")
 async def extract_centerlines(font_id: str, request: ExtractRequest):
     """
     Extract centerlines from glyphs.
     Returns SSE stream with progress updates.
+    Processes up to MAX_WORKERS glyphs in parallel.
     """
     session = session_store.get(font_id)
     if not session:
@@ -27,9 +31,7 @@ async def extract_centerlines(font_id: str, request: ExtractRequest):
 
     # Determine which glyphs to process
     if request.all:
-        from services.font_parser import get_glyph_info
-        all_info = get_glyph_info(session.tt_font)
-        glyph_names = [g["name"] for g in all_info if g["has_outline"]]
+        glyph_names = [g["name"] for g in session.glyph_info if g["has_outline"]]
     elif request.glyph_names:
         glyph_names = request.glyph_names
     else:
@@ -43,126 +45,139 @@ async def extract_centerlines(font_id: str, request: ExtractRequest):
         work_dir.mkdir(exist_ok=True)
 
         total = len(glyph_names)
-        success = 0
-        failed = 0
+        queue: asyncio.Queue = asyncio.Queue()
+        semaphore = asyncio.Semaphore(MAX_WORKERS)
 
-        for i, name in enumerate(glyph_names):
-            # Skip if already extracted
-            if name in session.centerlines:
-                success += 1
-                event = {
-                    "type": "skip",
+        async def process_glyph(i: int, name: str):
+            async with semaphore:
+                # Skip if already extracted
+                if name in session.centerlines:
+                    await queue.put({
+                        "type": "skip",
+                        "glyph": name,
+                        "index": i + 1,
+                        "total": total,
+                    })
+                    return
+
+                # Send progress event
+                await queue.put({
+                    "type": "progress",
                     "glyph": name,
                     "index": i + 1,
                     "total": total,
-                }
-                yield f"data: {json.dumps(event)}\n\n"
-                continue
+                })
 
-            # Send progress event
-            event = {
-                "type": "progress",
-                "glyph": name,
-                "index": i + 1,
-                "total": total,
-            }
+                # Step 1: Rasterize to PNG
+                png_path = work_dir / f"{name}.png"
+                raster_result = await asyncio.to_thread(
+                    rasterize_glyph, session.tt_font, name, png_path,
+                    ascender=session.ascender,
+                    descender=session.descender,
+                )
+
+                if raster_result is None:
+                    await queue.put({
+                        "type": "error",
+                        "glyph": name,
+                        "message": "Rasterization failed",
+                    })
+                    return
+
+                # Step 2: Extract centerline
+                svg_path = work_dir / f"{name}.svg"
+                ok = await asyncio.to_thread(
+                    extract_centerline, raster_result["path"], svg_path
+                )
+
+                if not ok:
+                    await queue.put({
+                        "type": "error",
+                        "glyph": name,
+                        "message": "Centerline extraction failed",
+                    })
+                    return
+
+                # Step 3: Parse SVG
+                svg_data = await asyncio.to_thread(parse_svg, svg_path)
+
+                if svg_data is None:
+                    await queue.put({
+                        "type": "error",
+                        "glyph": name,
+                        "message": "SVG parsing failed",
+                    })
+                    return
+
+                # Get original glyph outline for "show flesh" feature
+                outline_data = await asyncio.to_thread(
+                    get_glyph_outline_svg, session.tt_font, name
+                )
+
+                # Combine SVG data with glyph metrics
+                centerline_data = {
+                    **svg_data,
+                    "glyph_height": raster_result["glyph_height"],
+                    "glyph_width": raster_result["glyph_width"],
+                    "advance_width": raster_result["advance_width"],
+                    "raster_scale": raster_result["scale"],
+                    "bounds": raster_result["bounds"],
+                    "outline": outline_data,
+                    "ascender": session.ascender,
+                    "descender": session.descender,
+                    "font_height": raster_result["font_height"],
+                }
+
+                # Store in session
+                session.centerlines[name] = centerline_data
+
+                await queue.put({
+                    "type": "complete",
+                    "glyph": name,
+                    "index": i + 1,
+                    "total": total,
+                    "paths": svg_data["paths"],
+                    "view_box": svg_data["view_box"],
+                    "glyph_height": raster_result["glyph_height"],
+                    "glyph_width": raster_result["glyph_width"],
+                    "advance_width": raster_result["advance_width"],
+                    "raster_scale": raster_result["scale"],
+                    "bounds": raster_result["bounds"],
+                    "outline": outline_data,
+                    "ascender": session.ascender,
+                    "descender": session.descender,
+                    "font_height": raster_result["font_height"],
+                })
+
+        # Launch all glyph workers (semaphore limits concurrency)
+        tasks = [
+            asyncio.create_task(process_glyph(i, name))
+            for i, name in enumerate(glyph_names)
+        ]
+
+        # Consumer: yield SSE events as they arrive
+        done_count = 0
+        success = 0
+        failed = 0
+
+        while done_count < total:
+            event = await queue.get()
+
+            if event["type"] in ("complete", "skip"):
+                success += 1
+                done_count += 1
+            elif event["type"] == "error":
+                failed += 1
+                done_count += 1
+            # "progress" events don't count toward completion
+
             yield f"data: {json.dumps(event)}\n\n"
 
-            # Step 1: Rasterize to PNG (with font metrics for consistent Y positioning)
-            png_path = work_dir / f"{name}.png"
-            raster_result = await asyncio.to_thread(
-                rasterize_glyph, session.tt_font, name, png_path,
-                ascender=session.ascender,
-                descender=session.descender,
-            )
-
-            if raster_result is None:
-                failed += 1
-                event = {
-                    "type": "error",
-                    "glyph": name,
-                    "message": "Rasterization failed",
-                }
-                yield f"data: {json.dumps(event)}\n\n"
-                continue
-
-            # Step 2: Extract centerline
-            svg_path = work_dir / f"{name}.svg"
-            ok = await asyncio.to_thread(extract_centerline, raster_result["path"], svg_path)
-
-            if not ok:
-                failed += 1
-                event = {
-                    "type": "error",
-                    "glyph": name,
-                    "message": "Centerline extraction failed",
-                }
-                yield f"data: {json.dumps(event)}\n\n"
-                continue
-
-            # Step 3: Parse SVG
-            svg_data = await asyncio.to_thread(parse_svg, svg_path)
-
-            if svg_data is None:
-                failed += 1
-                event = {
-                    "type": "error",
-                    "glyph": name,
-                    "message": "SVG parsing failed",
-                }
-                yield f"data: {json.dumps(event)}\n\n"
-                continue
-
-            # Get original glyph outline for "show flesh" feature
-            outline_data = await asyncio.to_thread(
-                get_glyph_outline_svg, session.tt_font, name
-            )
-
-            # Combine SVG data with glyph metrics for proper scaling
-            centerline_data = {
-                **svg_data,
-                "glyph_height": raster_result["glyph_height"],
-                "glyph_width": raster_result["glyph_width"],
-                "advance_width": raster_result["advance_width"],
-                "raster_scale": raster_result["scale"],
-                "bounds": raster_result["bounds"],
-                "outline": outline_data,  # Original glyph outline
-                "ascender": session.ascender,
-                "descender": session.descender,
-                "font_height": raster_result["font_height"],
-            }
-
-            # Store centerline data in session
-            session.centerlines[name] = centerline_data
-            success += 1
-
-            event = {
-                "type": "complete",
-                "glyph": name,
-                "index": i + 1,
-                "total": total,
-                "paths": svg_data["paths"],
-                "view_box": svg_data["view_box"],
-                "glyph_height": raster_result["glyph_height"],
-                "glyph_width": raster_result["glyph_width"],
-                "advance_width": raster_result["advance_width"],
-                "raster_scale": raster_result["scale"],
-                "bounds": raster_result["bounds"],
-                "outline": outline_data,  # Original glyph outline
-                "ascender": session.ascender,
-                "descender": session.descender,
-                "font_height": raster_result["font_height"],
-            }
-            yield f"data: {json.dumps(event)}\n\n"
+        # Ensure all tasks are cleaned up
+        await asyncio.gather(*tasks, return_exceptions=True)
 
         # Final summary
-        event = {
-            "type": "done",
-            "success": success,
-            "failed": failed,
-            "total": total,
-        }
-        yield f"data: {json.dumps(event)}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'success': success, 'failed': failed, 'total': total})}\n\n"
 
     return StreamingResponse(
         event_stream(),

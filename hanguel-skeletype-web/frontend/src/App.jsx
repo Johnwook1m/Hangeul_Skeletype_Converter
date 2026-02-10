@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import useFontStore from './stores/fontStore';
 import FontUpload from './components/FontUpload';
 
@@ -21,9 +21,58 @@ function BottomBar() {
     selectGlyphsByText,
     setPreviewText,
     glyphs,
+    centerlines,
   } = useFontStore();
 
   const [text, setText] = useState('');
+
+  // Stroke slider auto-animation on first extraction
+  const animRef = useRef(null);
+  const [animating, setAnimating] = useState(false);
+  const hasAnimated = useRef(false);
+
+  const hasCenterlines = Object.keys(centerlines).length > 0;
+
+  // Start animation when centerlines first appear
+  useEffect(() => {
+    if (hasCenterlines && !hasAnimated.current) {
+      hasAnimated.current = true;
+      setAnimating(true);
+    }
+  }, [hasCenterlines]);
+
+  // Run the ping-pong animation
+  useEffect(() => {
+    if (!animating) return;
+
+    const MIN = 10, MAX = 300, SPEED = 100; // SPEED = units per second
+    let startTime = null;
+    let direction = 1;
+    let current = strokeParams.width;
+
+    function tick(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const dt = (timestamp - startTime) / 1000;
+      startTime = timestamp;
+
+      current += direction * SPEED * dt;
+      if (current >= MAX) { current = MAX; direction = -1; }
+      if (current <= MIN) { current = MIN; direction = 1; }
+
+      setStrokeParams({ width: Math.round(current) });
+      animRef.current = requestAnimationFrame(tick);
+    }
+
+    animRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [animating]);
+
+  const stopAnimation = useCallback(() => {
+    if (animating) {
+      setAnimating(false);
+      cancelAnimationFrame(animRef.current);
+    }
+  }, [animating]);
 
   const hasGlyphs = glyphs.length > 0;
 
@@ -116,7 +165,8 @@ function BottomBar() {
               max={300}
               step={1}
               value={strokeParams.width}
-              onChange={(e) => setStrokeParams({ width: +e.target.value })}
+              onPointerDown={stopAnimation}
+              onChange={(e) => { stopAnimation(); setStrokeParams({ width: +e.target.value }); }}
               className="w-16 h-1 slider-white appearance-none bg-transparent"
             />
           </div>
@@ -131,19 +181,6 @@ function BottomBar() {
             <option value="round">Round</option>
             <option value="square">Square</option>
           </select>
-          {/* Stroke Color */}
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-xs text-gray-500">S</span>
-            <input
-              type="color"
-              value={strokeParams.strokeColor}
-              onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
-              className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
-              style={{ padding: 0 }}
-              title="Stroke 색상"
-            />
-          </div>
-
           {/* Centerline Color */}
           <div className="flex items-center gap-1 shrink-0">
             <span className="text-xs text-gray-500">C</span>
@@ -154,6 +191,19 @@ function BottomBar() {
               className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
               style={{ padding: 0 }}
               title="중심선 색상"
+            />
+          </div>
+
+          {/* Stroke Color */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs text-gray-500">S</span>
+            <input
+              type="color"
+              value={strokeParams.strokeColor}
+              onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
+              className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
+              style={{ padding: 0 }}
+              title="Stroke 색상"
             />
           </div>
 

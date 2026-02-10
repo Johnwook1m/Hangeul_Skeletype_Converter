@@ -21,8 +21,6 @@ class GlyphInfo(BaseModel):
 class GlyphListResponse(BaseModel):
     glyphs: list[GlyphInfo]
     total: int
-    page: int
-    per_page: int
 
 
 class ExtractRequest(BaseModel):

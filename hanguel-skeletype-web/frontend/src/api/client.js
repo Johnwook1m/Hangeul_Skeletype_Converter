@@ -11,10 +11,8 @@ export async function uploadFont(file) {
   return res.data;
 }
 
-export async function getGlyphs(fontId, page = 1, perPage = 200) {
-  const res = await api.get(`/font/${fontId}/glyphs`, {
-    params: { page, per_page: perPage },
-  });
+export async function getGlyphs(fontId) {
+  const res = await api.get(`/font/${fontId}/glyphs`);
   return res.data;
 }
 

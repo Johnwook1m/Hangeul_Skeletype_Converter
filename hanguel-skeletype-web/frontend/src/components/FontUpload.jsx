@@ -89,18 +89,8 @@ export default function FontUpload() {
       const fontBlobUrl = URL.createObjectURL(file);
       setFontBlobUrl(fontBlobUrl);
 
-      const allGlyphs = [];
-      let page = 1;
-      const perPage = 500;
-
-      while (true) {
-        const glyphData = await getGlyphs(data.font_id, page, perPage);
-        allGlyphs.push(...glyphData.glyphs);
-        if (allGlyphs.length >= glyphData.total) break;
-        page++;
-      }
-
-      setGlyphs(allGlyphs);
+      const glyphData = await getGlyphs(data.font_id);
+      setGlyphs(glyphData.glyphs);
       setVisible(false);
     } catch (err) {
       setError(err.response?.data?.detail || '폰트 업로드에 실패했습니다.');

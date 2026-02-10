@@ -1,50 +1,37 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from models.schemas import GlyphInfo, GlyphListResponse, CenterlineResponse
 from models.font_session import session_store
-from services.font_parser import get_glyph_info
 from services.rasterizer import rasterize_glyph_preview
 
 router = APIRouter(prefix="/api/font", tags=["glyphs"])
 
 
 @router.get("/{font_id}/glyphs", response_model=GlyphListResponse)
-async def list_glyphs(
-    font_id: str,
-    page: int = Query(1, ge=1),
-    per_page: int = Query(100, ge=1, le=500),
-):
-    """List all glyphs in the uploaded font."""
+async def list_glyphs(font_id: str):
+    """List all glyphs in the uploaded font (from cached session data)."""
     session = session_store.get(font_id)
     if not session:
         raise HTTPException(status_code=404, detail="Font session not found")
 
-    all_glyphs = get_glyph_info(session.tt_font)
-
-    # Add centerline status
-    glyph_list = []
-    for g in all_glyphs:
-        glyph_list.append(GlyphInfo(
+    # Use pre-computed glyph info from session (computed at upload time)
+    glyph_list = [
+        GlyphInfo(
             name=g["name"],
             unicode=g["unicode"],
             character=g["character"],
             has_outline=g["has_outline"],
             has_centerline=g["name"] in session.centerlines,
-        ))
-
-    # Paginate
-    start = (page - 1) * per_page
-    end = start + per_page
-    page_glyphs = glyph_list[start:end]
+        )
+        for g in session.glyph_info
+    ]
 
     return GlyphListResponse(
-        glyphs=page_glyphs,
+        glyphs=glyph_list,
         total=len(glyph_list),
-        page=page,
-        per_page=per_page,
     )
 
 
