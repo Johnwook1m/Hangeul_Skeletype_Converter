@@ -1,4 +1,3 @@
-import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -7,6 +6,7 @@ from fastapi.responses import FileResponse
 from models.schemas import ExportRequest
 from models.font_session import session_store
 from services.font_generator import generate_font
+from services.svg_exporter import create_fontforge_glyph_svg
 
 router = APIRouter(prefix="/api/font", tags=["export"])
 
@@ -31,13 +31,25 @@ async def export_font(font_id: str, request: ExportRequest):
     if fmt not in ("otf", "ttf"):
         raise HTTPException(status_code=400, detail="Format must be 'otf' or 'ttf'")
 
-    # Build centerline SVG file mapping
-    work_dir = session.temp_dir / "centerlines"
+    # Build font-unit SVGs for FontForge import
+    # (raw Autotrace SVGs are in pixel coordinates — must transform to font units)
+    export_svg_dir = session.temp_dir / "export_svgs"
+    export_svg_dir.mkdir(exist_ok=True)
+
+    # Build reverse cmap: glyph_name -> unicode codepoint
+    reverse_cmap = {gname: cp for cp, gname in session.cmap.items()}
+
     centerline_svgs = {}
     for name, data in session.centerlines.items():
-        svg_path = work_dir / f"{name}.svg"
-        if svg_path.exists():
-            centerline_svgs[name] = svg_path
+        svg_content = create_fontforge_glyph_svg(data, session.units_per_em)
+        if svg_content is None:
+            continue
+        codepoint = reverse_cmap.get(name)
+        if codepoint is None:
+            continue
+        svg_path = export_svg_dir / f"{name}.svg"
+        svg_path.write_text(svg_content, encoding="utf-8")
+        centerline_svgs[name] = {"svg": str(svg_path), "codepoint": codepoint}
 
     if not centerline_svgs:
         raise HTTPException(

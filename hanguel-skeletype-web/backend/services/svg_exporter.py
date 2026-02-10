@@ -26,6 +26,7 @@ def transform_path_to_font_units(
     glyph_height: float,
     padding: float = 20.0,
     ascender: float | None = None,
+    y_down: bool = False,
 ) -> str:
     """
     Transform SVG path data from pixel coordinates to font unit coordinates.
@@ -46,6 +47,8 @@ def transform_path_to_font_units(
         glyph_height: Original glyph height in font units
         padding: Padding added during rasterization (default 20px)
         ascender: Font ascender in font units (overrides y_max for Y transform)
+        y_down: If True, output Y in SVG convention (Y increases downward).
+                Used for FontForge import where SVG Y=0 is top of em square.
 
     Returns:
         Transformed path 'd' string in font unit coordinates
@@ -69,10 +72,14 @@ def transform_path_to_font_units(
         """Transform pixel coords to font coords with Y-flip."""
         # Inverse of: pixel_x = (font_x - xMin) * scale + padding
         fx = (px - padding) / raster_scale + x_min
-        # Inverse of Y with font-level ascender for consistency:
-        # pixel_y ≈ (ascender - font_y) * scale + padding
-        # font_y = ascender - (pixel_y - padding) / scale
-        fy = y_ref - (py - padding) / raster_scale
+        if y_down:
+            # SVG convention: Y increases downward from top of em square
+            # svg_y = (py - padding) / scale
+            fy = (py - padding) / raster_scale
+        else:
+            # Font convention: Y increases upward
+            # font_y = ascender - (pixel_y - padding) / scale
+            fy = y_ref - (py - padding) / raster_scale
         return fx, fy
 
     def flush_coords():
@@ -95,7 +102,10 @@ def transform_path_to_font_units(
         elif cmd == 'V':
             # Vertical line - single y coord
             for y in coords:
-                fy = y_ref - (y - padding) / raster_scale
+                if y_down:
+                    fy = (y - padding) / raster_scale
+                else:
+                    fy = y_ref - (y - padding) / raster_scale
                 result.append(f'{fy:.2f}')
         elif cmd == 'C':
             # Cubic bezier - 6 coords (3 points)
@@ -388,3 +398,55 @@ def export_svg_file(
         import traceback
         traceback.print_exc()
         return False
+
+
+def create_fontforge_glyph_svg(
+    centerline_data: dict,
+    units_per_em: int,
+) -> str | None:
+    """
+    Create a per-glyph SVG with font-unit coordinates for FontForge importOutlines().
+
+    Transforms centerline paths from pixel coordinates to font units with
+    SVG Y-down convention. FontForge maps SVG height to em square, so:
+    - SVG y=0 -> font y = ascent (top of em)
+    - SVG y=em -> font y = -descent (bottom of em)
+
+    Args:
+        centerline_data: Centerline data dict from session (paths, bounds, scale, etc.)
+        units_per_em: Font's units-per-em value
+
+    Returns:
+        SVG string suitable for FontForge import, or None if no paths
+    """
+    paths = centerline_data.get("paths", [])
+    if not paths:
+        return None
+
+    raster_scale = centerline_data.get("raster_scale", 1.0)
+    bounds = centerline_data.get("bounds", {})
+    x_min = bounds.get("xMin", 0)
+    y_min = bounds.get("yMin", 0)
+    y_max = bounds.get("yMax", 1000)
+    glyph_height = centerline_data.get("glyph_height", y_max - y_min)
+    advance_width = centerline_data.get("advance_width", units_per_em)
+    ascender = centerline_data.get("ascender")
+
+    path_elements = []
+    for path_d in paths:
+        transformed = transform_path_to_font_units(
+            path_d, raster_scale, x_min, y_min, y_max,
+            glyph_height, padding=20.0, ascender=ascender,
+            y_down=True,
+        )
+        path_elements.append(f'  <path d="{transformed}"/>')
+
+    paths_str = "\n".join(path_elements)
+
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg"'
+        f' width="{advance_width}" height="{units_per_em}">\n'
+        f'{paths_str}\n'
+        f'</svg>'
+    )

@@ -30,40 +30,55 @@ stroke_join = args["stroke_join"]
 # Open original font for metrics
 original = fontforge.open(original_font_path)
 
+# Build unicode -> glyph map (reliable for CID and all font types)
+unicode_map = {}
+for g in original.glyphs():
+    if g.unicode >= 0:
+        unicode_map[g.unicode] = g
+
 # Create new font
 new_font = fontforge.font()
-new_font.familyname = original.familyname + " " + family_suffix
-new_font.fontname = original.fontname + "-" + family_suffix
-new_font.fullname = original.fullname + " " + family_suffix
+base_family = original.familyname or original.fontname or "Font"
+base_fontname = original.fontname or "Font"
+base_fullname = original.fullname or base_family
+new_font.familyname = base_family + " " + family_suffix
+new_font.fontname = base_fontname + "-" + family_suffix
+new_font.fullname = base_fullname + " " + family_suffix
 new_font.em = original.em
 new_font.ascent = original.ascent
 new_font.descent = original.descent
 
 # Process each glyph
-for glyph_name, svg_file in glyph_mapping.items():
+processed = 0
+for glyph_name, glyph_info in glyph_mapping.items():
+    svg_file = glyph_info["svg"]
+    codepoint = glyph_info["codepoint"]
     try:
-        orig_glyph = original[glyph_name]
-        codepoint = orig_glyph.unicode
-
-        if codepoint < 0:
+        # Look up original glyph by unicode codepoint
+        orig_glyph = unicode_map.get(codepoint)
+        if orig_glyph is None:
+            print(f"Skipping {glyph_name}: U+{codepoint:04X} not in original font")
             continue
 
-        new_glyph = new_font.createChar(codepoint, glyph_name)
+        new_glyph = new_font.createChar(codepoint, orig_glyph.glyphname)
 
         # Import centerline SVG
         new_glyph.importOutlines(svg_file)
 
-        # Apply stroke expansion
+        # Apply stroke expansion (single-line -> filled outline)
         new_glyph.stroke("circular", stroke_width, stroke_cap, stroke_join)
         new_glyph.removeOverlap()
         new_glyph.correctDirection()
 
         # Copy width from original
         new_glyph.width = orig_glyph.width
+        processed += 1
 
     except Exception as e:
-        print(f"Error processing {glyph_name}: {e}")
+        print(f"Error processing {glyph_name} (U+{codepoint:04X}): {e}")
         continue
+
+print(f"Processed {processed}/{len(glyph_mapping)} glyphs")
 
 # Generate font
 new_font.generate(output_path)
@@ -75,7 +90,7 @@ original.close()
 
 def generate_font(
     original_font_path: Path,
-    centerline_svgs: dict[str, Path],
+    centerline_svgs: dict[str, dict],
     output_path: Path,
     stroke_width: float = 80.0,
     stroke_cap: str = "round",
@@ -86,7 +101,7 @@ def generate_font(
 
     Args:
         original_font_path: Path to original font for metrics
-        centerline_svgs: Dict of glyph_name -> SVG file path
+        centerline_svgs: Dict of glyph_name -> {"svg": path_str, "codepoint": int}
         output_path: Where to save the generated font
         stroke_width: Stroke width in font units
         stroke_cap: Line cap style
@@ -104,8 +119,8 @@ def generate_font(
         f.write(_GENERATE_SCRIPT)
         script_path = f.name
 
-    # Build glyph mapping (name -> svg path string)
-    glyph_mapping = {name: str(path) for name, path in centerline_svgs.items()}
+    # Glyph mapping already has {name: {svg, codepoint}} from caller
+    glyph_mapping = centerline_svgs
 
     args = json.dumps({
         "original_font_path": str(original_font_path),
@@ -125,8 +140,10 @@ def generate_font(
             timeout=300,
         )
 
+        if result.stdout:
+            print(f"FontForge stdout: {result.stdout}")
         if result.returncode != 0:
-            print(f"Font generation failed: {result.stderr}")
+            print(f"Font generation failed (rc={result.returncode}): {result.stderr}")
             return False
 
         return output_path.exists()
