@@ -25,6 +25,8 @@ const useFontStore = create((set) => ({
     join: 'round',
     strokeColor: '#0cd0fc',
     centerlineColor: '#ffffff',
+    scaleX: 1.0,
+    scaleY: 1.0,
   },
 
   // Display options

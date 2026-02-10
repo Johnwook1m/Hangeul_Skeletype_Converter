@@ -156,6 +156,34 @@ function BottomBar() {
             />
           </div>
 
+          {/* X-Scale */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs text-gray-500">X</span>
+            <input
+              type="range"
+              min={0.2}
+              max={1.8}
+              step={0.05}
+              value={strokeParams.scaleX}
+              onChange={(e) => setStrokeParams({ scaleX: +e.target.value })}
+              className="w-16 h-1 slider-white appearance-none bg-transparent"
+            />
+          </div>
+
+          {/* Y-Scale */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs text-gray-500">Y</span>
+            <input
+              type="range"
+              min={0.2}
+              max={1.8}
+              step={0.05}
+              value={strokeParams.scaleY}
+              onChange={(e) => setStrokeParams({ scaleY: +e.target.value })}
+              className="w-16 h-1 slider-white appearance-none bg-transparent"
+            />
+          </div>
+
           {/* Stroke Width */}
           <div className="flex items-center gap-1 shrink-0">
             <span className="text-xs text-gray-500">Stroke</span>

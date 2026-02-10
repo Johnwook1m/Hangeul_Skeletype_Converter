@@ -49,6 +49,9 @@ export default function GlyphPreview({ large = false }) {
   // No coordinate recalculation needed; applied as CSS transform on the SVG element
   const sizeScale = glyphSize / 100;
 
+  // X/Y type scale — independent axis scaling for condensed/extended type
+  const { scaleX = 1, scaleY = 1 } = strokeParams;
+
   // Display scale: maps font units to display units (base scale, without size)
   const fontToDisplay = EM_UNIT / fontHeight;
 
@@ -126,7 +129,7 @@ export default function GlyphPreview({ large = false }) {
   const RASTER_PADDING = 20;
 
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
-  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay; // max row width in display units
+  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX; // max row width in display units (scales with X)
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
   // Get glyph data for each character in previewText (with width-based row wrapping)
@@ -147,7 +150,7 @@ export default function GlyphPreview({ large = false }) {
         continue;
       }
       if (char === ' ') {
-        const spaceWidth = (EM_UNIT / 2) * fontToDisplay;
+        const spaceWidth = (EM_UNIT / 2) * fontToDisplay * scaleX;
         if (xOffset + spaceWidth > MAX_ROW_WIDTH && xOffset > 0) {
           maxRowWidth = Math.max(maxRowWidth, xOffset);
           row++;
@@ -162,8 +165,8 @@ export default function GlyphPreview({ large = false }) {
 
       const centerline = centerlines[glyphName];
       const glyphWidth = centerline
-        ? (centerline.advance_width || EM_UNIT) * fontToDisplay
-        : EM_UNIT * fontToDisplay;
+        ? (centerline.advance_width || EM_UNIT) * fontToDisplay * scaleX
+        : EM_UNIT * fontToDisplay * scaleX;
 
       // Wrap if adding this glyph would exceed max width
       if (xOffset + glyphWidth > MAX_ROW_WIDTH && xOffset > 0) {
@@ -206,10 +209,9 @@ export default function GlyphPreview({ large = false }) {
     const totalRows = xOffset > 0 ? row + 1 : Math.max(row, 1);
 
     return { glyphs: result, maxRowWidth, totalRows };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP]);
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX]);
 
   const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
-  const missingCenterlines = glyphList.filter((g) => !g.centerline);
   const hasCenterlines = glyphList.some((g) => g.centerline);
   const showSvg = previewText && glyphList.length > 0 && hasCenterlines;
 
@@ -331,8 +333,17 @@ export default function GlyphPreview({ large = false }) {
               // → strokeWidth = width * fontToDisplay / K = width * rasterScale
               const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
 
+              // Baseline position in display coords: ascender * fontToDisplay
+              // Y-scale anchored at baseline: translate(0, baselineY*(1-scaleY)) scale(scaleX, scaleY)
+              const baselineY = glyphAscender * fontToDisplay;
+              const needsScale = scaleX !== 1 || scaleY !== 1;
+              const scaleTransform = needsScale
+                ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY})`
+                : '';
+
               return (
                 <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
+                 <g transform={scaleTransform || undefined}>
                   {/* Original glyph outline (flesh) - rendered behind skeleton */}
                   {showFlesh && outline && outline.path && (
                     <g transform={outlineTransform}>
@@ -373,17 +384,13 @@ export default function GlyphPreview({ large = false }) {
                       ))}
                     </g>
                   </g>
+                 </g>
                 </g>
               );
             })}
           </svg>
 
-          {/* Status indicator - positioned above bottom bar */}
-          {missingCenterlines.length > 0 && (
-            <div className="absolute bottom-16 left-4 bg-yellow-900/80 text-yellow-200 px-3 py-1.5 rounded-lg text-sm">
-              {missingCenterlines.length}개 글자 추출 필요
-            </div>
-          )}
+          {/* Status indicator removed */}
         </>
       ) : null}
     </div>

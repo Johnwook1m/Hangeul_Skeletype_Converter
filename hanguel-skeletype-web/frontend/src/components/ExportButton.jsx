@@ -48,7 +48,7 @@ export default function ExportButton({ inline = false }) {
         disabled={exporting}
         className="shrink-0 px-3 py-1.5 text-xs font-medium bg-gray-800 text-white rounded-full hover:bg-gray-700 disabled:opacity-50 transition-colors"
       >
-        {exporting ? '...' : `.otf`}
+        {exporting ? '...' : `otf export`}
       </button>
     );
   }
