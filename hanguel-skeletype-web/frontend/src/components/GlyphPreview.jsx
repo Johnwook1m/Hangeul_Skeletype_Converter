@@ -1,5 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import useFontStore from '../stores/fontStore';
+import { computeConnections } from '../utils/glyphConnections';
+import { computeBranches } from '../utils/glyphBranches';
+import { computeDecorators } from '../utils/glyphDecorators';
+import { computeOffsetPaths } from '../utils/glyphOffsetPath';
 
 export default function GlyphPreview({ large = false }) {
   const {
@@ -7,11 +11,17 @@ export default function GlyphPreview({ large = false }) {
     previewText,
     centerlines,
     strokeParams,
+    connectionParams,
+    branchParams,
+    decoratorParams,
+    offsetPathParams,
     unitsPerEm,
     ascender,
     descender,
     showFlesh,
     glyphSize,
+    textAlign,
+    theme,
   } = useFontStore();
 
   // Pan state for trackpad/mouse navigation
@@ -46,7 +56,6 @@ export default function GlyphPreview({ large = false }) {
   }, [glyphs]);
 
   // Size scaling — pure display transform (like SkeleText's scale(sc))
-  // No coordinate recalculation needed; applied as CSS transform on the SVG element
   const sizeScale = glyphSize / 100;
 
   // X/Y type scale — independent axis scaling for condensed/extended type
@@ -57,7 +66,6 @@ export default function GlyphPreview({ large = false }) {
 
   // Keep sizeScale in ref for native event listeners
   sizeScaleRef.current = sizeScale;
-
 
   // Native mouse drag listeners (registered once, stable)
   useEffect(() => {
@@ -220,6 +228,30 @@ export default function GlyphPreview({ large = false }) {
   const svgPadding = 100;
   const viewBox = `${-svgPadding} ${-svgPadding} ${maxRowWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
 
+  // Compute glyph-to-glyph connections
+  const connections = useMemo(
+    () => computeConnections(glyphList, connectionParams, fontToDisplay),
+    [glyphList, connectionParams, fontToDisplay]
+  );
+
+  // Compute endpoint branches
+  const branches = useMemo(
+    () => computeBranches(glyphList, branchParams, fontToDisplay),
+    [glyphList, branchParams, fontToDisplay]
+  );
+
+  // Compute decorator points
+  const decoratorPoints = useMemo(
+    () => computeDecorators(glyphList, decoratorParams, fontToDisplay),
+    [glyphList, decoratorParams, fontToDisplay]
+  );
+
+  // Compute offset paths
+  const offsetPaths = useMemo(
+    () => computeOffsetPaths(glyphList, offsetPathParams, fontToDisplay),
+    [glyphList, offsetPathParams, fontToDisplay]
+  );
+
   // Determine placeholder content
   let placeholder = null;
   if (!previewText) {
@@ -251,7 +283,7 @@ export default function GlyphPreview({ large = false }) {
       className={`flex items-center justify-center h-full w-full relative select-none ${
         showSvg ? 'cursor-grab active:cursor-grabbing' : ''
       }`}
-      style={{ background: '#1a1a1a' }}
+      style={{ background: theme === 'dark' ? '#1a1a1a' : '#ffffff' }}
       onWheel={undefined}
       onDoubleClick={showSvg ? () => setPan({ x: 0, y: 0 }) : undefined}
     >
@@ -266,7 +298,7 @@ export default function GlyphPreview({ large = false }) {
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${sizeScale})`,
               transformOrigin: 'center center',
             }}
-            preserveAspectRatio="xMidYMid meet"
+            preserveAspectRatio={`${textAlign === 'left' ? 'xMin' : textAlign === 'right' ? 'xMax' : 'xMid'}YMid meet`}
           >
             {glyphList.map((glyph, index) => {
               if (!glyph.centerline) {
@@ -298,43 +330,24 @@ export default function GlyphPreview({ large = false }) {
               }
 
               const { K, rasterScale } = glyph;
-              const outline = glyph.centerline.outline;
+              const glyphOutline = glyph.centerline.outline;
               const bounds = glyph.centerline.bounds || {};
               const xMin = bounds.xMin || 0;
               const glyphAscender = glyph.centerline.ascender ?? fontAscender;
 
               // Centerline transform: pixel/SVG coords → display coords
-              //
-              // Rasterizer mapping (font → pixel):
-              //   px = (fx - xMin) * rasterScale + padding
-              //   py = (ascender - fy) * rasterScale + padding
-              //
-              // Inverse (pixel → font → display):
-              //   display_x = ((px - padding) / rasterScale + xMin) * fontToDisplay
-              //   display_y = ((py - padding) / rasterScale) * fontToDisplay
-              //
-              // As SVG transform (applied right-to-left):
-              //   translate(xMin * fontToDisplay - padding * K, -padding * K) scale(K, K)
               const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
               const clTranslateY = -RASTER_PADDING * K;
 
               // Outline transform: font coords → display coords
-              //   display_x = fx * fontToDisplay
-              //   display_y = (ascender - fy) * fontToDisplay
-              //
-              // As SVG transform: scale(ftd, -ftd) translate(0, -ascender)
-              const outlineTransform = outline
+              const outlineTransform = glyphOutline
                 ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
                 : '';
 
               // Stroke width in pixel space (inside scale(K) transform)
-              // strokeParams.width is in font units → display = width * fontToDisplay
-              // Inside scale(K): strokeWidth * K = width * fontToDisplay
-              // → strokeWidth = width * fontToDisplay / K = width * rasterScale
               const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
 
-              // Baseline position in display coords: ascender * fontToDisplay
-              // Y-scale anchored at baseline: translate(0, baselineY*(1-scaleY)) scale(scaleX, scaleY)
+              // Baseline position in display coords
               const baselineY = glyphAscender * fontToDisplay;
               const needsScale = scaleX !== 1 || scaleY !== 1;
               const scaleTransform = needsScale
@@ -345,11 +358,11 @@ export default function GlyphPreview({ large = false }) {
                 <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
                  <g transform={scaleTransform || undefined}>
                   {/* Original glyph outline (flesh) - rendered behind skeleton */}
-                  {showFlesh && outline && outline.path && (
+                  {showFlesh && glyphOutline && glyphOutline.path && (
                     <g transform={outlineTransform}>
                       <path
-                        d={outline.path}
-                        fill="#ffffff"
+                        d={glyphOutline.path}
+                        fill={theme === 'dark' ? '#ffffff' : '#000000'}
                         fillOpacity={0.4}
                         stroke="none"
                       />
@@ -357,7 +370,9 @@ export default function GlyphPreview({ large = false }) {
                   )}
 
                   {/* Centerline paths (in Autotrace pixel coordinates) */}
-                  <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
+                  <g
+                    transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}
+                  >
                     {/* Centerline with stroke applied */}
                     {glyph.centerline.paths.map((d, i) => (
                       <path
@@ -370,6 +385,7 @@ export default function GlyphPreview({ large = false }) {
                         strokeLinejoin={strokeParams.join}
                       />
                     ))}
+
                     {/* Thin centerline reference (colored) */}
                     <g>
                       {glyph.centerline.paths.map((d, i) => (
@@ -383,14 +399,112 @@ export default function GlyphPreview({ large = false }) {
                         />
                       ))}
                     </g>
+
+                    {/* Offset paths (in same pixel coordinate space) */}
+                    {offsetPathParams.enabled && offsetPaths
+                      .filter((op) => op.glyphIndex === index)
+                      .map((op) =>
+                        op.paths.map((d, oi) => (
+                          <path
+                            key={`offset-${oi}`}
+                            d={d}
+                            fill="none"
+                            stroke={offsetPathParams.color}
+                            strokeWidth={2}
+                            strokeLinejoin={offsetPathParams.join}
+                            strokeLinecap="round"
+                          />
+                        ))
+                      )}
                   </g>
                  </g>
                 </g>
               );
             })}
-          </svg>
 
-          {/* Status indicator removed */}
+            {/* Connection lines between adjacent glyphs */}
+            {connectionParams.enabled && connections.length > 0 && (
+              <g>
+                {connections.map((conn, i) => (
+                  <path
+                    key={`conn-${i}`}
+                    d={conn.d}
+                    fill="none"
+                    stroke={connectionParams.color}
+                    strokeWidth={strokeParams.width * fontToDisplay}
+                    strokeLinecap={strokeParams.cap}
+                    strokeLinejoin={strokeParams.join}
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Branch lines from glyph endpoints */}
+            {branchParams.enabled && branches.length > 0 && (
+              <g>
+                {branches.map((b, i) => (
+                  <path
+                    key={`branch-${i}`}
+                    d={b.d}
+                    fill="none"
+                    stroke={branchParams.color}
+                    strokeWidth={b.widthRatio * strokeParams.width * fontToDisplay}
+                    strokeLinecap="round"
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Decorator shapes along centerline paths */}
+            {decoratorParams.enabled && decoratorPoints.length > 0 && (
+              <g>
+                {decoratorPoints.map((pt, i) => {
+                  const s = decoratorParams.size;
+                  const fill = decoratorParams.filled ? decoratorParams.color : 'none';
+                  const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
+                  const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
+
+                  switch (decoratorParams.shape) {
+                    case 'circle':
+                      return (
+                        <circle
+                          key={`dec-${i}`}
+                          cx={pt.x} cy={pt.y} r={s / 2}
+                          fill={fill} stroke={stroke} strokeWidth={sw}
+                        />
+                      );
+                    case 'square':
+                      return (
+                        <rect
+                          key={`dec-${i}`}
+                          x={pt.x - s / 2} y={pt.y - s / 2}
+                          width={s} height={s}
+                          fill={fill} stroke={stroke} strokeWidth={sw}
+                        />
+                      );
+                    case 'diamond':
+                      return (
+                        <polygon
+                          key={`dec-${i}`}
+                          points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
+                          fill={fill} stroke={stroke} strokeWidth={sw}
+                        />
+                      );
+                    case 'triangle':
+                      return (
+                        <polygon
+                          key={`dec-${i}`}
+                          points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
+                          fill={fill} stroke={stroke} strokeWidth={sw}
+                        />
+                      );
+                    default:
+                      return null;
+                  }
+                })}
+              </g>
+            )}
+          </svg>
         </>
       ) : null}
     </div>

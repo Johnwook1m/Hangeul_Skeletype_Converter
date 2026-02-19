@@ -1,0 +1,404 @@
+/**
+ * Sample points along SVG path segments and place decorator shapes.
+ */
+
+/**
+ * Evaluate a cubic bezier at parameter t.
+ */
+function cubicBezier(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+  };
+}
+
+/**
+ * Evaluate a quadratic bezier at parameter t.
+ */
+function quadBezier(p0, p1, p2, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+  };
+}
+
+/**
+ * Approximate arc length of a cubic bezier by subdividing into small segments.
+ */
+function cubicLength(p0, p1, p2, p3, steps = 20) {
+  let len = 0;
+  let prev = p0;
+  for (let i = 1; i <= steps; i++) {
+    const pt = cubicBezier(p0, p1, p2, p3, i / steps);
+    const dx = pt.x - prev.x, dy = pt.y - prev.y;
+    len += Math.sqrt(dx * dx + dy * dy);
+    prev = pt;
+  }
+  return len;
+}
+
+function quadLength(p0, p1, p2, steps = 20) {
+  let len = 0;
+  let prev = p0;
+  for (let i = 1; i <= steps; i++) {
+    const pt = quadBezier(p0, p1, p2, i / steps);
+    const dx = pt.x - prev.x, dy = pt.y - prev.y;
+    len += Math.sqrt(dx * dx + dy * dy);
+    prev = pt;
+  }
+  return len;
+}
+
+/**
+ * Parse a single SVG path into subpaths, each containing segments with
+ * length and point-at-t functions.
+ * Returns array of subpath segment arrays: [[{length, pointAt}], ...]
+ */
+export function parsePathToSubpaths(d) {
+  const tokens = d.match(/[MmLlCcQqSsTtAaHhVvZz]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g);
+  if (!tokens) return [];
+
+  const subpaths = [];
+  let currentSegments = [];
+  let curX = 0, curY = 0;
+  let startX = 0, startY = 0;
+  let hasMove = false;
+  let i = 0;
+
+  while (i < tokens.length) {
+    const cmd = tokens[i];
+    if (!/[A-Za-z]/.test(cmd)) { i++; continue; }
+    i++;
+
+    const nums = [];
+    while (i < tokens.length && !/[A-Za-z]/.test(tokens[i])) {
+      nums.push(parseFloat(tokens[i]));
+      i++;
+    }
+
+    switch (cmd) {
+      case 'M':
+        // Start a new subpath — flush previous if it has segments
+        if (currentSegments.length > 0) {
+          subpaths.push(currentSegments);
+          currentSegments = [];
+        }
+        for (let j = 0; j < nums.length - 1; j += 2) {
+          curX = nums[j]; curY = nums[j + 1];
+          if (j === 0) { startX = curX; startY = curY; }
+        }
+        hasMove = true;
+        break;
+      case 'm':
+        if (currentSegments.length > 0) {
+          subpaths.push(currentSegments);
+          currentSegments = [];
+        }
+        for (let j = 0; j < nums.length - 1; j += 2) {
+          curX += nums[j]; curY += nums[j + 1];
+          if (j === 0) { startX = curX; startY = curY; }
+        }
+        hasMove = true;
+        break;
+      case 'L':
+        for (let j = 0; j < nums.length - 1; j += 2) {
+          const x0 = curX, y0 = curY;
+          curX = nums[j]; curY = nums[j + 1];
+          const dx = curX - x0, dy = curY - y0;
+          currentSegments.push({
+            length: Math.sqrt(dx * dx + dy * dy),
+            pointAt: (t) => ({ x: x0 + dx * t, y: y0 + dy * t }),
+          });
+        }
+        break;
+      case 'l':
+        for (let j = 0; j < nums.length - 1; j += 2) {
+          const x0 = curX, y0 = curY;
+          curX += nums[j]; curY += nums[j + 1];
+          const dx = curX - x0, dy = curY - y0;
+          currentSegments.push({
+            length: Math.sqrt(dx * dx + dy * dy),
+            pointAt: (t) => ({ x: x0 + dx * t, y: y0 + dy * t }),
+          });
+        }
+        break;
+      case 'H':
+        if (nums.length > 0) {
+          const x0 = curX, y0 = curY;
+          curX = nums[nums.length - 1];
+          const dx = curX - x0;
+          currentSegments.push({
+            length: Math.abs(dx),
+            pointAt: (t) => ({ x: x0 + dx * t, y: y0 }),
+          });
+        }
+        break;
+      case 'h':
+        for (let j = 0; j < nums.length; j++) {
+          const x0 = curX, y0 = curY;
+          curX += nums[j];
+          const dx = nums[j];
+          currentSegments.push({
+            length: Math.abs(dx),
+            pointAt: (t) => ({ x: x0 + dx * t, y: y0 }),
+          });
+        }
+        break;
+      case 'V':
+        if (nums.length > 0) {
+          const x0 = curX, y0 = curY;
+          curY = nums[nums.length - 1];
+          const dy = curY - y0;
+          currentSegments.push({
+            length: Math.abs(dy),
+            pointAt: (t) => ({ x: x0, y: y0 + dy * t }),
+          });
+        }
+        break;
+      case 'v':
+        for (let j = 0; j < nums.length; j++) {
+          const x0 = curX, y0 = curY;
+          curY += nums[j];
+          const dy = nums[j];
+          currentSegments.push({
+            length: Math.abs(dy),
+            pointAt: (t) => ({ x: x0, y: y0 + dy * t }),
+          });
+        }
+        break;
+      case 'C':
+        for (let j = 0; j < nums.length - 5; j += 6) {
+          const p0 = { x: curX, y: curY };
+          const p1 = { x: nums[j], y: nums[j + 1] };
+          const p2 = { x: nums[j + 2], y: nums[j + 3] };
+          const p3 = { x: nums[j + 4], y: nums[j + 5] };
+          curX = p3.x; curY = p3.y;
+          currentSegments.push({
+            length: cubicLength(p0, p1, p2, p3),
+            pointAt: (t) => cubicBezier(p0, p1, p2, p3, t),
+          });
+        }
+        break;
+      case 'c':
+        for (let j = 0; j < nums.length - 5; j += 6) {
+          const p0 = { x: curX, y: curY };
+          const p1 = { x: curX + nums[j], y: curY + nums[j + 1] };
+          const p2 = { x: curX + nums[j + 2], y: curY + nums[j + 3] };
+          const p3 = { x: curX + nums[j + 4], y: curY + nums[j + 5] };
+          curX = p3.x; curY = p3.y;
+          currentSegments.push({
+            length: cubicLength(p0, p1, p2, p3),
+            pointAt: (t) => cubicBezier(p0, p1, p2, p3, t),
+          });
+        }
+        break;
+      case 'Q':
+        for (let j = 0; j < nums.length - 3; j += 4) {
+          const p0 = { x: curX, y: curY };
+          const p1 = { x: nums[j], y: nums[j + 1] };
+          const p2 = { x: nums[j + 2], y: nums[j + 3] };
+          curX = p2.x; curY = p2.y;
+          currentSegments.push({
+            length: quadLength(p0, p1, p2),
+            pointAt: (t) => quadBezier(p0, p1, p2, t),
+          });
+        }
+        break;
+      case 'q':
+        for (let j = 0; j < nums.length - 3; j += 4) {
+          const p0 = { x: curX, y: curY };
+          const p1 = { x: curX + nums[j], y: curY + nums[j + 1] };
+          const p2 = { x: curX + nums[j + 2], y: curY + nums[j + 3] };
+          curX = p2.x; curY = p2.y;
+          currentSegments.push({
+            length: quadLength(p0, p1, p2),
+            pointAt: (t) => quadBezier(p0, p1, p2, t),
+          });
+        }
+        break;
+      case 'Z':
+      case 'z': {
+        const dx = startX - curX, dy = startY - curY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0.1) {
+          const x0 = curX, y0 = curY;
+          currentSegments.push({
+            length: len,
+            pointAt: (t) => ({ x: x0 + dx * t, y: y0 + dy * t }),
+          });
+        }
+        curX = startX; curY = startY;
+        break;
+      }
+    }
+  }
+
+  // Flush last subpath
+  if (currentSegments.length > 0) {
+    subpaths.push(currentSegments);
+  }
+
+  return subpaths;
+}
+
+/**
+ * Parse a single SVG path into a flat list of segments (all subpaths merged).
+ * Returns array of { length, pointAt(t) }
+ */
+function parsePathToSegments(d) {
+  return parsePathToSubpaths(d).flat();
+}
+
+/**
+ * Sample N points along a parsed segment list at even arc-length intervals.
+ * @param {object[]} segments - Array of { length, pointAt(t) }
+ * @param {number} count - Number of points to sample
+ * @param {string} spacing - 'even' | 'endpoints' | 'random'
+ * @returns {{ x: number, y: number }[]}
+ */
+function samplePoints(segments, count, spacing) {
+  if (segments.length === 0) return [];
+
+  const totalLength = segments.reduce((sum, s) => sum + s.length, 0);
+  if (totalLength < 0.1) return [];
+
+  if (spacing === 'endpoints') {
+    // Just start and end points
+    const first = segments[0].pointAt(0);
+    const last = segments[segments.length - 1].pointAt(1);
+    return [first, last];
+  }
+
+  // Build cumulative length table for parameterization
+  const cumLengths = [];
+  let cum = 0;
+  for (const seg of segments) {
+    cumLengths.push(cum);
+    cum += seg.length;
+  }
+
+  function pointAtLength(targetLen) {
+    for (let i = 0; i < segments.length; i++) {
+      if (targetLen <= cumLengths[i] + segments[i].length || i === segments.length - 1) {
+        const localT = segments[i].length > 0
+          ? (targetLen - cumLengths[i]) / segments[i].length
+          : 0;
+        return segments[i].pointAt(Math.min(1, Math.max(0, localT)));
+      }
+    }
+    return segments[0].pointAt(0);
+  }
+
+  const points = [];
+
+  if (spacing === 'random') {
+    // Seeded pseudo-random for consistency (based on total length)
+    let seed = Math.round(totalLength * 100);
+    function rand() {
+      seed = (seed * 16807 + 0) % 2147483647;
+      return seed / 2147483647;
+    }
+    for (let i = 0; i < count; i++) {
+      points.push(pointAtLength(rand() * totalLength));
+    }
+  } else {
+    // Even spacing
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
+      points.push(pointAtLength(t * totalLength));
+    }
+  }
+
+  return points;
+}
+
+const RASTER_PADDING = 20;
+
+/**
+ * Compute decorator points for all glyphs.
+ * Returns points in display coordinate space.
+ *
+ * @param {object[]} glyphList - Array of glyph render data
+ * @param {object} decoratorParams - Decorator parameters from store
+ * @param {number} fontToDisplay - Font-to-display scale factor
+ * @returns {{ x: number, y: number }[]}
+ */
+export function computeDecorators(glyphList, decoratorParams, fontToDisplay) {
+  if (!decoratorParams.enabled || glyphList.length === 0) return [];
+
+  const { count, spacing } = decoratorParams;
+  const allPoints = [];
+
+  if (spacing === 'endpoints') {
+    // Endpoints mode: place decorators at every subpath start/end
+    for (const glyph of glyphList) {
+      if (!glyph.centerline || !glyph.centerline.paths) continue;
+      const { K } = glyph;
+      const bounds = glyph.centerline.bounds || {};
+      const xMin = bounds.xMin || 0;
+      const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
+      const clTranslateY = -RASTER_PADDING * K;
+      const toDisplay = (pt) => ({
+        x: glyph.xOffset + pt.x * K + clTranslateX,
+        y: glyph.yOffset + pt.y * K + clTranslateY,
+      });
+
+      for (const pathD of glyph.centerline.paths) {
+        const subpaths = parsePathToSubpaths(pathD);
+        for (const segments of subpaths) {
+          if (segments.length === 0) continue;
+          allPoints.push(toDisplay(segments[0].pointAt(0)));
+          allPoints.push(toDisplay(segments[segments.length - 1].pointAt(1)));
+        }
+      }
+    }
+    return allPoints;
+  }
+
+  // Even / Random mode: use uniform spacing distance across ALL paths
+  // 1) Collect all parsed path data with their glyph transforms
+  const pathEntries = [];
+  let totalLength = 0;
+
+  for (const glyph of glyphList) {
+    if (!glyph.centerline || !glyph.centerline.paths) continue;
+    const { K } = glyph;
+    const bounds = glyph.centerline.bounds || {};
+    const xMin = bounds.xMin || 0;
+    const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
+    const clTranslateY = -RASTER_PADDING * K;
+    const toDisplay = (pt) => ({
+      x: glyph.xOffset + pt.x * K + clTranslateX,
+      y: glyph.yOffset + pt.y * K + clTranslateY,
+    });
+
+    for (const pathD of glyph.centerline.paths) {
+      const segments = parsePathToSegments(pathD);
+      if (segments.length === 0) continue;
+      const pathLength = segments.reduce((sum, s) => sum + s.length, 0);
+      if (pathLength < 0.1) continue;
+      totalLength += pathLength;
+      pathEntries.push({ segments, pathLength, toDisplay });
+    }
+  }
+
+  if (totalLength < 0.1 || pathEntries.length === 0) return allPoints;
+
+  // 2) Compute uniform spacing distance based on average path length
+  //    count slider controls density: count points per average-length path
+  const avgPathLength = totalLength / pathEntries.length;
+  const spacingDist = avgPathLength / Math.max(count, 1);
+
+  // 3) Each path gets points proportional to its own length
+  for (const { segments, pathLength, toDisplay } of pathEntries) {
+    const localCount = Math.max(1, Math.round(pathLength / spacingDist));
+    const points = samplePoints(segments, localCount, spacing);
+    for (const pt of points) {
+      allPoints.push(toDisplay(pt));
+    }
+  }
+
+  return allPoints;
+}

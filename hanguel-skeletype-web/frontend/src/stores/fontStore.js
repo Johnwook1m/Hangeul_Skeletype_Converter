@@ -29,7 +29,53 @@ const useFontStore = create((set) => ({
     scaleY: 1.0,
   },
 
+  // Connection parameters (glyph-to-glyph linking)
+  connectionParams: {
+    enabled: false,
+    shape: 'curve',       // 'line' | 'curve' | 'wave'
+    color: '#0cd0fc',     // connection line color
+    tension: 0.5,         // curve bend amount (0=straight, 1=very curved)
+    waveAmplitude: 15,    // wave height
+    waveFrequency: 3,     // wave count
+    maxDistance: 500,      // skip connection if endpoints further than this
+    maxConnections: 2,    // max connections per glyph pair
+  },
+
+  // Branch parameters (endpoint branching / fractal tree)
+  branchParams: {
+    enabled: false,
+    angle: 36,           // branch spread angle (degrees, 0~90)
+    count: 2,            // branches per endpoint (1~5)
+    length: 75,          // first branch length (display units)
+    depth: 1,            // recursion depth (1~4)
+    color: '#0cd0fc',    // branch color
+  },
+
+  // Decorator parameters (shapes placed along centerline paths)
+  decoratorParams: {
+    enabled: false,
+    shape: 'circle',     // 'circle' | 'square' | 'diamond' | 'triangle'
+    size: 20,            // shape size in display units (5~100)
+    count: 6,            // shapes per path (1~30)
+    position: 0.5,       // offset along path (0~1)
+    spacing: 'even',     // 'even' | 'endpoints' | 'random'
+    filled: true,        // filled or outline-only
+    color: '#000000',    // shape color
+  },
+
+  // Offset Path parameters (parallel paths along centerlines)
+  offsetPathParams: {
+    enabled: false,
+    offset: 10,          // offset distance in pixel space (1~100)
+    count: 1,            // number of offset repetitions (1~5)
+    join: 'round',       // 'round' | 'miter' | 'bevel'
+    color: '#0cd0fc',    // offset path color
+    bothSides: true,     // offset both sides of centerline
+  },
+
   // Display options
+  theme: 'dark', // 'dark' | 'light'
+  textAlign: 'center', // 'center' | 'left' | 'right'
   showFlesh: false, // Show original glyph outline behind skeleton
   glyphSize: 100, // Glyph size percentage (50-200)
   fontBlobUrl: null, // Blob URL for loading original font in preview
@@ -126,6 +172,129 @@ const useFontStore = create((set) => ({
       strokeParams: { ...state.strokeParams, ...params },
     })),
 
+  setConnectionParams: (params) =>
+    set((state) => ({
+      connectionParams: { ...state.connectionParams, ...params },
+    })),
+
+  toggleConnection: () =>
+    set((state) => ({
+      connectionParams: {
+        ...state.connectionParams,
+        enabled: !state.connectionParams.enabled,
+      },
+    })),
+
+  resetConnection: () =>
+    set({
+      connectionParams: {
+        enabled: false,
+        shape: 'curve',
+        color: '#0cd0fc',
+        tension: 0.5,
+        waveAmplitude: 15,
+        waveFrequency: 3,
+        maxDistance: 500,
+        maxConnections: 2,
+      },
+    }),
+
+  setBranchParams: (params) =>
+    set((state) => ({
+      branchParams: { ...state.branchParams, ...params },
+    })),
+
+  toggleBranch: () =>
+    set((state) => ({
+      branchParams: {
+        ...state.branchParams,
+        enabled: !state.branchParams.enabled,
+      },
+    })),
+
+  resetBranch: () =>
+    set({
+      branchParams: {
+        enabled: false,
+        angle: 36,
+        count: 2,
+        length: 75,
+        depth: 1,
+        color: '#0cd0fc',
+      },
+    }),
+
+  setDecoratorParams: (params) =>
+    set((state) => ({
+      decoratorParams: { ...state.decoratorParams, ...params },
+    })),
+
+  toggleDecorator: () =>
+    set((state) => ({
+      decoratorParams: {
+        ...state.decoratorParams,
+        enabled: !state.decoratorParams.enabled,
+      },
+    })),
+
+  resetDecorator: () =>
+    set({
+      decoratorParams: {
+        enabled: false,
+        shape: 'circle',
+        size: 20,
+        count: 6,
+        position: 0.5,
+        spacing: 'even',
+        filled: true,
+        color: '#000000',
+      },
+    }),
+
+  setOffsetPathParams: (params) =>
+    set((state) => ({
+      offsetPathParams: { ...state.offsetPathParams, ...params },
+    })),
+
+  toggleOffsetPath: () =>
+    set((state) => ({
+      offsetPathParams: {
+        ...state.offsetPathParams,
+        enabled: !state.offsetPathParams.enabled,
+      },
+    })),
+
+  resetOffsetPath: () =>
+    set({
+      offsetPathParams: {
+        enabled: false,
+        offset: 10,
+        count: 1,
+        join: 'round',
+        color: '#0cd0fc',
+        bothSides: true,
+      },
+    }),
+
+  toggleTheme: () =>
+    set((state) => {
+      const newTheme = state.theme === 'dark' ? 'light' : 'dark';
+      return {
+        theme: newTheme,
+        strokeParams: {
+          ...state.strokeParams,
+          centerlineColor: newTheme === 'dark' ? '#ffffff' : '#1a1a1a',
+        },
+      };
+    }),
+
+  cycleTextAlign: () =>
+    set((state) => {
+      const order = ['center', 'left', 'right'];
+      const idx = order.indexOf(state.textAlign);
+      return { textAlign: order[(idx + 1) % 3] };
+    }),
+
   setShowFlesh: (show) => set({ showFlesh: show }),
   setGlyphSize: (size) => set({ glyphSize: size }),
   setFontBlobUrl: (url) => set({ fontBlobUrl: url }),
@@ -174,7 +343,45 @@ const useFontStore = create((set) => ({
           scaleX: 1.0,
           scaleY: 1.0,
         },
+        connectionParams: {
+          enabled: false,
+          shape: 'curve',
+          color: '#0cd0fc',
+          tension: 0.5,
+          waveAmplitude: 15,
+          waveFrequency: 3,
+          maxDistance: 500,
+          maxConnections: 2,
+        },
+        branchParams: {
+          enabled: false,
+          angle: 36,
+          count: 2,
+          length: 75,
+          depth: 1,
+          color: '#0cd0fc',
+        },
+        decoratorParams: {
+          enabled: false,
+          shape: 'circle',
+          size: 20,
+          count: 6,
+          position: 0.5,
+          spacing: 'even',
+          filled: true,
+          color: '#000000',
+        },
+        offsetPathParams: {
+          enabled: false,
+          offset: 10,
+          count: 1,
+          join: 'round',
+          color: '#0cd0fc',
+          bothSides: true,
+        },
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
+        theme: 'dark',
+        textAlign: 'center',
         showFlesh: false,
         glyphSize: 100,
         fontBlobUrl: null,

@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* White range slider styling */
 input[type="range"].slider-white::-webkit-slider-runnable-track {
   background: #ffffff;
@@ -21,6 +30,35 @@ input[type="range"].slider-white::-moz-range-track {
   border-radius: 2px;
 }
 input[type="range"].slider-white::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0cd0fc;
+  border: none;
+  cursor: pointer;
+}
+
+/* Dark range slider styling (for effect popovers) */
+input[type="range"].slider-dark::-webkit-slider-runnable-track {
+  background: #4b5563;
+  height: 4px;
+  border-radius: 2px;
+}
+input[type="range"].slider-dark::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0cd0fc;
+  margin-top: -4px;
+  cursor: pointer;
+}
+input[type="range"].slider-dark::-moz-range-track {
+  background: #4b5563;
+  height: 4px;
+  border-radius: 2px;
+}
+input[type="range"].slider-dark::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border-radius: 50%;
