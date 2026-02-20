@@ -15,6 +15,7 @@ export default function GlyphPreview({ large = false }) {
     branchParams,
     decoratorParams,
     offsetPathParams,
+    slantParams,
     unitsPerEm,
     ascender,
     descender,
@@ -144,27 +145,29 @@ export default function GlyphPreview({ large = false }) {
   const glyphsToRender = useMemo(() => {
     if (!previewText) return { glyphs: [], maxRowWidth: 0, totalRows: 1 };
 
-    const result = [];
-    let xOffset = 0;
-    let row = 0;
-    let maxRowWidth = 0;
     const rowHeight = EM_UNIT + ROW_GAP;
+
+    // Pass 1: collect rows
+    const rows = [[]];
+    const rowWidths = [0];
+    let rowIdx = 0;
 
     for (const char of previewText) {
       if (char === '\n') {
-        maxRowWidth = Math.max(maxRowWidth, xOffset);
-        row++;
-        xOffset = 0;
+        rowIdx++;
+        rows.push([]);
+        rowWidths.push(0);
         continue;
       }
       if (char === ' ') {
         const spaceWidth = (EM_UNIT / 2) * fontToDisplay * scaleX;
-        if (xOffset + spaceWidth > MAX_ROW_WIDTH && xOffset > 0) {
-          maxRowWidth = Math.max(maxRowWidth, xOffset);
-          row++;
-          xOffset = 0;
+        if (rowWidths[rowIdx] + spaceWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
+          rowIdx++;
+          rows.push([]);
+          rowWidths.push(0);
         }
-        xOffset += spaceWidth;
+        rowWidths[rowIdx] += spaceWidth;
+        rows[rowIdx].push({ type: 'space', width: spaceWidth });
         continue;
       }
 
@@ -176,48 +179,52 @@ export default function GlyphPreview({ large = false }) {
         ? (centerline.advance_width || EM_UNIT) * fontToDisplay * scaleX
         : EM_UNIT * fontToDisplay * scaleX;
 
-      // Wrap if adding this glyph would exceed max width
-      if (xOffset + glyphWidth > MAX_ROW_WIDTH && xOffset > 0) {
-        maxRowWidth = Math.max(maxRowWidth, xOffset);
-        row++;
-        xOffset = 0;
+      if (rowWidths[rowIdx] + glyphWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
+        rowIdx++;
+        rows.push([]);
+        rowWidths.push(0);
       }
 
-      const yOffset = row * rowHeight;
       if (!centerline) {
-        result.push({
-          char,
-          glyphName,
-          centerline: null,
-          xOffset,
-          yOffset,
-        });
+        rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline: null, width: glyphWidth });
       } else {
         const rasterScale = centerline.raster_scale || 1;
         const advanceWidth = centerline.advance_width || EM_UNIT;
         const K = fontToDisplay / rasterScale;
-
-        result.push({
-          char,
-          glyphName,
-          centerline,
-          xOffset,
-          yOffset,
-          K,
-          rasterScale,
-          advanceWidth,
-        });
+        rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline, width: glyphWidth, K, rasterScale, advanceWidth });
       }
-
-      xOffset += glyphWidth;
+      rowWidths[rowIdx] += glyphWidth;
     }
 
-    // Account for the last (possibly partial) row
-    maxRowWidth = Math.max(maxRowWidth, xOffset);
-    const totalRows = xOffset > 0 ? row + 1 : Math.max(row, 1);
+    const maxRowWidth = Math.max(...rowWidths, 0);
+    const totalRows = rows.length;
+
+    // Pass 2: assign positions with per-row alignment
+    const result = [];
+    for (let r = 0; r < rows.length; r++) {
+      const rowWidth = rowWidths[r];
+      let xStart = 0;
+      if (textAlign === 'center') xStart = (maxRowWidth - rowWidth) / 2;
+      else if (textAlign === 'right') xStart = maxRowWidth - rowWidth;
+
+      const yOffset = r * rowHeight;
+      let x = xStart;
+      for (const item of rows[r]) {
+        if (item.type === 'space') { x += item.width; continue; }
+        result.push({
+          char: item.char,
+          glyphName: item.glyphName,
+          centerline: item.centerline,
+          xOffset: x,
+          yOffset,
+          ...(item.centerline ? { K: item.K, rasterScale: item.rasterScale, advanceWidth: item.advanceWidth } : {}),
+        });
+        x += item.width;
+      }
+    }
 
     return { glyphs: result, maxRowWidth, totalRows };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX]);
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX, textAlign]);
 
   const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
   const hasCenterlines = glyphList.some((g) => g.centerline);
@@ -246,13 +253,21 @@ export default function GlyphPreview({ large = false }) {
     [glyphList, decoratorParams, fontToDisplay]
   );
 
-  // Compute offset paths
-  const offsetPaths = useMemo(
-    () => computeOffsetPaths(glyphList, offsetPathParams, fontToDisplay),
-    [glyphList, offsetPathParams, fontToDisplay]
+  // Compute offset ring paths (vector pill shapes)
+  const offsetRingPaths = useMemo(
+    () => computeOffsetPaths(glyphList, offsetPathParams),
+    [glyphList, offsetPathParams]
   );
+  const offsetRingsByIndex = useMemo(() => {
+    const map = {};
+    for (const { glyphIndex, paths } of offsetRingPaths) {
+      map[glyphIndex] = paths;
+    }
+    return map;
+  }, [offsetRingPaths]);
 
-  // Determine placeholder content
+
+// Determine placeholder content
   let placeholder = null;
   if (!previewText) {
     placeholder = glyphs.length > 0 ? (
@@ -298,7 +313,7 @@ export default function GlyphPreview({ large = false }) {
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${sizeScale})`,
               transformOrigin: 'center center',
             }}
-            preserveAspectRatio={`${textAlign === 'left' ? 'xMin' : textAlign === 'right' ? 'xMax' : 'xMid'}YMid meet`}
+            preserveAspectRatio="xMidYMid meet"
           >
             {glyphList.map((glyph, index) => {
               if (!glyph.centerline) {
@@ -349,9 +364,10 @@ export default function GlyphPreview({ large = false }) {
 
               // Baseline position in display coords
               const baselineY = glyphAscender * fontToDisplay;
-              const needsScale = scaleX !== 1 || scaleY !== 1;
-              const scaleTransform = needsScale
-                ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY})`
+              const slantAngle = slantParams.enabled ? slantParams.angle : 0;
+              const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
+              const scaleTransform = needsTransform
+                ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) skewX(${slantAngle})`
                 : '';
 
               return (
@@ -373,6 +389,19 @@ export default function GlyphPreview({ large = false }) {
                   <g
                     transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}
                   >
+                    {/* Offset path ring: vector pill-shaped paths rendered as strokes */}
+                    {offsetPathParams.enabled && (offsetRingsByIndex[index] || []).map((d, pi) => (
+                      <path
+                        key={`offset-${pi}`}
+                        d={d}
+                        fill="none"
+                        stroke={offsetPathParams.color}
+                        strokeWidth={offsetPathParams.weight}
+                        strokeLinecap={offsetPathParams.corner === 'round' ? 'round' : 'square'}
+                        strokeLinejoin={offsetPathParams.corner === 'round' ? 'round' : 'miter'}
+                      />
+                    ))}
+
                     {/* Centerline with stroke applied */}
                     {glyph.centerline.paths.map((d, i) => (
                       <path
@@ -399,23 +428,6 @@ export default function GlyphPreview({ large = false }) {
                         />
                       ))}
                     </g>
-
-                    {/* Offset paths (in same pixel coordinate space) */}
-                    {offsetPathParams.enabled && offsetPaths
-                      .filter((op) => op.glyphIndex === index)
-                      .map((op) =>
-                        op.paths.map((d, oi) => (
-                          <path
-                            key={`offset-${oi}`}
-                            d={d}
-                            fill="none"
-                            stroke={offsetPathParams.color}
-                            strokeWidth={2}
-                            strokeLinejoin={offsetPathParams.join}
-                            strokeLinecap="round"
-                          />
-                        ))
-                      )}
                   </g>
                  </g>
                 </g>

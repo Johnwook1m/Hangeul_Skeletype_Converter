@@ -24,7 +24,7 @@ const useFontStore = create((set) => ({
     cap: 'round',
     join: 'round',
     strokeColor: '#0cd0fc',
-    centerlineColor: '#ffffff',
+    centerlineColor: '#1a1a1a',
     scaleX: 1.0,
     scaleY: 1.0,
   },
@@ -68,13 +68,19 @@ const useFontStore = create((set) => ({
     enabled: false,
     offset: 10,          // offset distance in pixel space (1~100)
     count: 1,            // number of offset repetitions (1~5)
-    join: 'round',       // 'round' | 'miter' | 'bevel'
+    weight: 10,          // stroke weight of offset ring (independent of Basic weight)
+    corner: 'round',     // 'round' | 'sharp' — end cap / corner style
     color: '#0cd0fc',    // offset path color
-    bothSides: true,     // offset both sides of centerline
+  },
+
+  // Slant parameters (skew/italic transform)
+  slantParams: {
+    enabled: false,
+    angle: -15,          // degrees: negative = lean right (italic), positive = lean left
   },
 
   // Display options
-  theme: 'dark', // 'dark' | 'light'
+  theme: 'light', // 'dark' | 'light'
   textAlign: 'center', // 'center' | 'left' | 'right'
   showFlesh: false, // Show original glyph outline behind skeleton
   glyphSize: 100, // Glyph size percentage (50-200)
@@ -270,11 +276,22 @@ const useFontStore = create((set) => ({
         enabled: false,
         offset: 10,
         count: 1,
-        join: 'round',
+        weight: 10,
+        corner: 'round',
         color: '#0cd0fc',
-        bothSides: true,
       },
     }),
+
+  setSlantParams: (params) =>
+    set((state) => ({ slantParams: { ...state.slantParams, ...params } })),
+
+  toggleSlant: () =>
+    set((state) => ({
+      slantParams: { ...state.slantParams, enabled: !state.slantParams.enabled },
+    })),
+
+  resetSlant: () =>
+    set({ slantParams: { enabled: false, angle: -15 } }),
 
   toggleTheme: () =>
     set((state) => {
@@ -339,7 +356,7 @@ const useFontStore = create((set) => ({
           cap: 'round',
           join: 'round',
           strokeColor: '#0cd0fc',
-          centerlineColor: '#ffffff',
+          centerlineColor: '#1a1a1a',
           scaleX: 1.0,
           scaleY: 1.0,
         },
@@ -375,12 +392,16 @@ const useFontStore = create((set) => ({
           enabled: false,
           offset: 10,
           count: 1,
-          join: 'round',
+          weight: 10,
+          corner: 'round',
           color: '#0cd0fc',
-          bothSides: true,
+        },
+        slantParams: {
+          enabled: false,
+          angle: -15,
         },
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
-        theme: 'dark',
+        theme: 'light',
         textAlign: 'center',
         showFlesh: false,
         glyphSize: 100,

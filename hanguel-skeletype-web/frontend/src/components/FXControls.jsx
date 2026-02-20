@@ -5,6 +5,7 @@ import ConnectionControls from './effects/ConnectionControls';
 import BranchControls from './effects/BranchControls';
 import DecoratorControls from './effects/DecoratorControls';
 import OffsetPathControls from './effects/OffsetPathControls';
+import SlantControls from './effects/SlantControls';
 
 export default function FXControls() {
   const {
@@ -12,17 +13,20 @@ export default function FXControls() {
     branchParams, toggleBranch, resetBranch,
     decoratorParams, toggleDecorator, resetDecorator,
     offsetPathParams, toggleOffsetPath, resetOffsetPath,
+    slantParams, toggleSlant, resetSlant,
   } = useFontStore();
 
   const [showConnPopover, setShowConnPopover] = useState(false);
   const [showBranchPopover, setShowBranchPopover] = useState(false);
   const [showDecoratorPopover, setShowDecoratorPopover] = useState(false);
   const [showOffsetPopover, setShowOffsetPopover] = useState(false);
+  const [showSlantPopover, setShowSlantPopover] = useState(false);
 
   const closeConnPopover = useCallback(() => setShowConnPopover(false), []);
   const closeBranchPopover = useCallback(() => setShowBranchPopover(false), []);
   const closeDecoratorPopover = useCallback(() => setShowDecoratorPopover(false), []);
   const closeOffsetPopover = useCallback(() => setShowOffsetPopover(false), []);
+  const closeSlantPopover = useCallback(() => setShowSlantPopover(false), []);
 
   function handleConnClick() {
     if (!connectionParams.enabled) {
@@ -96,19 +100,39 @@ export default function FXControls() {
     }
   }
 
+  function handleSlantClick() {
+    if (!slantParams.enabled) {
+      toggleSlant();
+      setShowSlantPopover(true);
+    } else if (showSlantPopover) {
+      setShowSlantPopover(false);
+    } else {
+      setShowSlantPopover(true);
+    }
+  }
+
+  function handleSlantDoubleClick() {
+    if (slantParams.enabled) {
+      toggleSlant();
+      setShowSlantPopover(false);
+    }
+  }
+
   function handleReset() {
     resetConnection();
     resetBranch();
     resetDecorator();
     resetOffsetPath();
+    resetSlant();
     setShowConnPopover(false);
     setShowBranchPopover(false);
     setShowDecoratorPopover(false);
     setShowOffsetPopover(false);
+    setShowSlantPopover(false);
   }
 
   return (
-    <div className="relative flex items-center gap-1 min-w-[400px] min-h-[52px] justify-center">
+    <div className="relative flex items-center gap-1 min-h-[52px] justify-start">
       {/* Connect */}
       <div className="relative shrink-0">
         <button
@@ -193,6 +217,28 @@ export default function FXControls() {
         {showOffsetPopover && offsetPathParams.enabled && (
           <EffectPopover onClose={closeOffsetPopover}>
             <OffsetPathControls />
+          </EffectPopover>
+        )}
+      </div>
+
+      {/* Slant */}
+      <div className="relative shrink-0">
+        <button
+          onClick={handleSlantClick}
+          onDoubleClick={handleSlantDoubleClick}
+          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+            slantParams.enabled
+              ? 'bg-[#0cd0fc] text-white'
+              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+          }`}
+          title={slantParams.enabled ? 'Click: settings / Double-click: off' : 'Click: enable'}
+        >
+          Slant
+        </button>
+
+        {showSlantPopover && slantParams.enabled && (
+          <EffectPopover onClose={closeSlantPopover}>
+            <SlantControls />
           </EffectPopover>
         )}
       </div>
