@@ -8,8 +8,8 @@ const SHAPES = [
 ];
 
 const SPACINGS = [
-  { value: 'even', label: 'Even' },
   { value: 'endpoints', label: 'Ends' },
+  { value: 'even', label: 'Even' },
   { value: 'random', label: 'Random' },
 ];
 

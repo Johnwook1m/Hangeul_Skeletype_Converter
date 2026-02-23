@@ -58,7 +58,7 @@ const useFontStore = create((set) => ({
     size: 20,            // shape size in display units (5~100)
     count: 6,            // shapes per path (1~30)
     position: 0.5,       // offset along path (0~1)
-    spacing: 'even',     // 'even' | 'endpoints' | 'random'
+    spacing: 'endpoints', // 'even' | 'endpoints' | 'random'
     filled: true,        // filled or outline-only
     color: '#000000',    // shape color
   },
@@ -251,7 +251,7 @@ const useFontStore = create((set) => ({
         size: 20,
         count: 6,
         position: 0.5,
-        spacing: 'even',
+        spacing: 'endpoints',
         filled: true,
         color: '#000000',
       },
@@ -384,7 +384,7 @@ const useFontStore = create((set) => ({
           size: 20,
           count: 6,
           position: 0.5,
-          spacing: 'even',
+          spacing: 'endpoints',
           filled: true,
           color: '#000000',
         },

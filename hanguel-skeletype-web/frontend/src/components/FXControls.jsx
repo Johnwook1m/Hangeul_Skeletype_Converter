@@ -33,16 +33,10 @@ export default function FXControls() {
       toggleConnection();
       setShowConnPopover(true);
     } else if (showConnPopover) {
+      toggleConnection();
       setShowConnPopover(false);
     } else {
       setShowConnPopover(true);
-    }
-  }
-
-  function handleConnDoubleClick() {
-    if (connectionParams.enabled) {
-      toggleConnection();
-      setShowConnPopover(false);
     }
   }
 
@@ -51,16 +45,10 @@ export default function FXControls() {
       toggleBranch();
       setShowBranchPopover(true);
     } else if (showBranchPopover) {
+      toggleBranch();
       setShowBranchPopover(false);
     } else {
       setShowBranchPopover(true);
-    }
-  }
-
-  function handleBranchDoubleClick() {
-    if (branchParams.enabled) {
-      toggleBranch();
-      setShowBranchPopover(false);
     }
   }
 
@@ -69,16 +57,10 @@ export default function FXControls() {
       toggleDecorator();
       setShowDecoratorPopover(true);
     } else if (showDecoratorPopover) {
+      toggleDecorator();
       setShowDecoratorPopover(false);
     } else {
       setShowDecoratorPopover(true);
-    }
-  }
-
-  function handleDecoratorDoubleClick() {
-    if (decoratorParams.enabled) {
-      toggleDecorator();
-      setShowDecoratorPopover(false);
     }
   }
 
@@ -87,16 +69,10 @@ export default function FXControls() {
       toggleOffsetPath();
       setShowOffsetPopover(true);
     } else if (showOffsetPopover) {
+      toggleOffsetPath();
       setShowOffsetPopover(false);
     } else {
       setShowOffsetPopover(true);
-    }
-  }
-
-  function handleOffsetDoubleClick() {
-    if (offsetPathParams.enabled) {
-      toggleOffsetPath();
-      setShowOffsetPopover(false);
     }
   }
 
@@ -105,16 +81,10 @@ export default function FXControls() {
       toggleSlant();
       setShowSlantPopover(true);
     } else if (showSlantPopover) {
+      toggleSlant();
       setShowSlantPopover(false);
     } else {
       setShowSlantPopover(true);
-    }
-  }
-
-  function handleSlantDoubleClick() {
-    if (slantParams.enabled) {
-      toggleSlant();
-      setShowSlantPopover(false);
     }
   }
 
@@ -137,13 +107,12 @@ export default function FXControls() {
       <div className="relative shrink-0">
         <button
           onClick={handleConnClick}
-          onDoubleClick={handleConnDoubleClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             connectionParams.enabled
               ? 'bg-[#0cd0fc] text-white'
               : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
           }`}
-          title={connectionParams.enabled ? 'Click: settings / Double-click: off' : 'Click: enable'}
+          title={connectionParams.enabled ? (showConnPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Connect
         </button>
@@ -159,13 +128,12 @@ export default function FXControls() {
       <div className="relative shrink-0">
         <button
           onClick={handleBranchClick}
-          onDoubleClick={handleBranchDoubleClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             branchParams.enabled
               ? 'bg-[#0cd0fc] text-white'
               : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
           }`}
-          title={branchParams.enabled ? 'Click: settings / Double-click: off' : 'Click: enable'}
+          title={branchParams.enabled ? (showBranchPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Branch
         </button>
@@ -181,13 +149,12 @@ export default function FXControls() {
       <div className="relative shrink-0">
         <button
           onClick={handleDecoratorClick}
-          onDoubleClick={handleDecoratorDoubleClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             decoratorParams.enabled
               ? 'bg-[#0cd0fc] text-white'
               : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
           }`}
-          title={decoratorParams.enabled ? 'Click: settings / Double-click: off' : 'Click: enable'}
+          title={decoratorParams.enabled ? (showDecoratorPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Decorator
         </button>
@@ -203,13 +170,12 @@ export default function FXControls() {
       <div className="relative shrink-0">
         <button
           onClick={handleOffsetClick}
-          onDoubleClick={handleOffsetDoubleClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             offsetPathParams.enabled
               ? 'bg-[#0cd0fc] text-white'
               : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
           }`}
-          title={offsetPathParams.enabled ? 'Click: settings / Double-click: off' : 'Click: enable'}
+          title={offsetPathParams.enabled ? (showOffsetPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Offset
         </button>
@@ -225,13 +191,12 @@ export default function FXControls() {
       <div className="relative shrink-0">
         <button
           onClick={handleSlantClick}
-          onDoubleClick={handleSlantDoubleClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             slantParams.enabled
               ? 'bg-[#0cd0fc] text-white'
               : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
           }`}
-          title={slantParams.enabled ? 'Click: settings / Double-click: off' : 'Click: enable'}
+          title={slantParams.enabled ? (showSlantPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Slant
         </button>
