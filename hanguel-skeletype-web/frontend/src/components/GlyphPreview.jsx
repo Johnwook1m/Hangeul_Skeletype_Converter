@@ -307,6 +307,7 @@ export default function GlyphPreview({ large = false }) {
       ) : showSvg ? (
         <>
           <svg
+            id="skeletype-preview-svg"
             viewBox={viewBox}
             className="w-full h-full"
             style={{

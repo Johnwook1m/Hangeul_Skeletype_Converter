@@ -7,6 +7,7 @@ import './index.css';
 function App() {
   const theme = useFontStore((s) => s.theme);
   const toggleTheme = useFontStore((s) => s.toggleTheme);
+  const fontId = useFontStore((s) => s.fontId);
   const isDark = theme === 'dark';
 
   return (
@@ -17,8 +18,8 @@ function App() {
         <GlyphPreview large />
       </div>
 
-      {/* Theme toggle switch - top right */}
-      <button
+      {/* Theme toggle switch - top right (폰트 로드 후에만 표시) */}
+      {fontId && <button
         onClick={toggleTheme}
         className="fixed top-4 right-4 z-50 cursor-pointer"
         title="배경 테마 전환"
@@ -36,7 +37,7 @@ function App() {
             }}
           />
         </div>
-      </button>
+      </button>}
 
       {/* Full-screen dropzone overlay */}
       <FontUpload />

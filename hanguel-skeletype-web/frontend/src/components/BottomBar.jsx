@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import useFontStore from '../stores/fontStore';
 import ExtractButton from './ExtractButton';
 import ExportButton from './ExportButton';
+import ExportSVGButton from './ExportSVGButton';
 import FXControls from './FXControls';
 
 function Divider() {
@@ -287,6 +288,7 @@ export default function BottomBar() {
         {/* ── Right section: Extract + Export (fixed) ── */}
         <div className="flex items-center gap-1 shrink-0">
           <ExtractButton inline />
+          <ExportSVGButton inline />
           <ExportButton inline />
         </div>
       </div>

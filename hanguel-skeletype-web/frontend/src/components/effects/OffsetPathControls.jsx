@@ -1,9 +1,8 @@
 import useFontStore from '../../stores/fontStore';
 
-const JOINS = [
+const CORNERS = [
   { value: 'round', label: 'Round' },
-  { value: 'miter', label: 'Miter' },
-  { value: 'bevel', label: 'Bevel' },
+  { value: 'sharp', label: 'Sharp' },
 ];
 
 export default function OffsetPathControls() {
@@ -32,16 +31,25 @@ export default function OffsetPathControls() {
         <span className="text-xs text-gray-500 w-8 text-right">{offsetPathParams.count}</span>
       </div>
 
-      {/* Join type */}
+      {/* Stroke weight (independent of Basic) */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400 w-12">Weight</span>
+        <input type="range" min={1} max={100} step={1} value={offsetPathParams.weight}
+          onChange={(e) => set({ weight: +e.target.value })}
+          className="flex-1 h-1 slider-dark appearance-none bg-transparent" />
+        <span className="text-xs text-gray-500 w-8 text-right">{offsetPathParams.weight}</span>
+      </div>
+
+      {/* Corner type */}
       <div className="flex items-center gap-1">
-        <span className="text-xs text-gray-400 w-12">Join</span>
+        <span className="text-xs text-gray-400 w-12">Corner</span>
         <div className="flex gap-1 flex-1">
-          {JOINS.map(({ value, label }) => (
+          {CORNERS.map(({ value, label }) => (
             <button
               key={value}
-              onClick={() => set({ join: value })}
+              onClick={() => set({ corner: value })}
               className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
-                offsetPathParams.join === value
+                offsetPathParams.corner === value
                   ? 'bg-[#0cd0fc] text-white'
                   : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
               }`}
@@ -50,21 +58,6 @@ export default function OffsetPathControls() {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Both sides toggle */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-400 w-12">Sides</span>
-        <button
-          onClick={() => set({ bothSides: !offsetPathParams.bothSides })}
-          className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
-            offsetPathParams.bothSides
-              ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-          }`}
-        >
-          {offsetPathParams.bothSides ? 'Both' : 'One'}
-        </button>
       </div>
 
       {/* Color */}
