@@ -107,7 +107,7 @@ export default function BottomBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
-      <div className={`pointer-events-auto rounded-[28px] px-4 py-2 min-h-[52px] flex items-center gap-0 shadow-lg w-fit ${
+      <div className={`pointer-events-auto rounded-[28px] px-4 py-2 min-h-[52px] flex items-center gap-0 shadow-lg w-full ${
         bgImageActive ? 'bg-gray-200' : 'bg-gray-200/90 backdrop-blur-md'
       }`}>
 
@@ -115,10 +115,10 @@ export default function BottomBar() {
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => useFontStore.getState().reset()}
-            className="shrink-0 px-3 py-1.5 text-xs font-medium bg-gray-300 text-gray-600 hover:bg-gray-400 rounded-full transition-colors"
-            title="다른 폰트 불러오기"
+            className="shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium bg-gray-300 text-gray-600 hover:bg-gray-400 rounded-full transition-colors overflow-hidden"
+            title={fontName || 'Load Font'}
           >
-            {fontName || 'Load Font'}
+            <span className="block truncate">{fontName || 'Load Font'}</span>
           </button>
 
           <Divider />
@@ -149,7 +149,7 @@ export default function BottomBar() {
 
         {/* ── Center section: tab-dependent content (flexible) ── */}
         <Divider />
-        <div className="flex items-center gap-1 w-[680px] justify-start overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide">
 
           {/* Basic Tab Controls */}
           {activeTab === 'basic' && (
@@ -161,7 +161,7 @@ export default function BottomBar() {
                 onChange={(e) => handleTextChange(e.target.value)}
                 placeholder={hasGlyphs ? '문구 입력' : '폰트를 먼저 업로드'}
                 disabled={!hasGlyphs}
-                className="shrink-0 w-32 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none leading-relaxed"
+                className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none leading-relaxed"
               />
 
               <Divider />
