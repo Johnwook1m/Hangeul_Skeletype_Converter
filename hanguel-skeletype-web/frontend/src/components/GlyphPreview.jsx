@@ -26,6 +26,7 @@ export default function GlyphPreview({ large = false }) {
     spaceAdvanceWidth,
     textAlign,
     theme,
+    bgColor,
   } = useFontStore();
 
   // Pan state for trackpad/mouse navigation
@@ -108,9 +109,13 @@ export default function GlyphPreview({ large = false }) {
       if (e.ctrlKey) {
         e.preventDefault();
         const { setGlyphSize, glyphSize: curSize } = useFontStore.getState();
-        const delta = -e.deltaY * 0.5;
-        setGlyphSize(Math.max(50, Math.min(500, curSize + delta)));
+        // Normalize deltaY by deltaMode (0=pixel, 1=line, 2=page)
+        const normalizedDelta = e.deltaMode === 0 ? e.deltaY : e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY * 300;
+        // Multiplicative zoom for natural feel (~1% per pixel delta)
+        const zoomFactor = 1 - normalizedDelta * 0.008;
+        setGlyphSize(Math.max(50, Math.min(500, curSize * zoomFactor)));
       } else {
+        e.preventDefault();
         setPan((p) => {
           const el2 = containerRef.current;
           if (!el2) return { x: p.x - e.deltaX, y: p.y - e.deltaY };
@@ -318,7 +323,7 @@ export default function GlyphPreview({ large = false }) {
       className={`flex items-center justify-center h-full w-full relative select-none ${
         showSvg ? 'cursor-grab active:cursor-grabbing' : ''
       }`}
-      style={{ background: theme === 'dark' ? '#1a1a1a' : '#ffffff' }}
+      style={{ background: bgColor }}
       onWheel={undefined}
       onDoubleClick={showSvg ? () => setPan({ x: 0, y: 0 }) : undefined}
     >

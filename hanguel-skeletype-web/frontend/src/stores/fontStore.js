@@ -91,6 +91,7 @@ const useFontStore = create((set) => ({
 
   // Display options
   theme: 'light', // 'dark' | 'light'
+  bgColor: '#ffffff', // Custom background color
   textAlign: 'center', // 'center' | 'left' | 'right'
   showFlesh: false, // Show original glyph outline behind skeleton
   glyphSize: 100, // Glyph size percentage (50-500) — viewport zoom
@@ -336,6 +337,7 @@ const useFontStore = create((set) => ({
       const newTheme = state.theme === 'dark' ? 'light' : 'dark';
       return {
         theme: newTheme,
+        bgColor: newTheme === 'dark' ? '#1a1a1a' : '#ffffff',
       };
     }),
 
@@ -349,6 +351,7 @@ const useFontStore = create((set) => ({
   setShowFlesh: (show) => set({ showFlesh: show }),
   setGlyphSize: (size) => set({ glyphSize: size }),
   setPreviewFontSize: (size) => set({ previewFontSize: size }),
+  setBgColor: (color) => set({ bgColor: color }),
   setFontBlobUrl: (url) => set({ fontBlobUrl: url }),
 
   setCenterline: (name, data) =>
@@ -445,6 +448,7 @@ const useFontStore = create((set) => ({
         },
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
         theme: 'light',
+        bgColor: '#ffffff',
         textAlign: 'center',
         showFlesh: false,
         glyphSize: 100,

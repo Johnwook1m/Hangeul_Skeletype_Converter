@@ -27,6 +27,8 @@ export default function BottomBar() {
     backgroundImageParams,
     previewFontSize,
     setPreviewFontSize,
+    bgColor,
+    setBgColor,
   } = useFontStore();
 
   const bgImageActive = backgroundImageParams.enabled && !!backgroundImageParams.imageUrl;
@@ -268,6 +270,19 @@ export default function BottomBar() {
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
                   title="Stroke 색상"
+                />
+              </div>
+
+              {/* Background Color */}
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-xs text-gray-500">BG</span>
+                <input
+                  type="color"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
+                  style={{ padding: 0 }}
+                  title="배경 색상"
                 />
               </div>
             </>

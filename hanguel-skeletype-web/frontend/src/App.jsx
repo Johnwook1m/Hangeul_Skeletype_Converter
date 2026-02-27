@@ -8,11 +8,12 @@ function App() {
   const theme = useFontStore((s) => s.theme);
   const toggleTheme = useFontStore((s) => s.toggleTheme);
   const fontId = useFontStore((s) => s.fontId);
+  const bgColor = useFontStore((s) => s.bgColor);
   const isDark = theme === 'dark';
 
   return (
     <div className="w-screen h-screen overflow-hidden relative"
-      style={{ background: isDark ? '#1a1a1a' : '#ffffff' }}>
+      style={{ background: bgColor }}>
       {/* Full-screen preview area */}
       <div className="w-full h-full">
         <GlyphPreview large />
