@@ -309,10 +309,8 @@ export default function GlyphPreview({ large = false }) {
     placeholder = (
       <div className="text-center text-gray-500">
         <p className="text-xl mb-3 font-light">"{previewText}"</p>
-        <p className="text-sm">중심선이 추출되지 않았습니다.</p>
-        <p className="text-xs mt-1 text-gray-600">
-          하단 메뉴의 "추출" 버튼을 클릭하세요.
-        </p>
+        <p className="text-[15px] mb-1">중심선이 추출되지 않았습니다.</p>
+        <p className="text-[15px]">하단 메뉴의 "추출" 버튼을 클릭하세요.</p>
       </div>
     );
   }
