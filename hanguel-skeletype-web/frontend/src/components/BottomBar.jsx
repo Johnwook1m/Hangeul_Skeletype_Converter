@@ -24,7 +24,12 @@ export default function BottomBar() {
     setPreviewText,
     glyphs,
     centerlines,
+    backgroundImageParams,
+    previewFontSize,
+    setPreviewFontSize,
   } = useFontStore();
+
+  const bgImageActive = backgroundImageParams.enabled && !!backgroundImageParams.imageUrl;
 
   const [text, setText] = useState('');
   const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'fx'
@@ -56,7 +61,7 @@ export default function BottomBar() {
   useEffect(() => {
     if (!animating) return;
 
-    const MIN = 10, MAX = 300, SPEED = 100;
+    const MIN = 0, MAX = 300, SPEED = 100;
     let startTime = null;
     let direction = 1;
     let current = strokeParams.width;
@@ -100,13 +105,15 @@ export default function BottomBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
-      <div className="pointer-events-auto bg-gray-200/90 backdrop-blur-md rounded-[28px] px-4 py-2 min-h-[52px] flex items-center gap-0 shadow-lg w-fit">
+      <div className={`pointer-events-auto rounded-[28px] px-4 py-2 min-h-[52px] flex items-center gap-0 shadow-lg w-fit ${
+        bgImageActive ? 'bg-gray-200' : 'bg-gray-200/90 backdrop-blur-md'
+      }`}>
 
         {/* ── Left section: Font name + Tab switcher (fixed) ── */}
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => useFontStore.getState().reset()}
-            className="shrink-0 px-3 py-1.5 text-xs font-medium bg-gray-300 hover:bg-gray-400 rounded-full transition-colors"
+            className="shrink-0 px-3 py-1.5 text-xs font-medium bg-gray-300 text-gray-600 hover:bg-gray-400 rounded-full transition-colors"
             title="다른 폰트 불러오기"
           >
             {fontName || 'Load Font'}
@@ -198,30 +205,16 @@ export default function BottomBar() {
                 </svg>
               </button>
 
-              {/* X-Scale */}
+              {/* Text Size */}
               <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">X</span>
+                <span className="text-xs text-gray-500">Sz</span>
                 <input
                   type="range"
-                  min={0.2}
-                  max={1.8}
+                  min={0.25}
+                  max={4.0}
                   step={0.05}
-                  value={strokeParams.scaleX}
-                  onChange={(e) => setStrokeParams({ scaleX: +e.target.value })}
-                  className="w-16 h-1 slider-white appearance-none bg-transparent"
-                />
-              </div>
-
-              {/* Y-Scale */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">Y</span>
-                <input
-                  type="range"
-                  min={0.2}
-                  max={1.8}
-                  step={0.05}
-                  value={strokeParams.scaleY}
-                  onChange={(e) => setStrokeParams({ scaleY: +e.target.value })}
+                  value={previewFontSize}
+                  onChange={(e) => setPreviewFontSize(+e.target.value)}
                   className="w-16 h-1 slider-white appearance-none bg-transparent"
                 />
               </div>
@@ -231,7 +224,7 @@ export default function BottomBar() {
                 <span className="text-xs text-gray-500">Stroke</span>
                 <input
                   type="range"
-                  min={10}
+                  min={0}
                   max={300}
                   step={1}
                   value={strokeParams.width}

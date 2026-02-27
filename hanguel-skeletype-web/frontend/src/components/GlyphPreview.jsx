@@ -16,11 +16,14 @@ export default function GlyphPreview({ large = false }) {
     decoratorParams,
     offsetPathParams,
     slantParams,
+    backgroundImageParams,
     unitsPerEm,
     ascender,
     descender,
     showFlesh,
     glyphSize,
+    previewFontSize,
+    spaceAdvanceWidth,
     textAlign,
     theme,
   } = useFontStore();
@@ -31,6 +34,7 @@ export default function GlyphPreview({ large = false }) {
   const lastPos = useRef({ x: 0, y: 0 });
   const containerRef = useRef(null);
   const sizeScaleRef = useRef(1);
+  const gestureStartSizeRef = useRef(100); // For Safari GestureEvent
 
   // Reset pan when preview text changes
   useEffect(() => {
@@ -105,7 +109,7 @@ export default function GlyphPreview({ large = false }) {
         e.preventDefault();
         const { setGlyphSize, glyphSize: curSize } = useFontStore.getState();
         const delta = -e.deltaY * 0.5;
-        setGlyphSize(Math.round(Math.max(50, Math.min(500, curSize + delta))));
+        setGlyphSize(Math.max(50, Math.min(500, curSize + delta)));
       } else {
         setPan((p) => {
           const el2 = containerRef.current;
@@ -122,13 +126,28 @@ export default function GlyphPreview({ large = false }) {
       }
     };
 
+    // Safari GestureEvent handlers (pinch-to-zoom on macOS Safari)
+    const handleGestureStart = (e) => {
+      e.preventDefault();
+      gestureStartSizeRef.current = useFontStore.getState().glyphSize;
+    };
+    const handleGestureChange = (e) => {
+      e.preventDefault();
+      const { setGlyphSize } = useFontStore.getState();
+      setGlyphSize(Math.max(50, Math.min(500, gestureStartSizeRef.current * e.scale)));
+    };
+
     el.addEventListener('mousedown', handleMouseDown);
     el.addEventListener('wheel', handleWheel, { passive: false });
+    el.addEventListener('gesturestart', handleGestureStart, { passive: false });
+    el.addEventListener('gesturechange', handleGestureChange, { passive: false });
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
       el.removeEventListener('mousedown', handleMouseDown);
       el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('gesturestart', handleGestureStart);
+      el.removeEventListener('gesturechange', handleGestureChange);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -138,7 +157,8 @@ export default function GlyphPreview({ large = false }) {
   const RASTER_PADDING = 20;
 
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
-  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX; // max row width in display units (scales with X)
+  // previewFontSize scales apparent glyph size by reducing chars per row
+  const MAX_ROW_WIDTH = EM_UNIT * 12 / previewFontSize * fontToDisplay * scaleX; // max row width in display units (scales with X)
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
   // Get glyph data for each character in previewText (with width-based row wrapping)
@@ -160,7 +180,7 @@ export default function GlyphPreview({ large = false }) {
         continue;
       }
       if (char === ' ') {
-        const spaceWidth = (EM_UNIT / 2) * fontToDisplay * scaleX;
+        const spaceWidth = (spaceAdvanceWidth ?? EM_UNIT / 2) * fontToDisplay * scaleX;
         if (rowWidths[rowIdx] + spaceWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
           rowIdx++;
           rows.push([]);
@@ -224,7 +244,7 @@ export default function GlyphPreview({ large = false }) {
     }
 
     return { glyphs: result, maxRowWidth, totalRows };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX, textAlign]);
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX, textAlign, previewFontSize]);
 
   const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
   const hasCenterlines = glyphList.some((g) => g.centerline);
@@ -302,6 +322,21 @@ export default function GlyphPreview({ large = false }) {
       onWheel={undefined}
       onDoubleClick={showSvg ? () => setPan({ x: 0, y: 0 }) : undefined}
     >
+      {/* Background image layer — lowest z-index, sits behind SVG */}
+      {backgroundImageParams.enabled && backgroundImageParams.imageUrl && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `url(${backgroundImageParams.imageUrl})`,
+            backgroundSize: backgroundImageParams.fit === 'fill' ? '100% 100%' : backgroundImageParams.fit,
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: backgroundImageParams.opacity,
+            mixBlendMode: backgroundImageParams.blendMode,
+          }}
+        />
+      )}
+
       {placeholder ? (
         <div className="text-center">{placeholder}</div>
       ) : showSvg ? (
@@ -435,39 +470,6 @@ export default function GlyphPreview({ large = false }) {
               );
             })}
 
-            {/* Connection lines between adjacent glyphs */}
-            {connectionParams.enabled && connections.length > 0 && (
-              <g>
-                {connections.map((conn, i) => (
-                  <path
-                    key={`conn-${i}`}
-                    d={conn.d}
-                    fill="none"
-                    stroke={connectionParams.color}
-                    strokeWidth={strokeParams.width * fontToDisplay}
-                    strokeLinecap={strokeParams.cap}
-                    strokeLinejoin={strokeParams.join}
-                  />
-                ))}
-              </g>
-            )}
-
-            {/* Branch lines from glyph endpoints */}
-            {branchParams.enabled && branches.length > 0 && (
-              <g>
-                {branches.map((b, i) => (
-                  <path
-                    key={`branch-${i}`}
-                    d={b.d}
-                    fill="none"
-                    stroke={branchParams.color}
-                    strokeWidth={b.widthRatio * strokeParams.width * fontToDisplay}
-                    strokeLinecap="round"
-                  />
-                ))}
-              </g>
-            )}
-
             {/* Decorator shapes along centerline paths */}
             {decoratorParams.enabled && decoratorPoints.length > 0 && (
               <g>
@@ -515,6 +517,39 @@ export default function GlyphPreview({ large = false }) {
                       return null;
                   }
                 })}
+              </g>
+            )}
+
+            {/* Branch lines from glyph endpoints */}
+            {branchParams.enabled && branches.length > 0 && (
+              <g>
+                {branches.map((b, i) => (
+                  <path
+                    key={`branch-${i}`}
+                    d={b.d}
+                    fill="none"
+                    stroke={branchParams.color}
+                    strokeWidth={b.widthRatio * strokeParams.width * fontToDisplay}
+                    strokeLinecap="round"
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Connection lines between adjacent glyphs */}
+            {connectionParams.enabled && connections.length > 0 && (
+              <g>
+                {connections.map((conn, i) => (
+                  <path
+                    key={`conn-${i}`}
+                    d={conn.d}
+                    fill="none"
+                    stroke={connectionParams.color}
+                    strokeWidth={strokeParams.width * fontToDisplay}
+                    strokeLinecap={strokeParams.cap}
+                    strokeLinejoin={strokeParams.join}
+                  />
+                ))}
               </g>
             )}
           </svg>

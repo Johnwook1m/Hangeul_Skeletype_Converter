@@ -8,6 +8,7 @@ class FontUploadResponse(BaseModel):
     units_per_em: int
     ascender: int
     descender: int
+    space_advance_width: int | None = None
 
 
 class GlyphInfo(BaseModel):

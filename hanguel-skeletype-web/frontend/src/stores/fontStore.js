@@ -44,9 +44,9 @@ const useFontStore = create((set) => ({
   // Branch parameters (endpoint branching / fractal tree)
   branchParams: {
     enabled: false,
-    angle: 36,           // branch spread angle (degrees, 0~90)
+    angle: 90,           // branch spread angle (degrees, 0~90)
     count: 2,            // branches per endpoint (1~5)
-    length: 75,          // first branch length (display units)
+    length: 105,         // first branch length (display units)
     depth: 1,            // recursion depth (1~4)
     color: '#0cd0fc',    // branch color
   },
@@ -55,7 +55,7 @@ const useFontStore = create((set) => ({
   decoratorParams: {
     enabled: false,
     shape: 'circle',     // 'circle' | 'square' | 'diamond' | 'triangle'
-    size: 20,            // shape size in display units (5~100)
+    size: 30,            // shape size in display units (5~100)
     count: 6,            // shapes per path (1~30)
     position: 0.5,       // offset along path (0~1)
     spacing: 'endpoints', // 'even' | 'endpoints' | 'random'
@@ -79,11 +79,23 @@ const useFontStore = create((set) => ({
     angle: -15,          // degrees: negative = lean right (italic), positive = lean left
   },
 
+  // Background image parameters
+  backgroundImageParams: {
+    enabled: false,
+    imageUrl: null,      // base64 data URL of uploaded image
+    imageName: null,     // original file name for display
+    opacity: 1.0,        // 0~1
+    fit: 'cover',        // 'cover' | 'contain' | 'fill'
+    blendMode: 'normal', // CSS mix-blend-mode value
+  },
+
   // Display options
   theme: 'light', // 'dark' | 'light'
   textAlign: 'center', // 'center' | 'left' | 'right'
   showFlesh: false, // Show original glyph outline behind skeleton
-  glyphSize: 100, // Glyph size percentage (50-200)
+  glyphSize: 100, // Glyph size percentage (50-500) — viewport zoom
+  previewFontSize: 1.0, // Text size multiplier (0.25~4.0) — chars per row
+  spaceAdvanceWidth: null, // Space glyph advance width in font units (from uploaded font)
   fontBlobUrl: null, // Blob URL for loading original font in preview
 
   // Extraction state
@@ -104,6 +116,7 @@ const useFontStore = create((set) => ({
       unitsPerEm: data.units_per_em,
       ascender: data.ascender ?? null,
       descender: data.descender ?? null,
+      spaceAdvanceWidth: data.space_advance_width ?? null,
       glyphs: [],
       centerlines: {},
       selectedGlyph: null,
@@ -222,9 +235,9 @@ const useFontStore = create((set) => ({
     set({
       branchParams: {
         enabled: false,
-        angle: 36,
+        angle: 90,
         count: 2,
-        length: 75,
+        length: 105,
         depth: 1,
         color: '#0cd0fc',
       },
@@ -248,7 +261,7 @@ const useFontStore = create((set) => ({
       decoratorParams: {
         enabled: false,
         shape: 'circle',
-        size: 20,
+        size: 30,
         count: 6,
         position: 0.5,
         spacing: 'endpoints',
@@ -293,15 +306,36 @@ const useFontStore = create((set) => ({
   resetSlant: () =>
     set({ slantParams: { enabled: false, angle: -15 } }),
 
+  setBackgroundImageParams: (params) =>
+    set((state) => ({
+      backgroundImageParams: { ...state.backgroundImageParams, ...params },
+    })),
+
+  toggleBackgroundImage: () =>
+    set((state) => ({
+      backgroundImageParams: {
+        ...state.backgroundImageParams,
+        enabled: !state.backgroundImageParams.enabled,
+      },
+    })),
+
+  resetBackgroundImage: () =>
+    set({
+      backgroundImageParams: {
+        enabled: false,
+        imageUrl: null,
+        imageName: null,
+        opacity: 1.0,
+        fit: 'cover',
+        blendMode: 'normal',
+      },
+    }),
+
   toggleTheme: () =>
     set((state) => {
       const newTheme = state.theme === 'dark' ? 'light' : 'dark';
       return {
         theme: newTheme,
-        strokeParams: {
-          ...state.strokeParams,
-          centerlineColor: newTheme === 'dark' ? '#ffffff' : '#1a1a1a',
-        },
       };
     }),
 
@@ -314,6 +348,7 @@ const useFontStore = create((set) => ({
 
   setShowFlesh: (show) => set({ showFlesh: show }),
   setGlyphSize: (size) => set({ glyphSize: size }),
+  setPreviewFontSize: (size) => set({ previewFontSize: size }),
   setFontBlobUrl: (url) => set({ fontBlobUrl: url }),
 
   setCenterline: (name, data) =>
@@ -372,16 +407,16 @@ const useFontStore = create((set) => ({
         },
         branchParams: {
           enabled: false,
-          angle: 36,
+          angle: 90,
           count: 2,
-          length: 75,
+          length: 105,
           depth: 1,
           color: '#0cd0fc',
         },
         decoratorParams: {
           enabled: false,
           shape: 'circle',
-          size: 20,
+          size: 30,
           count: 6,
           position: 0.5,
           spacing: 'endpoints',
@@ -400,11 +435,21 @@ const useFontStore = create((set) => ({
           enabled: false,
           angle: -15,
         },
+        backgroundImageParams: {
+          enabled: false,
+          imageUrl: null,
+          imageName: null,
+          opacity: 1.0,
+          fit: 'cover',
+          blendMode: 'normal',
+        },
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
         theme: 'light',
         textAlign: 'center',
         showFlesh: false,
         glyphSize: 100,
+        previewFontSize: 1.0,
+        spaceAdvanceWidth: null,
         fontBlobUrl: null,
       };
     }),

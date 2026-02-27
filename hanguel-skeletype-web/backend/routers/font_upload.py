@@ -44,6 +44,16 @@ async def upload_font(file: UploadFile = File(...)):
         shutil.rmtree(temp_dir, ignore_errors=True)
         raise HTTPException(status_code=400, detail=f"Invalid font file: {e}")
 
+    # Extract space glyph advance width
+    space_advance = None
+    try:
+        cmap = tt_font.getBestCmap() or {}
+        space_glyph = cmap.get(0x0020)
+        if space_glyph and 'hmtx' in tt_font:
+            space_advance = tt_font['hmtx'][space_glyph][0]
+    except Exception:
+        pass
+
     # Create session
     session = session_store.create(font_path, tt_font, temp_dir)
 
@@ -54,4 +64,5 @@ async def upload_font(file: UploadFile = File(...)):
         units_per_em=session.units_per_em,
         ascender=session.ascender,
         descender=session.descender,
+        space_advance_width=space_advance,
     )

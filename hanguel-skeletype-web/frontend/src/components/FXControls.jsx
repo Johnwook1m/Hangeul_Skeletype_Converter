@@ -6,14 +6,17 @@ import BranchControls from './effects/BranchControls';
 import DecoratorControls from './effects/DecoratorControls';
 import OffsetPathControls from './effects/OffsetPathControls';
 import SlantControls from './effects/SlantControls';
+import BackgroundImageControls from './effects/BackgroundImageControls';
 
 export default function FXControls() {
   const {
+    strokeParams, setStrokeParams,
     connectionParams, toggleConnection, resetConnection,
     branchParams, toggleBranch, resetBranch,
     decoratorParams, toggleDecorator, resetDecorator,
     offsetPathParams, toggleOffsetPath, resetOffsetPath,
     slantParams, toggleSlant, resetSlant,
+    backgroundImageParams, toggleBackgroundImage, resetBackgroundImage,
   } = useFontStore();
 
   const [showConnPopover, setShowConnPopover] = useState(false);
@@ -21,12 +24,14 @@ export default function FXControls() {
   const [showDecoratorPopover, setShowDecoratorPopover] = useState(false);
   const [showOffsetPopover, setShowOffsetPopover] = useState(false);
   const [showSlantPopover, setShowSlantPopover] = useState(false);
+  const [showBgPopover, setShowBgPopover] = useState(false);
 
   const closeConnPopover = useCallback(() => setShowConnPopover(false), []);
   const closeBranchPopover = useCallback(() => setShowBranchPopover(false), []);
   const closeDecoratorPopover = useCallback(() => setShowDecoratorPopover(false), []);
   const closeOffsetPopover = useCallback(() => setShowOffsetPopover(false), []);
   const closeSlantPopover = useCallback(() => setShowSlantPopover(false), []);
+  const closeBgPopover = useCallback(() => setShowBgPopover(false), []);
 
   function handleConnClick() {
     if (!connectionParams.enabled) {
@@ -88,21 +93,63 @@ export default function FXControls() {
     }
   }
 
+  function handleBgClick() {
+    if (!backgroundImageParams.enabled) {
+      toggleBackgroundImage();
+      setShowBgPopover(true);
+    } else if (showBgPopover) {
+      toggleBackgroundImage();
+      setShowBgPopover(false);
+    } else {
+      setShowBgPopover(true);
+    }
+  }
+
   function handleReset() {
     resetConnection();
     resetBranch();
     resetDecorator();
     resetOffsetPath();
     resetSlant();
+    resetBackgroundImage();
     setShowConnPopover(false);
     setShowBranchPopover(false);
     setShowDecoratorPopover(false);
     setShowOffsetPopover(false);
     setShowSlantPopover(false);
+    setShowBgPopover(false);
   }
 
   return (
     <div className="relative flex items-center gap-1 min-h-[52px] justify-start">
+      {/* X-Scale */}
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-xs text-gray-500">X</span>
+        <input
+          type="range"
+          min={0.2}
+          max={1.8}
+          step={0.05}
+          value={strokeParams.scaleX}
+          onChange={(e) => setStrokeParams({ scaleX: +e.target.value })}
+          className="w-16 h-1 slider-white appearance-none bg-transparent"
+        />
+      </div>
+
+      {/* Y-Scale */}
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-xs text-gray-500">Y</span>
+        <input
+          type="range"
+          min={0.2}
+          max={1.8}
+          step={0.05}
+          value={strokeParams.scaleY}
+          onChange={(e) => setStrokeParams({ scaleY: +e.target.value })}
+          className="w-16 h-1 slider-white appearance-none bg-transparent"
+        />
+      </div>
+
       {/* Connect */}
       <div className="relative shrink-0">
         <button
@@ -204,6 +251,27 @@ export default function FXControls() {
         {showSlantPopover && slantParams.enabled && (
           <EffectPopover onClose={closeSlantPopover}>
             <SlantControls />
+          </EffectPopover>
+        )}
+      </div>
+
+      {/* Background Image */}
+      <div className="relative shrink-0">
+        <button
+          onClick={handleBgClick}
+          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+            backgroundImageParams.enabled
+              ? 'bg-[#0cd0fc] text-white'
+              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+          }`}
+          title={backgroundImageParams.enabled ? (showBgPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
+        >
+          BG
+        </button>
+
+        {showBgPopover && backgroundImageParams.enabled && (
+          <EffectPopover onClose={closeBgPopover}>
+            <BackgroundImageControls />
           </EffectPopover>
         )}
       </div>
