@@ -88,18 +88,7 @@ export default function GlyphPreview({ large = false }) {
       const dx = e.clientX - lastPos.current.x;
       const dy = e.clientY - lastPos.current.y;
       lastPos.current = { x: e.clientX, y: e.clientY };
-      setPan((p) => {
-        const el2 = containerRef.current;
-        if (!el2) return { x: p.x + dx, y: p.y + dy };
-        const { width, height } = el2.getBoundingClientRect();
-        const sc = sizeScaleRef.current;
-        const maxX = width * ((sc - 1) / 2 + 0.3);
-        const maxY = height * ((sc - 1) / 2 + 0.3);
-        return {
-          x: Math.max(-maxX, Math.min(maxX, p.x + dx)),
-          y: Math.max(-maxY, Math.min(maxY, p.y + dy)),
-        };
-      });
+      setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
     };
     const handleMouseUp = () => {
       isPanning.current = false;
@@ -113,21 +102,10 @@ export default function GlyphPreview({ large = false }) {
         const normalizedDelta = e.deltaMode === 0 ? e.deltaY : e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY * 300;
         // Multiplicative zoom for natural feel (~1% per pixel delta)
         const zoomFactor = 1 - normalizedDelta * 0.008;
-        setGlyphSize(Math.max(50, Math.min(500, curSize * zoomFactor)));
+        setGlyphSize(Math.max(10, Math.min(500, curSize * zoomFactor)));
       } else {
         e.preventDefault();
-        setPan((p) => {
-          const el2 = containerRef.current;
-          if (!el2) return { x: p.x - e.deltaX, y: p.y - e.deltaY };
-          const { width, height } = el2.getBoundingClientRect();
-          const sc = sizeScaleRef.current;
-          const maxX = width * ((sc - 1) / 2 + 0.3);
-          const maxY = height * ((sc - 1) / 2 + 0.3);
-          return {
-            x: Math.max(-maxX, Math.min(maxX, p.x - e.deltaX)),
-            y: Math.max(-maxY, Math.min(maxY, p.y - e.deltaY)),
-          };
-        });
+        setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
       }
     };
 
@@ -139,7 +117,7 @@ export default function GlyphPreview({ large = false }) {
     const handleGestureChange = (e) => {
       e.preventDefault();
       const { setGlyphSize } = useFontStore.getState();
-      setGlyphSize(Math.max(50, Math.min(500, gestureStartSizeRef.current * e.scale)));
+      setGlyphSize(Math.max(10, Math.min(500, gestureStartSizeRef.current * e.scale)));
     };
 
     el.addEventListener('mousedown', handleMouseDown);
