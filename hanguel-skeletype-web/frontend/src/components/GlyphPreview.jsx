@@ -36,6 +36,7 @@ export default function GlyphPreview({ large = false }) {
   const containerRef = useRef(null);
   const sizeScaleRef = useRef(1);
   const gestureStartSizeRef = useRef(100); // For Safari GestureEvent
+  const isGesturing = useRef(false); // Prevent wheel+ctrlKey double-zoom in Safari
 
   // Reset pan when preview text changes
   useEffect(() => {
@@ -97,6 +98,8 @@ export default function GlyphPreview({ large = false }) {
     const handleWheel = (e) => {
       if (e.ctrlKey) {
         e.preventDefault();
+        // Skip if Safari is already handling via gesturechange (avoids double-zoom)
+        if (isGesturing.current) return;
         const { setGlyphSize, glyphSize: curSize } = useFontStore.getState();
         // Normalize deltaY by deltaMode (0=pixel, 1=line, 2=page)
         const normalizedDelta = e.deltaMode === 0 ? e.deltaY : e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY * 300;
@@ -109,28 +112,38 @@ export default function GlyphPreview({ large = false }) {
       }
     };
 
-    // Safari GestureEvent handlers (pinch-to-zoom on macOS Safari)
+    // Safari GestureEvent handlers — registered on document so preventDefault fires
+    // before Safari's own page-zoom handler claims the gesture.
     const handleGestureStart = (e) => {
       e.preventDefault();
+      if (!el.contains(e.target) && e.target !== el) return;
+      isGesturing.current = true;
       gestureStartSizeRef.current = useFontStore.getState().glyphSize;
     };
     const handleGestureChange = (e) => {
       e.preventDefault();
+      if (!el.contains(e.target) && e.target !== el) return;
       const { setGlyphSize } = useFontStore.getState();
       setGlyphSize(Math.max(10, Math.min(500, gestureStartSizeRef.current * e.scale)));
+    };
+    const handleGestureEnd = () => {
+      isGesturing.current = false;
     };
 
     el.addEventListener('mousedown', handleMouseDown);
     el.addEventListener('wheel', handleWheel, { passive: false });
-    el.addEventListener('gesturestart', handleGestureStart, { passive: false });
-    el.addEventListener('gesturechange', handleGestureChange, { passive: false });
+    // Gesture listeners on document — prevents Safari from intercepting first
+    document.addEventListener('gesturestart', handleGestureStart, { passive: false });
+    document.addEventListener('gesturechange', handleGestureChange, { passive: false });
+    document.addEventListener('gestureend', handleGestureEnd);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
       el.removeEventListener('mousedown', handleMouseDown);
       el.removeEventListener('wheel', handleWheel);
-      el.removeEventListener('gesturestart', handleGestureStart);
-      el.removeEventListener('gesturechange', handleGestureChange);
+      document.removeEventListener('gesturestart', handleGestureStart);
+      document.removeEventListener('gesturechange', handleGestureChange);
+      document.removeEventListener('gestureend', handleGestureEnd);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -295,6 +308,7 @@ export default function GlyphPreview({ large = false }) {
 
   return (
     <div
+      id="preview-container"
       ref={containerRef}
       className={`flex items-center justify-center h-full w-full relative select-none ${
         showSvg ? 'cursor-grab active:cursor-grabbing' : ''
@@ -306,16 +320,25 @@ export default function GlyphPreview({ large = false }) {
       {/* Background image layer — lowest z-index, sits behind SVG */}
       {backgroundImageParams.enabled && backgroundImageParams.imageUrl && (
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none overflow-hidden"
           style={{
-            backgroundImage: `url(${backgroundImageParams.imageUrl})`,
-            backgroundSize: backgroundImageParams.fit === 'fill' ? '100% 100%' : backgroundImageParams.fit,
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
             opacity: backgroundImageParams.opacity,
             mixBlendMode: backgroundImageParams.blendMode,
           }}
-        />
+        >
+          <img
+            src={backgroundImageParams.imageUrl}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: backgroundImageParams.fit === 'fill' ? 'fill' : backgroundImageParams.fit,
+              transform: `scale(${backgroundImageParams.scale ?? 1.0})`,
+              transformOrigin: 'center center',
+              display: 'block',
+            }}
+          />
+        </div>
       )}
 
       {placeholder ? (

@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useFontStore from '../stores/fontStore';
 import ExtractButton from './ExtractButton';
-import ExportButton from './ExportButton';
-import ExportSVGButton from './ExportSVGButton';
+import ExportMenu from './ExportMenu';
 import FXControls from './FXControls';
 
-function Divider() {
-  return <div className="w-px h-5 bg-gray-400/50 mx-1 shrink-0" />;
+
+function Divider({ className = 'mx-2' }) {
+  return <div className={`w-px h-5 bg-gray-400/50 shrink-0 ${className}`} />;
 }
 
 export default function BottomBar() {
@@ -32,6 +32,8 @@ export default function BottomBar() {
   } = useFontStore();
 
   const bgImageActive = backgroundImageParams.enabled && !!backgroundImageParams.imageUrl;
+  const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
+  const labelCls = 'text-xs text-gray-500';
 
   const [text, setText] = useState('');
   const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'fx'
@@ -107,15 +109,15 @@ export default function BottomBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
-      <div className={`pointer-events-auto rounded-[28px] px-4 py-2 min-h-[52px] flex items-center gap-0 shadow-lg w-[80%] ${
-        bgImageActive ? 'bg-gray-200' : 'bg-gray-200/90 backdrop-blur-md'
+      <div className={`pointer-events-auto rounded-[28px] px-4 py-2 h-[65px] flex items-center gap-0 shadow-lg w-[80%] ${
+        bgImageActive ? 'bg-gray-200' : 'bg-gray-200'
       }`}>
 
         {/* ── Left section: Font name + Tab switcher (fixed) ── */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0 shrink-0">
           <button
             onClick={() => useFontStore.getState().reset()}
-            className="shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium bg-gray-300 text-gray-600 hover:bg-gray-400 rounded-full transition-colors overflow-hidden"
+            className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors overflow-hidden ${chipInactive}`}
             title={fontName || 'Load Font'}
           >
             <span className="block truncate">{fontName || 'Load Font'}</span>
@@ -123,13 +125,11 @@ export default function BottomBar() {
 
           <Divider />
 
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('basic')}
               className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
-                activeTab === 'basic'
-                  ? 'bg-[#0cd0fc] text-white'
-                  : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+                activeTab === 'basic' ? 'bg-[#0cd0fc] text-white' : chipInactive
               }`}
             >
               Basic
@@ -137,9 +137,7 @@ export default function BottomBar() {
             <button
               onClick={() => setActiveTab('fx')}
               className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
-                activeTab === 'fx'
-                  ? 'bg-[#0cd0fc] text-white'
-                  : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+                activeTab === 'fx' ? 'bg-[#0cd0fc] text-white' : chipInactive
               }`}
             >
               FX
@@ -149,7 +147,7 @@ export default function BottomBar() {
 
         {/* ── Center section: tab-dependent content (flexible) ── */}
         <Divider />
-        <div className="flex items-center gap-1 flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide">
 
           {/* Basic Tab Controls */}
           {activeTab === 'basic' && (
@@ -164,15 +162,13 @@ export default function BottomBar() {
                 className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none leading-relaxed"
               />
 
-              <Divider />
+              <Divider className="mx-0" />
 
               {/* Show Flesh */}
               <button
                 onClick={() => setShowFlesh(!showFlesh)}
                 className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                  showFlesh
-                    ? 'bg-[#0cd0fc] text-white'
-                    : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+                  showFlesh ? 'bg-[#0cd0fc] text-white' : chipInactive
                 }`}
               >
                 Flesh
@@ -181,7 +177,7 @@ export default function BottomBar() {
               {/* Text Alignment */}
               <button
                 onClick={cycleTextAlign}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${chipInactive}`}
                 title={`정렬: ${textAlign}`}
               >
                 <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
@@ -208,8 +204,8 @@ export default function BottomBar() {
               </button>
 
               {/* Text Size */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">Sz</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={labelCls}>Sz</span>
                 <input
                   type="range"
                   min={0.25}
@@ -222,8 +218,8 @@ export default function BottomBar() {
               </div>
 
               {/* Stroke Width */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">Stroke</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={labelCls}>Stroke</span>
                 <input
                   type="range"
                   min={0}
@@ -248,8 +244,8 @@ export default function BottomBar() {
               </select>
 
               {/* Centerline Color */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">C</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={labelCls}>C</span>
                 <input
                   type="color"
                   value={strokeParams.centerlineColor}
@@ -261,8 +257,8 @@ export default function BottomBar() {
               </div>
 
               {/* Stroke Color */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">S</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={labelCls}>S</span>
                 <input
                   type="color"
                   value={strokeParams.strokeColor}
@@ -274,8 +270,8 @@ export default function BottomBar() {
               </div>
 
               {/* Background Color */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-gray-500">BG</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={labelCls}>BG</span>
                 <input
                   type="color"
                   value={bgColor}
@@ -294,10 +290,9 @@ export default function BottomBar() {
         <Divider />
 
         {/* ── Right section: Extract + Export (fixed) ── */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <ExtractButton inline />
-          <ExportSVGButton inline />
-          <ExportButton inline />
+          <ExportMenu />
         </div>
       </div>
     </div>

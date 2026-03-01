@@ -92,6 +92,23 @@ export default function BackgroundImageControls() {
         </span>
       </div>
 
+      {/* Scale */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400 w-12">Scale</span>
+        <input
+          type="range"
+          min={0.1}
+          max={3.0}
+          step={0.01}
+          value={backgroundImageParams.scale ?? 1.0}
+          onChange={(e) => set({ scale: +e.target.value })}
+          className="flex-1 h-1 slider-dark appearance-none bg-transparent"
+        />
+        <span className="text-xs text-gray-500 w-8 text-right">
+          {Math.round((backgroundImageParams.scale ?? 1.0) * 100)}%
+        </span>
+      </div>
+
       {/* Fit mode */}
       <div className="flex items-center gap-1">
         <span className="text-xs text-gray-400 w-12">Fit</span>
