@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # 배포 후 실제 도메인으로 교체 (필요 시)
+      - ALLOWED_ORIGINS=
+    # 임시 파일용 볼륨 (컨테이너 재시작 시 세션 유지)
+    volumes:
+      - skeletype-tmp:/tmp/skeletype-web
+
+volumes:
+  skeletype-tmp:
