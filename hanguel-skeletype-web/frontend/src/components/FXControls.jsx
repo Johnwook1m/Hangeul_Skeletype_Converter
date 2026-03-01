@@ -19,6 +19,8 @@ export default function FXControls() {
     backgroundImageParams, toggleBackgroundImage, resetBackgroundImage,
   } = useFontStore();
 
+  const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
+
   const [showConnPopover, setShowConnPopover] = useState(false);
   const [showBranchPopover, setShowBranchPopover] = useState(false);
   const [showDecoratorPopover, setShowDecoratorPopover] = useState(false);
@@ -121,9 +123,9 @@ export default function FXControls() {
   }
 
   return (
-    <div className="relative flex items-center gap-1 min-h-[52px] justify-start">
+    <div className="relative flex items-center gap-1.5 justify-start">
       {/* X-Scale */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <span className="text-xs text-gray-500">X</span>
         <input
           type="range"
@@ -137,7 +139,7 @@ export default function FXControls() {
       </div>
 
       {/* Y-Scale */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <span className="text-xs text-gray-500">Y</span>
         <input
           type="range"
@@ -157,7 +159,7 @@ export default function FXControls() {
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             connectionParams.enabled
               ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+              : chipInactive
           }`}
           title={connectionParams.enabled ? (showConnPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
@@ -171,27 +173,6 @@ export default function FXControls() {
         )}
       </div>
 
-      {/* Branch */}
-      <div className="relative shrink-0">
-        <button
-          onClick={handleBranchClick}
-          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-            branchParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
-          }`}
-          title={branchParams.enabled ? (showBranchPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
-        >
-          Branch
-        </button>
-
-        {showBranchPopover && branchParams.enabled && (
-          <EffectPopover onClose={closeBranchPopover}>
-            <BranchControls />
-          </EffectPopover>
-        )}
-      </div>
-
       {/* Decorator */}
       <div className="relative shrink-0">
         <button
@@ -199,7 +180,7 @@ export default function FXControls() {
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             decoratorParams.enabled
               ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+              : chipInactive
           }`}
           title={decoratorParams.enabled ? (showDecoratorPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
@@ -213,6 +194,27 @@ export default function FXControls() {
         )}
       </div>
 
+      {/* Branch */}
+      <div className="relative shrink-0">
+        <button
+          onClick={handleBranchClick}
+          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+            branchParams.enabled
+              ? 'bg-[#0cd0fc] text-white'
+              : chipInactive
+          }`}
+          title={branchParams.enabled ? (showBranchPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
+        >
+          Branch
+        </button>
+
+        {showBranchPopover && branchParams.enabled && (
+          <EffectPopover onClose={closeBranchPopover}>
+            <BranchControls />
+          </EffectPopover>
+        )}
+      </div>
+
       {/* Offset Path */}
       <div className="relative shrink-0">
         <button
@@ -220,7 +222,7 @@ export default function FXControls() {
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             offsetPathParams.enabled
               ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+              : chipInactive
           }`}
           title={offsetPathParams.enabled ? (showOffsetPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
@@ -241,7 +243,7 @@ export default function FXControls() {
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             slantParams.enabled
               ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+              : chipInactive
           }`}
           title={slantParams.enabled ? (showSlantPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
@@ -262,11 +264,11 @@ export default function FXControls() {
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             backgroundImageParams.enabled
               ? 'bg-[#0cd0fc] text-white'
-              : 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+              : chipInactive
           }`}
           title={backgroundImageParams.enabled ? (showBgPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
-          BG
+          Image
         </button>
 
         {showBgPopover && backgroundImageParams.enabled && (

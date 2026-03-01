@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import useFontStore from '../stores/fontStore';
 import { exportFont } from '../api/client';
+import EffectPopover from './effects/EffectPopover';
 
-// ── JPG helpers ────────────────────────────────────────────────────────────
+// ── JPG helpers ──────────────────────────────────────────────────────────────
 const BLEND_MAP = {
   normal: 'source-over', multiply: 'multiply', screen: 'screen',
   overlay: 'overlay', 'soft-light': 'soft-light', 'hard-light': 'hard-light',
@@ -16,8 +17,7 @@ async function drawBackgroundImage(ctx, bgParams, w, h) {
   await new Promise((res) => { img.onload = res; img.onerror = res; });
   const scale = bgParams.scale ?? 1.0;
   const fit = bgParams.fit;
-  const ia = img.width / img.height;
-  const ca = w / h;
+  const ia = img.width / img.height, ca = w / h;
   let dw, dh;
   if (fit === 'cover') {
     if (ia > ca) { dh = h; dw = dh * ia; } else { dw = w; dh = dw / ia; }
@@ -40,7 +40,7 @@ async function drawSVGToCanvas(ctx, svgEl, w, h) {
   clone.removeAttribute('class');
   const t = svgEl.style.transform || '';
   const txM = t.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-  const sM = t.match(/scale\(([^)]+)\)/);
+  const sM  = t.match(/scale\(([^)]+)\)/);
   const tx = txM ? parseFloat(txM[1]) : 0;
   const ty = txM ? parseFloat(txM[2]) : 0;
   const s  = sM  ? parseFloat(sM[1])  : 1;
@@ -64,27 +64,17 @@ async function drawSVGToCanvas(ctx, svgEl, w, h) {
   }
 }
 
-// ── Component ───────────────────────────────────────────────────────────────
+// ── Component ────────────────────────────────────────────────────────────────
 export default function ExportMenu() {
   const { fontId, fontName, strokeParams, centerlines, previewText } = useFontStore();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(null); // 'svg' | 'jpg' | 'otf'
-  const menuRef = useRef(null);
 
   const canExport = Object.keys(centerlines).length > 0;
+  const closePopover = useCallback(() => setOpen(false), []);
 
-  // Close when clicking outside
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [open]);
-
-  // ── SVG export ────────────────────────────────────
-  function exportSVG() {
+  // ── SVG ────────────────────────────────────────────────────────────────────
+  function handleSVG() {
     const svgEl = document.getElementById('skeletype-preview-svg');
     if (!svgEl) return;
     const clone = svgEl.cloneNode(true);
@@ -101,8 +91,8 @@ export default function ExportMenu() {
     setOpen(false);
   }
 
-  // ── JPG export ────────────────────────────────────
-  async function exportJPG() {
+  // ── JPG ────────────────────────────────────────────────────────────────────
+  async function handleJPG() {
     const containerEl = document.getElementById('preview-container');
     const svgEl = document.getElementById('skeletype-preview-svg');
     if (!containerEl) return;
@@ -131,8 +121,8 @@ export default function ExportMenu() {
     }
   }
 
-  // ── OTF export ────────────────────────────────────
-  async function exportOTF() {
+  // ── OTF ────────────────────────────────────────────────────────────────────
+  async function handleOTF() {
     if (!fontId) return;
     setLoading('otf');
     try {
@@ -155,49 +145,65 @@ export default function ExportMenu() {
   if (!canExport) return null;
 
   return (
-    <div ref={menuRef} className="relative shrink-0">
+    <div className="relative shrink-0" data-fx-button>
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={!!loading}
-        className="px-3 py-1.5 text-xs font-medium bg-gray-800 text-white rounded-full hover:bg-gray-700 disabled:opacity-50 transition-colors"
+        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors disabled:opacity-50 ${
+          open ? 'bg-[#0cd0fc] text-white' : 'bg-gray-800 text-white hover:bg-gray-700'
+        }`}
       >
-        {loading ? '...' : 'Export ▴'}
+        {loading ? '...' : 'Export'}
       </button>
 
       {open && (
-        <div className="absolute bottom-full mb-2 right-0 bg-[#1e2027] rounded-xl shadow-xl overflow-hidden min-w-[140px] border border-gray-700">
-          {/* SVG */}
-          <button
-            onClick={exportSVG}
-            className="w-full text-left px-4 py-2.5 text-xs text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-2"
-          >
-            <span className="w-8 text-gray-400 font-mono">SVG</span>
-            <span>Vector export</span>
-          </button>
+        <EffectPopover onClose={closePopover}>
+          <h3 className="text-xs font-medium text-gray-300 uppercase tracking-wider mb-3">Export</h3>
 
-          <div className="h-px bg-gray-700 mx-3" />
+          <div className="space-y-1">
+            {/* SVG */}
+            <button
+              onClick={handleSVG}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
+            >
+              <span className="text-xs font-mono font-semibold text-[#0cd0fc] w-8">SVG</span>
+              <div>
+                <p className="text-xs font-medium text-gray-200">Vector export</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">중심선 벡터 파일</p>
+              </div>
+            </button>
 
-          {/* JPG */}
-          <button
-            onClick={exportJPG}
-            disabled={!previewText}
-            className="w-full text-left px-4 py-2.5 text-xs text-gray-200 hover:bg-gray-700 disabled:opacity-40 transition-colors flex items-center gap-2"
-          >
-            <span className="w-8 text-gray-400 font-mono">JPG</span>
-            <span>Screen capture</span>
-          </button>
+            {/* JPG */}
+            <button
+              onClick={handleJPG}
+              disabled={!previewText || loading === 'jpg'}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 disabled:opacity-40 transition-colors text-left"
+            >
+              <span className="text-xs font-mono font-semibold text-[#0cd0fc] w-8">JPG</span>
+              <div>
+                <p className="text-xs font-medium text-gray-200">
+                  {loading === 'jpg' ? '저장 중...' : 'Screen capture'}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">현재 화면 그대로</p>
+              </div>
+            </button>
 
-          <div className="h-px bg-gray-700 mx-3" />
-
-          {/* OTF */}
-          <button
-            onClick={exportOTF}
-            className="w-full text-left px-4 py-2.5 text-xs text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-2"
-          >
-            <span className="w-8 text-gray-400 font-mono">OTF</span>
-            <span>Font export</span>
-          </button>
-        </div>
+            {/* OTF */}
+            <button
+              onClick={handleOTF}
+              disabled={loading === 'otf'}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 disabled:opacity-40 transition-colors text-left"
+            >
+              <span className="text-xs font-mono font-semibold text-[#0cd0fc] w-8">OTF</span>
+              <div>
+                <p className="text-xs font-medium text-gray-200">
+                  {loading === 'otf' ? '생성 중...' : 'Font export'}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">스켈레톤 폰트 파일</p>
+              </div>
+            </button>
+          </div>
+        </EffectPopover>
       )}
     </div>
   );
