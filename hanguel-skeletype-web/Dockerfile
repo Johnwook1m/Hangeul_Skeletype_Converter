@@ -21,7 +21,11 @@ RUN apt-get update && apt-get install -y \
 
 RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrace && \
     cd /src/autotrace && \
-    autoreconf -i && \
+    # Remove gettext/i18n macros so autoreconf skips autopoint (not needed for our use case)
+    sed -i '/AM_GNU_GETTEXT/d' configure.ac && \
+    sed -i '/^SUBDIRS/ s/ *\bpo\b//' Makefile.am 2>/dev/null || true && \
+    rm -rf po/ && \
+    autoreconf -i --install --force && \
     ./configure --prefix=/usr/local && \
     make -j$(nproc) && \
     make install
