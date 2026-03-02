@@ -127,7 +127,7 @@ export default function ExportMenu() {
     setLoading('otf');
     try {
       const blob = await exportFont(fontId, {
-        stroke_width: strokeParams.width,
+        stroke_width: strokeParams.width + 1,
         stroke_cap: strokeParams.cap,
         stroke_join: strokeParams.join,
         format: 'otf',

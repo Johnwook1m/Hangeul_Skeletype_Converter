@@ -432,6 +432,17 @@ def create_fontforge_glyph_svg(
     advance_width = centerline_data.get("advance_width", units_per_em)
     ascender = centerline_data.get("ascender")
 
+    # FontForge SVG import uses: font_y = ascender - svg_y
+    # Our y_down transform already produces svg_y=0 at the ascender,
+    # so no additional offset is needed.
+    #
+    # SVG canvas height must equal font_height (= ascender + |descender|),
+    # NOT units_per_em. For fonts like Noto Sans KR where
+    # usWinAscent + usWinDescent > UPM, path y-coordinates can exceed UPM.
+    # Setting height=font_height keeps all paths within the SVG canvas so
+    # FontForge does not clip them.
+    font_height = centerline_data.get("font_height", units_per_em)
+
     path_elements = []
     for path_d in paths:
         transformed = transform_path_to_font_units(
@@ -446,7 +457,7 @@ def create_fontforge_glyph_svg(
     return (
         f'<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<svg xmlns="http://www.w3.org/2000/svg"'
-        f' width="{advance_width}" height="{units_per_em}">\n'
+        f' width="{advance_width}" height="{font_height}">\n'
         f'{paths_str}\n'
         f'</svg>'
     )

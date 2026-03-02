@@ -16,6 +16,8 @@ _GENERATE_SCRIPT = '''
 import fontforge
 import json
 import sys
+import os
+import traceback
 
 args = json.loads(sys.argv[1])
 original_font_path = args["original_font_path"]
@@ -26,6 +28,9 @@ family_suffix = args.get("family_suffix", "Skeletype")
 stroke_width = args["stroke_width"]
 stroke_cap = args["stroke_cap"]
 stroke_join = args["stroke_join"]
+
+print(f"stroke_width={stroke_width}, cap={stroke_cap}, join={stroke_join}")
+print(f"FontForge version: {fontforge.version()}")
 
 # Open original font for metrics
 original = fontforge.open(original_font_path)
@@ -48,12 +53,42 @@ new_font.em = original.em
 new_font.ascent = original.ascent
 new_font.descent = original.descent
 
+def apply_stroke(glyph, width, cap, join):
+    """Try stroke expansion with fallbacks for different FontForge versions."""
+    # Try full-args form first
+    try:
+        glyph.stroke("circular", width, cap, join)
+        return True
+    except Exception as e1:
+        print(f"  stroke(circular, w, cap, join) failed: {e1}")
+
+    # Fallback: basic form without cap/join
+    try:
+        glyph.stroke("circular", width)
+        return True
+    except Exception as e2:
+        print(f"  stroke(circular, w) failed: {e2}")
+
+    # Fallback: caligraphic nib
+    try:
+        glyph.stroke("caligraphic", width, width, 0)
+        return True
+    except Exception as e3:
+        print(f"  stroke(caligraphic) failed: {e3}")
+
+    return False
+
 # Process each glyph
 processed = 0
 for glyph_name, glyph_info in glyph_mapping.items():
     svg_file = glyph_info["svg"]
     codepoint = glyph_info["codepoint"]
     try:
+        # Verify SVG file exists
+        if not os.path.exists(svg_file):
+            print(f"SVG missing: {svg_file}")
+            continue
+
         # Look up original glyph by unicode codepoint
         orig_glyph = unicode_map.get(codepoint)
         if orig_glyph is None:
@@ -65,17 +100,36 @@ for glyph_name, glyph_info in glyph_mapping.items():
         # Import centerline SVG
         new_glyph.importOutlines(svg_file)
 
+        # Check contour count after import
+        contour_count = sum(len(layer) for layer in new_glyph.layers)
+        if contour_count == 0:
+            print(f"  {glyph_name}: importOutlines produced 0 contours — SVG may be empty or invalid")
+            continue
+        print(f"  {glyph_name}: {contour_count} contour(s) imported")
+
         # Apply stroke expansion (single-line -> filled outline)
-        new_glyph.stroke("circular", stroke_width, stroke_cap, stroke_join)
+        ok = apply_stroke(new_glyph, stroke_width, stroke_cap, stroke_join)
+        if not ok:
+            print(f"  {glyph_name}: all stroke() attempts failed — skipping")
+            continue
+
         new_glyph.removeOverlap()
         new_glyph.correctDirection()
+
+        # Verify contours survived
+        after_count = sum(len(layer) for layer in new_glyph.layers)
+        if after_count == 0:
+            print(f"  {glyph_name}: 0 contours after stroke/removeOverlap — stroke_width may be too small ({stroke_width})")
+            # Keep the glyph anyway (width is correct, just empty outline)
 
         # Copy width from original
         new_glyph.width = orig_glyph.width
         processed += 1
+        print(f"  {glyph_name}: done ({after_count} contour(s) after expand)")
 
     except Exception as e:
         print(f"Error processing {glyph_name} (U+{codepoint:04X}): {e}")
+        traceback.print_exc()
         continue
 
 print(f"Processed {processed}/{len(glyph_mapping)} glyphs")
@@ -141,9 +195,11 @@ def generate_font(
         )
 
         if result.stdout:
-            print(f"FontForge stdout: {result.stdout}")
+            print(f"FontForge stdout:\n{result.stdout}")
+        if result.stderr:
+            print(f"FontForge stderr:\n{result.stderr}")
         if result.returncode != 0:
-            print(f"Font generation failed (rc={result.returncode}): {result.stderr}")
+            print(f"Font generation failed (rc={result.returncode})")
             return False
 
         return output_path.exists()
