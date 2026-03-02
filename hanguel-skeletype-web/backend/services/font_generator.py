@@ -139,13 +139,31 @@ print(f"Processed {processed}/{len(glyph_mapping)} glyphs")
 # Add space glyph (no outline, just advance width) from original font
 SPACE_CP = 0x0020
 space_in_mapping = any(info.get("codepoint") == SPACE_CP for info in glyph_mapping.values())
-if not space_in_mapping and SPACE_CP in unicode_map:
-    orig_space = unicode_map[SPACE_CP]
-    space_glyph = new_font.createChar(SPACE_CP, orig_space.glyphname)
-    space_glyph.width = orig_space.width
-    print(f"  space: added (width={orig_space.width})")
+print(f"  space: space_in_mapping={space_in_mapping}, 0x0020 in unicode_map={SPACE_CP in unicode_map}")
+if not space_in_mapping:
+    if SPACE_CP in unicode_map:
+        orig_space = unicode_map[SPACE_CP]
+        space_glyph = new_font.createChar(SPACE_CP, "space")
+        space_glyph.width = orig_space.width
+        print(f"  space: added via unicode_map (width={orig_space.width})")
+    else:
+        # CID fonts may not populate unicode_map for space — search by glyph name
+        space_found = False
+        for g in original.glyphs():
+            if g.glyphname in ('space', 'uni0020') or g.unicode == SPACE_CP:
+                w = g.width if g.width > 0 else int(new_font.em * 0.25)
+                space_glyph = new_font.createChar(SPACE_CP, "space")
+                space_glyph.width = w
+                print(f"  space: added via name search '{g.glyphname}' (width={w})")
+                space_found = True
+                break
+        if not space_found:
+            default_width = int(new_font.em * 0.25)
+            space_glyph = new_font.createChar(SPACE_CP, "space")
+            space_glyph.width = default_width
+            print(f"  space: added with default width {default_width} (not found in original)")
 else:
-    print("  space: already in mapping or not in original font")
+    print("  space: already in glyph mapping")
 
 # Generate font
 new_font.generate(output_path)
