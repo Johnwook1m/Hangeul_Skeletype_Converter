@@ -104,38 +104,42 @@ for glyph_name, glyph_info in glyph_mapping.items():
         # Import centerline SVG
         new_glyph.importOutlines(svg_file)
 
-        # Close near-circular open contours at the FontForge level.
-        # Autotrace may output ㅇ circles as open paths (no Z / gap > SVG tolerance).
-        # FontForge strokes open paths into 1 solid contour; closed paths yield
-        # 2 concentric contours → hollow ring after correctDirection().
-        # Criteria: open, ≥8 points, roughly square bbox (not an elongated stroke),
-        # bbox > 80 fu, endpoints within 100 fu.
+        # Close open loop contours at the FontForge level.
+        # Applies to both circular paths (ㅇ) and D-shaped counter paths (B, O, P…).
+        # FontForge strokes OPEN paths into 1 solid contour; CLOSED paths produce
+        # 2 concentric contours → hollow after correctDirection().
+        #
+        # Detection criteria (no endpoint distance check needed):
+        #   • ≥12 total points in the contour
+        #   • ≥4 on-curve endpoints
+        #   • ≥8 off-curve (Bézier control) points → primarily curved, not straight lines
+        #     (this excludes ㄷ/ㄱ-style strokes which are mostly straight)
+        #   • bbox > 80 fu in both dimensions (not a tiny mark)
+        #   • aspect ratio < 2.0 → roughly equidimensional (not an elongated stroke)
         try:
             fore = new_glyph.foreground
             circ_fixed = 0
             for i, c in enumerate(fore):
-                if c.closed or len(c) < 8:
+                if c.closed or len(c) < 12:
                     continue
                 on_pts = [(p.x, p.y) for p in c if p.on_curve]
-                if len(on_pts) < 4:
+                off_pt_count = len(c) - len(on_pts)
+                if len(on_pts) < 4 or off_pt_count < 8:
                     continue
                 xs = [p[0] for p in on_pts]
                 ys = [p[1] for p in on_pts]
                 w = max(xs) - min(xs)
                 h = max(ys) - min(ys)
-                dx = abs(on_pts[0][0] - on_pts[-1][0])
-                dy = abs(on_pts[0][1] - on_pts[-1][1])
                 short = min(w, h)
                 long_ = max(w, h)
                 if (w > 80 and h > 80
-                        and (long_ / max(short, 1)) < 2.5
-                        and dx <= 100 and dy <= 100):
+                        and (long_ / max(short, 1)) < 2.0):
                     c.closed = True
                     fore[i] = c
                     circ_fixed += 1
             if circ_fixed:
                 new_glyph.foreground = fore
-                print(f"  {glyph_name}: closed {circ_fixed} near-circular contour(s)")
+                print(f"  {glyph_name}: closed {circ_fixed} open loop contour(s)")
         except Exception as e:
             print(f"  {glyph_name}: fix_circular error: {e}")
 
