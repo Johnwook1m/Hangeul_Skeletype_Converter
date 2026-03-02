@@ -55,5 +55,8 @@ if _DIST.exists():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        """Return index.html for any non-API route (SPA client-side routing)."""
+        """Serve static files from dist/, or fall back to index.html for SPA routing."""
+        file_path = (_DIST / full_path).resolve()
+        if file_path.is_file() and file_path.is_relative_to(_DIST.resolve()):
+            return FileResponse(file_path)
         return FileResponse(_DIST / "index.html")

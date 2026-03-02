@@ -330,12 +330,13 @@ export default function GlyphPreview({ large = false }) {
             src={backgroundImageParams.imageUrl}
             alt=""
             style={{
-              width: '100%',
-              height: '100%',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: `${(backgroundImageParams.scale ?? 1.0) * 100}%`,
+              height: `${(backgroundImageParams.scale ?? 1.0) * 100}%`,
               objectFit: backgroundImageParams.fit === 'fill' ? 'fill' : backgroundImageParams.fit,
-              transform: `scale(${backgroundImageParams.scale ?? 1.0})`,
-              transformOrigin: 'center center',
-              display: 'block',
             }}
           />
         </div>
