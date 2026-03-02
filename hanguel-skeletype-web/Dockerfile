@@ -9,8 +9,10 @@ RUN npm run build
 
 
 # ── Stage 2: Build autotrace from source ─────────────────────────────────────
-# autotrace was removed from Debian/Ubuntu repos; build from GitHub source
-FROM --platform=linux/amd64 debian:bullseye-slim AS autotrace-builder
+# Use ubuntu:22.04 (not slim) so /usr/share/gettext data files are available for autopoint
+FROM --platform=linux/amd64 ubuntu:22.04 AS autotrace-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     build-essential git ca-certificates autoconf automake libtool pkg-config gettext \
