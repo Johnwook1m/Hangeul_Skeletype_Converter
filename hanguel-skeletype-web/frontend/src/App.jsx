@@ -3,7 +3,7 @@ import GlyphPreview from './components/GlyphPreview';
 import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';
 import useFontStore from './stores/fontStore';
-import { uploadFont, getGlyphs, extractCenterlines } from './api/client';
+import { uploadFont, getGlyphs } from './api/client';
 import './index.css';
 
 const DEMO_TEXT = 'Upload a font first\n폰트를 먼저 업로드하세요\n@skele.type';
@@ -28,52 +28,16 @@ async function loadDemoFont() {
     store.clearGlyphSelection();
     store.selectGlyphsByText(DEMO_TEXT);
 
-    const glyphNames = Array.from(useFontStore.getState().selectedGlyphs);
-    if (glyphNames.length === 0) return;
-
-    store.setExtractionStatus({
-      status: 'running',
-      current: 0,
-      total: glyphNames.length,
-      currentGlyph: '',
-      errors: [],
-    });
-
-    const stream = await extractCenterlines(data.font_id, glyphNames, false);
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const text = decoder.decode(value);
-      const lines = text.split('\n').filter(l => l.startsWith('data: '));
-      for (const line of lines) {
-        try {
-          const event = JSON.parse(line.slice(6));
-          if (event.type === 'progress') {
-            store.setExtractionStatus({ current: event.index, currentGlyph: event.glyph });
-          } else if (event.type === 'complete') {
-            store.setExtractionStatus({ current: event.index, currentGlyph: event.glyph });
-            store.setCenterline(event.glyph, {
-              paths: event.paths,
-              view_box: event.view_box,
-              glyph_height: event.glyph_height,
-              glyph_width: event.glyph_width,
-              advance_width: event.advance_width,
-              raster_scale: event.raster_scale,
-              bounds: event.bounds,
-              outline: event.outline,
-              ascender: event.ascender,
-              descender: event.descender,
-              font_height: event.font_height,
-            });
-          } else if (event.type === 'done') {
-            store.setExtractionStatus({ status: 'done', current: event.success, total: event.total });
-          }
-        } catch {}
-      }
+    // Load pre-computed centerlines from static JSON (fast path for demo)
+    const clRes = await fetch('/demo-centerlines.json');
+    if (!clRes.ok) return;
+    const clData = await clRes.json();
+    const entries = Object.entries(clData);
+    store.setExtractionStatus({ status: 'running', current: 0, total: entries.length, currentGlyph: '', errors: [] });
+    for (const [glyphName, centerlineData] of entries) {
+      store.setCenterline(glyphName, centerlineData);
     }
+    store.setExtractionStatus({ status: 'done', current: entries.length, total: entries.length });
   } catch (err) {
     console.error('Demo font initialization failed:', err);
   }
