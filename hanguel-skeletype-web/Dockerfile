@@ -29,7 +29,9 @@ RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrac
     sed -i '/AM_GNU_GETTEXT/d' configure.ac && \
     sed -i '/IT_PROG_INTLTOOL/d' configure.ac && \
     sed -i '/^SUBDIRS/ s/ *\bpo\b//' Makefile.am 2>/dev/null || true && \
-    mkdir -p po && touch po/POTFILES.in && \
+    mkdir -p po && touch po/POTFILES.in po/Makefile.in.in && \
+    # Remove po/Makefile reference from configure.ac to avoid missing input file error
+    sed -i '/po\/Makefile/d' configure.ac && \
     # Create fake pstoedit.pc so pkg-config can find it (pstoedit on Debian has no .pc file)
     mkdir -p /usr/local/lib/pkgconfig && \
     printf 'Name: pstoedit\nDescription: pstoedit\nVersion: 3.75\nLibs: -lpstoedit\nCflags: \n' \
