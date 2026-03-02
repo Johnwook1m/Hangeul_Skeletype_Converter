@@ -104,6 +104,41 @@ for glyph_name, glyph_info in glyph_mapping.items():
         # Import centerline SVG
         new_glyph.importOutlines(svg_file)
 
+        # Close near-circular open contours at the FontForge level.
+        # Autotrace may output ㅇ circles as open paths (no Z / gap > SVG tolerance).
+        # FontForge strokes open paths into 1 solid contour; closed paths yield
+        # 2 concentric contours → hollow ring after correctDirection().
+        # Criteria: open, ≥8 points, roughly square bbox (not an elongated stroke),
+        # bbox > 80 fu, endpoints within 100 fu.
+        try:
+            fore = new_glyph.foreground
+            circ_fixed = 0
+            for i, c in enumerate(fore):
+                if c.closed or len(c) < 8:
+                    continue
+                on_pts = [(p.x, p.y) for p in c if p.on_curve]
+                if len(on_pts) < 4:
+                    continue
+                xs = [p[0] for p in on_pts]
+                ys = [p[1] for p in on_pts]
+                w = max(xs) - min(xs)
+                h = max(ys) - min(ys)
+                dx = abs(on_pts[0][0] - on_pts[-1][0])
+                dy = abs(on_pts[0][1] - on_pts[-1][1])
+                short = min(w, h)
+                long_ = max(w, h)
+                if (w > 80 and h > 80
+                        and (long_ / max(short, 1)) < 2.5
+                        and dx <= 100 and dy <= 100):
+                    c.closed = True
+                    fore[i] = c
+                    circ_fixed += 1
+            if circ_fixed:
+                new_glyph.foreground = fore
+                print(f"  {glyph_name}: closed {circ_fixed} near-circular contour(s)")
+        except Exception as e:
+            print(f"  {glyph_name}: fix_circular error: {e}")
+
         # Check contour count after import
         contour_count = sum(len(layer) for layer in new_glyph.layers)
         if contour_count == 0:

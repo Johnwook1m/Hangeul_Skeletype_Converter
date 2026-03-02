@@ -421,8 +421,14 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
         return d
     mx, my = float(first_m.group(1)), float(first_m.group(2))
     lx, ly = float(nums[-2]), float(nums[-1])
-    if abs(mx - lx) <= tolerance and abs(my - ly) <= tolerance:
+    dx, dy = abs(mx - lx), abs(my - ly)
+    if dx <= tolerance and dy <= tolerance:
+        print(f"  [close_circular] Z added: gap=({dx:.1f},{dy:.1f})")
         return d + ' Z'
+    # Log complex paths that were NOT closed so we can tune tolerance
+    c_count = d.upper().count('C')
+    if c_count >= 6:
+        print(f"  [close_circular] skipped: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), tol={tolerance}")
     return d
 
 
