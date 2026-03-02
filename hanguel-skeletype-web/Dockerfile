@@ -42,14 +42,13 @@ RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrac
 
 
 # ── Stage 3: Production image ─────────────────────────────────────────────────
-FROM --platform=linux/amd64 debian:bullseye-slim
+FROM --platform=linux/amd64 python:3.11-slim-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip \
     imagemagick \
     fontforge \
     pstoedit \
