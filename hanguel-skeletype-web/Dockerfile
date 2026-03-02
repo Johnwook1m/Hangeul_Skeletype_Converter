@@ -9,8 +9,9 @@ RUN npm run build
 
 
 # ── Stage 2: Build autotrace from source ─────────────────────────────────────
-# Use ubuntu:22.04 (not slim) so /usr/share/gettext data files are available for autopoint
-FROM --platform=linux/amd64 ubuntu:22.04 AS autotrace-builder
+# Use debian:bullseye (full, not slim): /usr/share/gettext/ intact → autopoint works,
+# ImageMagick 6 → pkg-config name is "MagickWand" matching autotrace's configure check
+FROM --platform=linux/amd64 debian:bullseye AS autotrace-builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
