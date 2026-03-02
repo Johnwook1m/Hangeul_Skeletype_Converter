@@ -25,7 +25,7 @@ RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrac
     sed -i '/AM_GNU_GETTEXT/d' configure.ac && \
     sed -i '/IT_PROG_INTLTOOL/d' configure.ac && \
     sed -i '/^SUBDIRS/ s/ *\bpo\b//' Makefile.am 2>/dev/null || true && \
-    rm -rf po/ && \
+    mkdir -p po && touch po/POTFILES.in && \
     autoreconf -i --install --force && \
     ./configure --prefix=/usr/local && \
     make -j$(nproc) && \
