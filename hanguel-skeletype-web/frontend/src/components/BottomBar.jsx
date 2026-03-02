@@ -10,9 +10,10 @@ function Divider({ className = 'mx-2' }) {
   return <div className={`w-px h-5 bg-gray-400/50 shrink-0 ${className}`} />;
 }
 
-function FontChipButton({ children, className, ...props }) {
+function FontChipButton({ children, hoverLabel, className, ...props }) {
   const ref = useRef(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -26,7 +27,13 @@ function FontChipButton({ children, className, ...props }) {
   }, []);
 
   return (
-    <button ref={ref} className={`font-chip relative ${className}`} {...props}>
+    <button
+      ref={ref}
+      className={`font-chip relative ${className}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      {...props}
+    >
       {dim.w > 0 && (
         <svg
           style={{
@@ -44,7 +51,7 @@ function FontChipButton({ children, className, ...props }) {
           />
         </svg>
       )}
-      {children}
+      {hovered && hoverLabel ? hoverLabel : children}
     </button>
   );
 }
@@ -75,6 +82,7 @@ export default function BottomBar() {
   } = useFontStore();
 
   const uploadFileRef = useRef(null);
+  const extractRef = useRef(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
@@ -200,8 +208,8 @@ export default function BottomBar() {
           ) : (
             <FontChipButton
               onClick={() => uploadFileRef.current?.click()}
+              hoverLabel="Upload Font"
               className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${chipInactive}`}
-              title="클릭하여 다른 폰트 업로드"
             >
               <span className="block truncate">{fontName}</span>
             </FontChipButton>
@@ -243,6 +251,12 @@ export default function BottomBar() {
                 rows={2}
                 value={text}
                 onChange={(e) => handleTextChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    extractRef.current?.();
+                  }
+                }}
                 placeholder={!fontId ? 'Upload a font first' : 'Type text'}
                 disabled={!hasGlyphs}
                 className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none leading-relaxed"
@@ -377,7 +391,7 @@ export default function BottomBar() {
 
         {/* ── Right section: Extract + Export ── */}
         <div className={`flex items-center gap-2 shrink-0 ${!fontId ? 'pointer-events-none' : ''}`}>
-          <ExtractButton inline />
+          <ExtractButton inline extractRef={extractRef} />
           <ExportMenu />
         </div>
       </div>

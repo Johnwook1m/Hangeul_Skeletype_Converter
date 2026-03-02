@@ -287,7 +287,7 @@ export default function GlyphPreview({ large = false }) {
   let placeholder = null;
   if (!previewText) {
     placeholder = glyphs.length > 0 ? (
-      <p className="text-lg font-light text-gray-500">하단 메뉴에서 문구를 입력하세요</p>
+      <p className="text-[15px] text-gray-500">하단 메뉴에서 문구를 입력하세요</p>
     ) : null;
   } else if (glyphList.length === 0) {
     placeholder = (
@@ -352,6 +352,7 @@ export default function GlyphPreview({ large = false }) {
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${sizeScale})`,
               transformOrigin: 'center center',
+              overflow: 'visible',
             }}
             preserveAspectRatio="xMidYMid meet"
           >
@@ -407,7 +408,7 @@ export default function GlyphPreview({ large = false }) {
               const slantAngle = slantParams.enabled ? slantParams.angle : 0;
               const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
               const scaleTransform = needsTransform
-                ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) skewX(${slantAngle})`
+                ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`
                 : '';
 
               return (

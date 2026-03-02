@@ -134,6 +134,17 @@ for glyph_name, glyph_info in glyph_mapping.items():
 
 print(f"Processed {processed}/{len(glyph_mapping)} glyphs")
 
+# Add space glyph (no outline, just advance width) from original font
+SPACE_CP = 0x0020
+space_in_mapping = any(info.get("codepoint") == SPACE_CP for info in glyph_mapping.values())
+if not space_in_mapping and SPACE_CP in unicode_map:
+    orig_space = unicode_map[SPACE_CP]
+    space_glyph = new_font.createChar(SPACE_CP, orig_space.glyphname)
+    space_glyph.width = orig_space.width
+    print(f"  space: added (width={orig_space.width})")
+else:
+    print("  space: already in mapping or not in original font")
+
 # Generate font
 new_font.generate(output_path)
 print(f"Font generated: {output_path}")

@@ -56,7 +56,7 @@ const useFontStore = create((set) => ({
   decoratorParams: {
     enabled: false,
     shape: 'circle',     // 'circle' | 'square' | 'diamond' | 'triangle'
-    size: 30,            // shape size in display units (5~100)
+    size: 40,            // shape size in display units (5~100)
     count: 6,            // shapes per path (1~30)
     position: 0.5,       // offset along path (0~1)
     spacing: 'endpoints', // 'even' | 'endpoints' | 'random'

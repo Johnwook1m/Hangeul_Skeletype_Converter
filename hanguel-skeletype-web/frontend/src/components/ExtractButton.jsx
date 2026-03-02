@@ -1,7 +1,7 @@
 import { extractCenterlines } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
-export default function ExtractButton({ inline = false }) {
+export default function ExtractButton({ inline = false, extractRef }) {
   const {
     fontId,
     glyphs,
@@ -20,6 +20,9 @@ export default function ExtractButton({ inline = false }) {
   const extractedCount = Object.keys(centerlines).length;
 
   let firstExtractedGlyph = null;
+
+  // Expose handleExtract to parent via ref
+  if (extractRef) extractRef.current = () => handleExtract(false);
 
   async function handleExtract(extractAll = false) {
     firstExtractedGlyph = null;
