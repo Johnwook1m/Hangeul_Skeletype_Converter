@@ -133,9 +133,35 @@ def main():
 
     print(f"\nExtracted: {len(results)}/{len(glyphs_to_extract)} glyphs")
 
+    # Space glyph advance width (for text layout spacing)
+    space_glyph = cmap.get(0x0020)
+    space_advance = None
+    if space_glyph and 'hmtx' in tt_font:
+        space_advance = tt_font['hmtx'][space_glyph][0]
+
+    # Minimal glyph list for charToGlyph map (only demo chars needed)
+    glyph_list = [
+        {"name": glyph_name, "unicode": ord(ch), "character": ch, "has_outline": True}
+        for ch, glyph_name in glyphs_to_extract
+        if glyph_name in results
+    ]
+
+    output = {
+        "_meta": {
+            "font_id": "demo",
+            "family_name": "Noto Sans KR",
+            "units_per_em": units_per_em,
+            "ascender": ascender,
+            "descender": descender,
+            "space_advance_width": space_advance,
+            "glyphs": glyph_list,
+        },
+        **results,
+    }
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
     size_kb = OUTPUT_PATH.stat().st_size / 1024
     print(f"Saved: {OUTPUT_PATH} ({size_kb:.1f} KB)")

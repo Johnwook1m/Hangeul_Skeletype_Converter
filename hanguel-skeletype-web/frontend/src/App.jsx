@@ -3,36 +3,38 @@ import GlyphPreview from './components/GlyphPreview';
 import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';
 import useFontStore from './stores/fontStore';
-import { uploadFont, getGlyphs } from './api/client';
 import './index.css';
 
 const DEMO_TEXT = 'Upload a font first\n폰트를 먼저 업로드하세요\n@skele.type';
 
 async function loadDemoFont() {
   try {
-    const response = await fetch('/NotoSansKR-Regular.otf');
-    if (!response.ok) return;
-    const blob = await response.blob();
-    const file = new File([blob], 'NotoSansKR-Regular.otf', { type: 'font/otf' });
+    // Load pre-computed centerlines + font metadata from static JSON
+    const clRes = await fetch('/demo-centerlines.json');
+    if (!clRes.ok) return;
+    const clData = await clRes.json();
 
-    const data = await uploadFont(file);
+    const meta = clData._meta;
     const store = useFontStore.getState();
-    store.setFont(data);
-    store.setIsDemo(true);
-    store.setFontBlobUrl(URL.createObjectURL(file));
 
-    const glyphData = await getGlyphs(data.font_id);
-    store.setGlyphs(glyphData.glyphs);
+    // Set font metadata directly (no API call needed)
+    store.setFont({
+      font_id: meta.font_id,
+      family_name: meta.family_name,
+      units_per_em: meta.units_per_em,
+      ascender: meta.ascender,
+      descender: meta.descender,
+      space_advance_width: meta.space_advance_width,
+    });
+    store.setIsDemo(true);
+    store.setGlyphs(meta.glyphs);
     store.setPreviewText(DEMO_TEXT);
     store.setGlyphSize(80);
     store.clearGlyphSelection();
     store.selectGlyphsByText(DEMO_TEXT);
 
-    // Load pre-computed centerlines from static JSON (fast path for demo)
-    const clRes = await fetch('/demo-centerlines.json');
-    if (!clRes.ok) return;
-    const clData = await clRes.json();
-    const entries = Object.entries(clData);
+    // Load centerlines
+    const entries = Object.entries(clData).filter(([k]) => k !== '_meta');
     store.setExtractionStatus({ status: 'running', current: 0, total: entries.length, currentGlyph: '', errors: [] });
     for (const [glyphName, centerlineData] of entries) {
       store.setCenterline(glyphName, centerlineData);
