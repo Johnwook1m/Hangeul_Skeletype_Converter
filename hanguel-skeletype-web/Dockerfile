@@ -12,7 +12,7 @@ RUN npm run build
 # autotrace was removed from Debian/Ubuntu repos; build from GitHub source
 FROM --platform=linux/amd64 debian:bullseye-slim AS autotrace-builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
     build-essential git ca-certificates autoconf automake libtool pkg-config gettext \
     libglib2.0-dev libpng-dev libmagickwand-dev \
     && rm -rf /var/lib/apt/lists/*
