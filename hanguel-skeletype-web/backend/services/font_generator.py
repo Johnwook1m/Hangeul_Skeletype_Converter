@@ -97,13 +97,18 @@ for glyph_name, glyph_info in glyph_mapping.items():
 
         new_glyph = new_font.createChar(codepoint, orig_glyph.glyphname)
 
+        # Set advance width immediately — must happen before any continue
+        # so space and other width-only glyphs always get correct metrics.
+        new_glyph.width = orig_glyph.width
+
         # Import centerline SVG
         new_glyph.importOutlines(svg_file)
 
         # Check contour count after import
         contour_count = sum(len(layer) for layer in new_glyph.layers)
         if contour_count == 0:
-            print(f"  {glyph_name}: importOutlines produced 0 contours — SVG may be empty or invalid")
+            print(f"  {glyph_name}: importOutlines produced 0 contours — width set, skipping stroke")
+            processed += 1
             continue
         print(f"  {glyph_name}: {contour_count} contour(s) imported")
 
@@ -113,17 +118,14 @@ for glyph_name, glyph_info in glyph_mapping.items():
             print(f"  {glyph_name}: all stroke() attempts failed — skipping")
             continue
 
-        new_glyph.removeOverlap()
         new_glyph.correctDirection()
 
         # Verify contours survived
         after_count = sum(len(layer) for layer in new_glyph.layers)
         if after_count == 0:
-            print(f"  {glyph_name}: 0 contours after stroke/removeOverlap — stroke_width may be too small ({stroke_width})")
+            print(f"  {glyph_name}: 0 contours after stroke — stroke_width may be too small ({stroke_width})")
             # Keep the glyph anyway (width is correct, just empty outline)
 
-        # Copy width from original
-        new_glyph.width = orig_glyph.width
         processed += 1
         print(f"  {glyph_name}: done ({after_count} contour(s) after expand)")
 

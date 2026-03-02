@@ -38,7 +38,6 @@ cap_map = {"butt": "butt", "round": "round", "square": "square"}
 join_map = {"miter": "miter", "round": "round", "bevel": "bevel"}
 
 glyph.stroke("circular", width, cap_map.get(cap, "round"), join_map.get(join, "round"))
-glyph.removeOverlap()
 glyph.correctDirection()
 
 # Export as SVG

@@ -400,6 +400,32 @@ def export_svg_file(
         return False
 
 
+def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
+    """Add Z to a path whose start and end points coincide (handles ㅇ circles).
+
+    Autotrace centerline output for circular shapes (ㅇ, ㅎ, etc.) often omits
+    the SVG Z (closepath) command even though the path loops back to its start.
+    FontForge treats paths without Z as open, applying stroke() differently:
+    - Open path  → 1 contour  → solid fill ✗
+    - Closed path → 2 contours → hollow ring after correctDirection() ✓
+    """
+    if not d or 'Z' in d.upper():
+        return d
+    nums = re.findall(r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?', d)
+    if len(nums) < 4:
+        return d
+    first_m = re.search(
+        r'[Mm]\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*[,\s]\s*([+-]?(?:\d+\.?\d*|\.\d+))', d
+    )
+    if not first_m:
+        return d
+    mx, my = float(first_m.group(1)), float(first_m.group(2))
+    lx, ly = float(nums[-2]), float(nums[-1])
+    if abs(mx - lx) <= tolerance and abs(my - ly) <= tolerance:
+        return d + ' Z'
+    return d
+
+
 def create_fontforge_glyph_svg(
     centerline_data: dict,
     units_per_em: int,
@@ -450,6 +476,7 @@ def create_fontforge_glyph_svg(
             glyph_height, padding=20.0, ascender=ascender,
             y_down=True,
         )
+        transformed = _close_if_circular(transformed)
         path_elements.append(f'  <path d="{transformed}"/>')
 
     paths_str = "\n".join(path_elements)
