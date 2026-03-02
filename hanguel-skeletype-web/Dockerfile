@@ -30,10 +30,12 @@ RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrac
     sed -i '/IT_PROG_INTLTOOL/d' configure.ac && \
     sed -i '/^SUBDIRS/ s/ *\bpo\b//' Makefile.am 2>/dev/null || true && \
     mkdir -p po && touch po/POTFILES.in && \
+    # Create fake pstoedit.pc so pkg-config can find it (pstoedit on Debian has no .pc file)
+    mkdir -p /usr/local/lib/pkgconfig && \
+    printf 'Name: pstoedit\nDescription: pstoedit\nVersion: 3.75\nLibs: -lpstoedit\nCflags: \n' \
+        > /usr/local/lib/pkgconfig/pstoedit.pc && \
     autoreconf -i --install --force && \
-    # Set LIBPSTOEDIT vars to bypass pkg-config check (pstoedit has no .pc file on Debian)
-    LIBPSTOEDIT_CFLAGS="" \
-    LIBPSTOEDIT_LIBS="-lpstoedit" \
+    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH} \
     ./configure --prefix=/usr/local && \
     make -j$(nproc) && \
     make install
