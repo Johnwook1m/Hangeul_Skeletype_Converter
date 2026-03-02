@@ -30,7 +30,7 @@ export default function GlyphGrid({ compact = false }) {
   if (visibleGlyphs.length === 0) {
     return (
       <div className="text-center text-gray-400 py-8">
-        글리프가 없습니다.
+        No glyphs available.
       </div>
     );
   }
@@ -42,21 +42,21 @@ export default function GlyphGrid({ compact = false }) {
       {/* Selection controls */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
         <span className="text-xs text-gray-500">
-          {selectedCount > 0 ? `${selectedCount}개 선택` : `${visibleGlyphs.length.toLocaleString()}개`}
+          {selectedCount > 0 ? `${selectedCount} selected` : `${visibleGlyphs.length.toLocaleString()}`}
         </span>
         <div className="flex gap-2">
           <button
             onClick={allSelected ? clearGlyphSelection : selectAllGlyphs}
             className="text-xs text-blue-500 hover:text-blue-700"
           >
-            {allSelected ? '해제' : '전체'}
+            {allSelected ? 'Clear' : 'All'}
           </button>
           {selectedCount > 0 && !allSelected && (
             <button
               onClick={clearGlyphSelection}
               className="text-xs text-gray-500 hover:text-gray-700"
             >
-              해제
+              Clear
             </button>
           )}
         </div>

@@ -150,7 +150,7 @@ export default function ExportMenu() {
         onClick={() => setOpen((o) => !o)}
         disabled={!!loading}
         className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors disabled:opacity-50 ${
-          open ? 'bg-[#0cd0fc] text-white' : 'bg-gray-800 text-white hover:bg-gray-700'
+          open ? 'bg-[#FF5714] text-white' : 'bg-gray-800 text-white hover:bg-gray-700'
         }`}
       >
         {loading ? '...' : 'Export'}
@@ -166,10 +166,10 @@ export default function ExportMenu() {
               onClick={handleSVG}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
             >
-              <span className="text-xs font-mono font-semibold text-[#0cd0fc] w-8">SVG</span>
+              <span className="text-xs font-mono font-semibold text-[#FF5714] w-8">SVG</span>
               <div>
                 <p className="text-xs font-medium text-gray-200">Vector export</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">중심선 벡터 파일</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">Centerline vector file</p>
               </div>
             </button>
 
@@ -179,12 +179,12 @@ export default function ExportMenu() {
               disabled={!previewText || loading === 'jpg'}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 disabled:opacity-40 transition-colors text-left"
             >
-              <span className="text-xs font-mono font-semibold text-[#0cd0fc] w-8">JPG</span>
+              <span className="text-xs font-mono font-semibold text-[#FF5714] w-8">JPG</span>
               <div>
                 <p className="text-xs font-medium text-gray-200">
-                  {loading === 'jpg' ? '저장 중...' : 'Screen capture'}
+                  {loading === 'jpg' ? 'Saving...' : 'Screen capture'}
                 </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">현재 화면 그대로</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">Current view as-is</p>
               </div>
             </button>
 
@@ -194,12 +194,12 @@ export default function ExportMenu() {
               disabled={loading === 'otf'}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 disabled:opacity-40 transition-colors text-left"
             >
-              <span className="text-xs font-mono font-semibold text-[#0cd0fc] w-8">OTF</span>
+              <span className="text-xs font-mono font-semibold text-[#FF5714] w-8">OTF</span>
               <div>
                 <p className="text-xs font-medium text-gray-200">
-                  {loading === 'otf' ? '생성 중...' : 'Font export'}
+                  {loading === 'otf' ? 'Generating...' : 'Font export'}
                 </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">스켈레톤 폰트 파일</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">Skeleton font file</p>
               </div>
             </button>
           </div>

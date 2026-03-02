@@ -119,10 +119,10 @@ export default function ExtractButton({ inline = false, extractRef }) {
     const label = isRunning
       ? `${extraction.current}/${extraction.total}`
       : extractedCount > 0
-        ? `추출됨 (${extractedCount})`
+        ? `Tested (${extractedCount})`
         : selectedCount > 0
-          ? `추출 (${selectedCount})`
-          : `추출 (0)`;
+          ? `Test (${selectedCount})`
+          : `Test (0)`;
 
     return (
       <button
@@ -130,8 +130,8 @@ export default function ExtractButton({ inline = false, extractRef }) {
         disabled={isRunning || selectedCount === 0}
         className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
           isRunning
-            ? 'bg-[#0cd0fc]/80 text-white cursor-wait'
-            : 'bg-[#0cd0fc] text-white hover:bg-[#0cd0fc]/80 disabled:opacity-40'
+            ? 'bg-[#FF5714]/80 text-white cursor-wait'
+            : 'bg-[#FF5714] text-white hover:bg-[#FF5714]/80 disabled:opacity-40'
         }`}
       >
         {label}
@@ -154,8 +154,8 @@ export default function ExtractButton({ inline = false, extractRef }) {
         `}
       >
         {isRunning
-          ? `추출 중... (${extraction.current}/${extraction.total})`
-          : `선택한 글리프 추출 (${selectedCount}개)`}
+          ? `Testing... (${extraction.current}/${extraction.total})`
+          : `Test Selected (${selectedCount})`}
       </button>
 
       {/* Extract all glyphs */}
@@ -170,7 +170,7 @@ export default function ExtractButton({ inline = false, extractRef }) {
           }
         `}
       >
-        전체 추출 ({glyphsWithOutline.length}개)
+        Test All ({glyphsWithOutline.length})
       </button>
     </div>
   );

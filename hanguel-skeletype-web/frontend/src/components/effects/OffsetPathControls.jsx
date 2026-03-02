@@ -50,7 +50,7 @@ export default function OffsetPathControls() {
               onClick={() => set({ corner: value })}
               className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
                 offsetPathParams.corner === value
-                  ? 'bg-[#0cd0fc] text-white'
+                  ? 'bg-[#FF5714] text-white'
                   : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
               }`}
             >

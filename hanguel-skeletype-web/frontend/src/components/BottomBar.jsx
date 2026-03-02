@@ -13,7 +13,6 @@ function Divider({ className = 'mx-2' }) {
 function FontChipButton({ children, hoverLabel, className, ...props }) {
   const ref = useRef(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });
-  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -30,8 +29,6 @@ function FontChipButton({ children, hoverLabel, className, ...props }) {
     <button
       ref={ref}
       className={`font-chip relative ${className}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       {...props}
     >
       {dim.w > 0 && (
@@ -51,7 +48,7 @@ function FontChipButton({ children, hoverLabel, className, ...props }) {
           />
         </svg>
       )}
-      {hovered && hoverLabel ? hoverLabel : children}
+      {children}
     </button>
   );
 }
@@ -90,7 +87,7 @@ export default function BottomBar() {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['ttf', 'otf', 'woff'].includes(ext)) {
-      setUploadError('TTF, OTF, WOFF 파일만 지원합니다.');
+      setUploadError('Only TTF, OTF, WOFF files are supported.');
       return;
     }
     setUploadLoading(true);
@@ -102,7 +99,7 @@ export default function BottomBar() {
       const glyphData = await getGlyphs(data.font_id);
       setGlyphs(glyphData.glyphs);
     } catch (err) {
-      setUploadError(err.response?.data?.detail || '폰트 업로드에 실패했습니다.');
+      setUploadError(err.response?.data?.detail || 'Failed to upload font.');
     } finally {
       setUploadLoading(false);
     }
@@ -223,7 +220,7 @@ export default function BottomBar() {
             <button
               onClick={() => setActiveTab('basic')}
               className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
-                activeTab === 'basic' ? 'bg-[#0cd0fc] text-white' : chipInactive
+                activeTab === 'basic' ? 'bg-[#FF5714] text-white' : chipInactive
               }`}
             >
               Basic
@@ -231,7 +228,7 @@ export default function BottomBar() {
             <button
               onClick={() => setActiveTab('fx')}
               className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
-                activeTab === 'fx' ? 'bg-[#0cd0fc] text-white' : chipInactive
+                activeTab === 'fx' ? 'bg-[#FF5714] text-white' : chipInactive
               }`}
             >
               FX
@@ -259,7 +256,7 @@ export default function BottomBar() {
                 }}
                 placeholder={!fontId ? 'Upload a font first' : 'Type text'}
                 disabled={!hasGlyphs}
-                className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none leading-relaxed"
+                className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed"
               />
 
               <Divider className="mx-0" />
@@ -268,7 +265,7 @@ export default function BottomBar() {
               <button
                 onClick={() => setShowFlesh(!showFlesh)}
                 className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                  showFlesh ? 'bg-[#0cd0fc] text-white' : chipInactive
+                  showFlesh ? 'bg-[#FF5714] text-white' : chipInactive
                 }`}
               >
                 Flesh
@@ -278,7 +275,7 @@ export default function BottomBar() {
               <button
                 onClick={cycleTextAlign}
                 className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${chipInactive}`}
-                title={`정렬: ${textAlign}`}
+                title={`Align: ${textAlign}`}
               >
                 <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
                   {textAlign === 'left' ? (
@@ -352,7 +349,7 @@ export default function BottomBar() {
                   onChange={(e) => setStrokeParams({ centerlineColor: e.target.value })}
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
-                  title="중심선 색상"
+                  title="Centerline color"
                 />
               </div>
 
@@ -365,7 +362,7 @@ export default function BottomBar() {
                   onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
-                  title="Stroke 색상"
+                  title="Stroke color"
                 />
               </div>
 
@@ -378,7 +375,7 @@ export default function BottomBar() {
                   onChange={(e) => setBgColor(e.target.value)}
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
-                  title="배경 색상"
+                  title="Background color"
                 />
               </div>
             </>

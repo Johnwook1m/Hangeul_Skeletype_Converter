@@ -52,16 +52,16 @@ export default function BackgroundImageControls() {
           onClick={() => fileInputRef.current?.click()}
           className="px-2.5 py-1 text-xs rounded bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors shrink-0"
         >
-          이미지 선택
+          Select image
         </button>
         <span className="text-xs text-gray-500 truncate flex-1 min-w-0">
-          {backgroundImageParams.imageName || '파일 없음'}
+          {backgroundImageParams.imageName || 'No file'}
         </span>
         {backgroundImageParams.imageUrl && (
           <button
             onClick={handleClear}
             className="text-xs text-gray-500 hover:text-gray-300 transition-colors shrink-0"
-            title="이미지 제거"
+            title="Remove image"
           >
             ✕
           </button>
@@ -119,7 +119,7 @@ export default function BackgroundImageControls() {
               onClick={() => set({ fit: value })}
               className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
                 backgroundImageParams.fit === value
-                  ? 'bg-[#0cd0fc] text-white'
+                  ? 'bg-[#FF5714] text-white'
                   : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
               }`}
             >

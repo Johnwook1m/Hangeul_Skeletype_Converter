@@ -31,12 +31,12 @@ export default function StrokeControls({ compact = false }) {
           className={`
             w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors
             ${showFlesh
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : 'bg-white text-gray-600 border border-gray-300'
             }
           `}
         >
-          {showFlesh ? '✓ 원본 글리프 표시' : '원본 글리프 숨김'}
+          {showFlesh ? '✓ Show original glyph' : 'Hide original glyph'}
         </button>
 
         {/* Size Slider */}
@@ -52,7 +52,7 @@ export default function StrokeControls({ compact = false }) {
             step={5}
             value={glyphSize}
             onChange={(e) => setGlyphSize(+e.target.value)}
-            className="w-full accent-[#0cd0fc] h-1.5"
+            className="w-full accent-[#FF5714] h-1.5"
           />
         </div>
 

@@ -6,7 +6,7 @@ import useFontStore from './stores/fontStore';
 import { uploadFont, getGlyphs, extractCenterlines } from './api/client';
 import './index.css';
 
-const DEMO_TEXT = 'Upload a font first\n서체를 먼저 업로드하세요';
+const DEMO_TEXT = 'Upload a font first\n폰트를 먼저 업로드하세요\n@skele.type';
 
 async function loadDemoFont() {
   try {
@@ -105,7 +105,7 @@ function App() {
       {fontId && <button
         onClick={toggleTheme}
         className="fixed top-4 right-4 z-50 cursor-pointer"
-        title="배경 테마 전환"
+        title="Toggle background theme"
       >
         <div
           className="relative w-10 h-5 rounded-full transition-colors"

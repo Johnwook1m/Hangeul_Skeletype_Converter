@@ -15,8 +15,8 @@ export default function ProgressBar() {
       <div className="flex justify-between text-xs text-gray-500">
         <span>
           {extraction.status === 'running'
-            ? `추출 중: ${extraction.currentGlyph}`
-            : '추출 완료'}
+            ? `Testing: ${extraction.currentGlyph}`
+            : 'Testing complete'}
         </span>
         <span>
           {extraction.current} / {extraction.total}
@@ -32,7 +32,7 @@ export default function ProgressBar() {
       </div>
       {extraction.errors.length > 0 && (
         <p className="text-xs text-red-500">
-          {extraction.errors.length}개 글리프 실패
+          {extraction.errors.length} glyph(s) failed
         </p>
       )}
     </div>

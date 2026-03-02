@@ -24,7 +24,7 @@ const useFontStore = create((set) => ({
     width: 80,
     cap: 'round',
     join: 'round',
-    strokeColor: '#0cd0fc',
+    strokeColor: '#FF5714',
     centerlineColor: '#1a1a1a',
     scaleX: 1.0,
     scaleY: 1.0,
@@ -34,7 +34,7 @@ const useFontStore = create((set) => ({
   connectionParams: {
     enabled: false,
     shape: 'curve',       // 'line' | 'curve' | 'wave'
-    color: '#0cd0fc',     // connection line color
+    color: '#FF5714',     // connection line color
     tension: 0.5,         // curve bend amount (0=straight, 1=very curved)
     waveAmplitude: 15,    // wave height
     waveFrequency: 3,     // wave count
@@ -49,7 +49,7 @@ const useFontStore = create((set) => ({
     count: 2,            // branches per endpoint (1~5)
     length: 105,         // first branch length (display units)
     depth: 1,            // recursion depth (1~4)
-    color: '#0cd0fc',    // branch color
+    color: '#FF5714',    // branch color
   },
 
   // Decorator parameters (shapes placed along centerline paths)
@@ -71,7 +71,7 @@ const useFontStore = create((set) => ({
     count: 1,            // number of offset repetitions (1~5)
     weight: 10,          // stroke weight of offset ring (independent of Basic weight)
     corner: 'round',     // 'round' | 'sharp' — end cap / corner style
-    color: '#0cd0fc',    // offset path color
+    color: '#FF5714',    // offset path color
   },
 
   // Slant parameters (skew/italic transform)
@@ -215,7 +215,7 @@ const useFontStore = create((set) => ({
       connectionParams: {
         enabled: false,
         shape: 'curve',
-        color: '#0cd0fc',
+        color: '#FF5714',
         tension: 0.5,
         waveAmplitude: 15,
         waveFrequency: 3,
@@ -245,7 +245,7 @@ const useFontStore = create((set) => ({
         count: 2,
         length: 105,
         depth: 1,
-        color: '#0cd0fc',
+        color: '#FF5714',
       },
     }),
 
@@ -297,7 +297,7 @@ const useFontStore = create((set) => ({
         count: 1,
         weight: 10,
         corner: 'round',
-        color: '#0cd0fc',
+        color: '#FF5714',
       },
     }),
 
@@ -399,7 +399,7 @@ const useFontStore = create((set) => ({
           width: 80,
           cap: 'round',
           join: 'round',
-          strokeColor: '#0cd0fc',
+          strokeColor: '#FF5714',
           centerlineColor: '#1a1a1a',
           scaleX: 1.0,
           scaleY: 1.0,
@@ -407,7 +407,7 @@ const useFontStore = create((set) => ({
         connectionParams: {
           enabled: false,
           shape: 'curve',
-          color: '#0cd0fc',
+          color: '#FF5714',
           tension: 0.5,
           waveAmplitude: 15,
           waveFrequency: 3,
@@ -420,7 +420,7 @@ const useFontStore = create((set) => ({
           count: 2,
           length: 105,
           depth: 1,
-          color: '#0cd0fc',
+          color: '#FF5714',
         },
         decoratorParams: {
           enabled: false,
@@ -438,7 +438,7 @@ const useFontStore = create((set) => ({
           count: 1,
           weight: 10,
           corner: 'round',
-          color: '#0cd0fc',
+          color: '#FF5714',
         },
         slantParams: {
           enabled: false,

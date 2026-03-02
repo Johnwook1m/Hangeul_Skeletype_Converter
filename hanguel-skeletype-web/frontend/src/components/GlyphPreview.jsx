@@ -287,21 +287,21 @@ export default function GlyphPreview({ large = false }) {
   let placeholder = null;
   if (!previewText) {
     placeholder = glyphs.length > 0 ? (
-      <p className="text-[15px] text-gray-500">하단 메뉴에서 문구를 입력하세요</p>
+      <p className="text-[15px] text-gray-500">Enter text in the bottom bar</p>
     ) : null;
   } else if (glyphList.length === 0) {
     placeholder = (
       <div className="text-center text-gray-500">
         <p className="text-lg mb-2">"{previewText}"</p>
-        <p className="text-sm">해당 글자의 글리프가 폰트에 없습니다.</p>
+        <p className="text-sm">No glyph found in font for this character.</p>
       </div>
     );
   } else if (!hasCenterlines) {
     placeholder = (
       <div className="text-center text-gray-500">
         <p className="text-xl mb-3 font-light">"{previewText}"</p>
-        <p className="text-[15px] mb-1">중심선이 추출되지 않았습니다.</p>
-        <p className="text-[15px]">하단 메뉴의 "추출" 버튼을 클릭하세요.</p>
+        <p className="text-[15px] mb-1">Centerline not yet extracted.</p>
+        <p className="text-[15px]">Click the "Test" button in the bottom bar.</p>
       </div>
     );
   }
@@ -379,7 +379,7 @@ export default function GlyphPreview({ large = false }) {
                       fill="#666"
                       fontSize={60}
                     >
-                      (추출 필요)
+                      (test required)
                     </text>
                   </g>
                 );
@@ -475,6 +475,39 @@ export default function GlyphPreview({ large = false }) {
               );
             })}
 
+            {/* Branch lines from glyph endpoints */}
+            {branchParams.enabled && branches.length > 0 && (
+              <g>
+                {branches.map((b, i) => (
+                  <path
+                    key={`branch-${i}`}
+                    d={b.d}
+                    fill="none"
+                    stroke={branchParams.color}
+                    strokeWidth={b.widthRatio * strokeParams.width * fontToDisplay}
+                    strokeLinecap="round"
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Connection lines between adjacent glyphs */}
+            {connectionParams.enabled && connections.length > 0 && (
+              <g>
+                {connections.map((conn, i) => (
+                  <path
+                    key={`conn-${i}`}
+                    d={conn.d}
+                    fill="none"
+                    stroke={connectionParams.color}
+                    strokeWidth={strokeParams.width * fontToDisplay}
+                    strokeLinecap={strokeParams.cap}
+                    strokeLinejoin={strokeParams.join}
+                  />
+                ))}
+              </g>
+            )}
+
             {/* Decorator shapes along centerline paths */}
             {decoratorParams.enabled && decoratorPoints.length > 0 && (
               <g>
@@ -522,39 +555,6 @@ export default function GlyphPreview({ large = false }) {
                       return null;
                   }
                 })}
-              </g>
-            )}
-
-            {/* Branch lines from glyph endpoints */}
-            {branchParams.enabled && branches.length > 0 && (
-              <g>
-                {branches.map((b, i) => (
-                  <path
-                    key={`branch-${i}`}
-                    d={b.d}
-                    fill="none"
-                    stroke={branchParams.color}
-                    strokeWidth={b.widthRatio * strokeParams.width * fontToDisplay}
-                    strokeLinecap="round"
-                  />
-                ))}
-              </g>
-            )}
-
-            {/* Connection lines between adjacent glyphs */}
-            {connectionParams.enabled && connections.length > 0 && (
-              <g>
-                {connections.map((conn, i) => (
-                  <path
-                    key={`conn-${i}`}
-                    d={conn.d}
-                    fill="none"
-                    stroke={connectionParams.color}
-                    strokeWidth={strokeParams.width * fontToDisplay}
-                    strokeLinecap={strokeParams.cap}
-                    strokeLinejoin={strokeParams.join}
-                  />
-                ))}
               </g>
             )}
           </svg>

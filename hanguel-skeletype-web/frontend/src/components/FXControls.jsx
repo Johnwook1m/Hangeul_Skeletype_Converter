@@ -152,34 +152,13 @@ export default function FXControls() {
         />
       </div>
 
-      {/* Connect */}
-      <div className="relative shrink-0">
-        <button
-          onClick={handleConnClick}
-          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-            connectionParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
-              : chipInactive
-          }`}
-          title={connectionParams.enabled ? (showConnPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
-        >
-          Connect
-        </button>
-
-        {showConnPopover && connectionParams.enabled && (
-          <EffectPopover onClose={closeConnPopover}>
-            <ConnectionControls />
-          </EffectPopover>
-        )}
-      </div>
-
       {/* Decorator */}
       <div className="relative shrink-0">
         <button
           onClick={handleDecoratorClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             decoratorParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
           title={decoratorParams.enabled ? (showDecoratorPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
@@ -194,13 +173,34 @@ export default function FXControls() {
         )}
       </div>
 
+      {/* Connect */}
+      <div className="relative shrink-0">
+        <button
+          onClick={handleConnClick}
+          className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+            connectionParams.enabled
+              ? 'bg-[#FF5714] text-white'
+              : chipInactive
+          }`}
+          title={connectionParams.enabled ? (showConnPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
+        >
+          Connect
+        </button>
+
+        {showConnPopover && connectionParams.enabled && (
+          <EffectPopover onClose={closeConnPopover}>
+            <ConnectionControls />
+          </EffectPopover>
+        )}
+      </div>
+
       {/* Branch */}
       <div className="relative shrink-0">
         <button
           onClick={handleBranchClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             branchParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
           title={branchParams.enabled ? (showBranchPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
@@ -221,7 +221,7 @@ export default function FXControls() {
           onClick={handleOffsetClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             offsetPathParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
           title={offsetPathParams.enabled ? (showOffsetPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
@@ -242,7 +242,7 @@ export default function FXControls() {
           onClick={handleSlantClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             slantParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
           title={slantParams.enabled ? (showSlantPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
@@ -263,7 +263,7 @@ export default function FXControls() {
           onClick={handleBgClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
             backgroundImageParams.enabled
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
           title={backgroundImageParams.enabled ? (showBgPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
@@ -282,7 +282,7 @@ export default function FXControls() {
       <button
         onClick={handleReset}
         className="shrink-0 px-2.5 py-1.5 text-xs font-medium bg-gray-400 hover:bg-gray-500 text-white rounded-full transition-colors"
-        title="모든 이펙트 초기화"
+        title="Reset all effects"
       >
         Reset
       </button>

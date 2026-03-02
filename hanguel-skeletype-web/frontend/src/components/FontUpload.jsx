@@ -70,7 +70,7 @@ export default function FontUpload() {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['ttf', 'otf', 'woff'].includes(ext)) {
-      setError('TTF, OTF, WOFF 파일만 지원합니다.');
+      setError('Only TTF, OTF, WOFF files are supported.');
       return;
     }
 
@@ -88,7 +88,7 @@ export default function FontUpload() {
       setGlyphs(glyphData.glyphs);
       setVisible(false);
     } catch (err) {
-      setError(err.response?.data?.detail || '폰트 업로드에 실패했습니다.');
+      setError(err.response?.data?.detail || 'Failed to upload font.');
     } finally {
       setLoading(false);
     }
@@ -129,7 +129,7 @@ export default function FontUpload() {
     >
       {/* Subtle drag highlight border */}
       {dragging && (
-        <div className="absolute inset-3 rounded-2xl border border-[#0cd0fc]/40 pointer-events-none transition-opacity duration-200" />
+        <div className="absolute inset-3 rounded-2xl border border-[#FF5714]/40 pointer-events-none transition-opacity duration-200" />
       )}
 
       {/* Content */}
@@ -145,12 +145,12 @@ export default function FontUpload() {
         {loading ? (
           <div>
             <div className="animate-spin inline-block w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full mb-3" />
-            <p className="text-sm font-light tracking-widest text-white/40">분석 중...</p>
+            <p className="text-sm font-light tracking-widest text-white/40">Analyzing...</p>
           </div>
         ) : (
           <div>
-            <p className={`text-sm font-light tracking-widest mb-1.5 transition-colors duration-200 ${dragging ? 'text-[#0cd0fc]' : 'text-white/40'}`}>
-              {fontId ? '폰트 파일 업로드' : '폰트 파일 업로드'}
+            <p className={`text-sm font-light tracking-widest mb-1.5 transition-colors duration-200 ${dragging ? 'text-[#FF5714]' : 'text-white/40'}`}>
+              {fontId ? 'Upload font file' : 'Upload font file'}
             </p>
             <p className="text-xs tracking-widest text-white/20">[.ttf, .otf, .woff]</p>
           </div>

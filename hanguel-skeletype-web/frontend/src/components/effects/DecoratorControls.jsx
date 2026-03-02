@@ -31,7 +31,7 @@ export default function DecoratorControls() {
               onClick={() => set({ shape: value })}
               className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
                 decoratorParams.shape === value
-                  ? 'bg-[#0cd0fc] text-white'
+                  ? 'bg-[#FF5714] text-white'
                   : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
               }`}
             >
@@ -51,7 +51,7 @@ export default function DecoratorControls() {
               onClick={() => set({ spacing: value })}
               className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
                 decoratorParams.spacing === value
-                  ? 'bg-[#0cd0fc] text-white'
+                  ? 'bg-[#FF5714] text-white'
                   : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
               }`}
             >
@@ -68,7 +68,7 @@ export default function DecoratorControls() {
           onClick={() => set({ filled: !decoratorParams.filled })}
           className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
             decoratorParams.filled
-              ? 'bg-[#0cd0fc] text-white'
+              ? 'bg-[#FF5714] text-white'
               : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
           }`}
         >

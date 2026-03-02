@@ -160,7 +160,7 @@ export default function ExportJPGButton({ inline = false }) {
       disabled={exporting}
       className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 text-sm font-medium"
     >
-      {exporting ? '저장 중...' : 'Export JPG (screen)'}
+      {exporting ? 'Saving...' : 'Export JPG (screen)'}
     </button>
   );
 }
