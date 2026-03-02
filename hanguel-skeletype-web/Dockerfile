@@ -18,7 +18,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential git ca-certificates autoconf automake libtool pkg-config gettext \
     libglib2.0-dev libpng-dev libmagickwand-dev pstoedit \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Create .so symlink so linker can find libpstoedit (the unversioned symlink is normally in -dev)
+    && ln -sf /usr/lib/x86_64-linux-gnu/libpstoedit.so.0 \
+              /usr/lib/x86_64-linux-gnu/libpstoedit.so || true
 
 RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrace && \
     cd /src/autotrace && \
@@ -28,6 +31,9 @@ RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrac
     sed -i '/^SUBDIRS/ s/ *\bpo\b//' Makefile.am 2>/dev/null || true && \
     mkdir -p po && touch po/POTFILES.in && \
     autoreconf -i --install --force && \
+    # Set LIBPSTOEDIT vars to bypass pkg-config check (pstoedit has no .pc file on Debian)
+    LIBPSTOEDIT_CFLAGS="" \
+    LIBPSTOEDIT_LIBS="-lpstoedit" \
     ./configure --prefix=/usr/local && \
     make -j$(nproc) && \
     make install
