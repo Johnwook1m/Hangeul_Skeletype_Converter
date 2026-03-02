@@ -42,6 +42,17 @@ input[type="range"].slider-white::-moz-range-thumb {
   cursor: pointer;
 }
 
+/* Marching ants dashed border for font chip */
+@keyframes march {
+  to { stroke-dashoffset: -10; }
+}
+.font-chip .marching-rect {
+  stroke-dasharray: 6 4;
+}
+.font-chip:hover .marching-rect {
+  animation: march 0.5s linear infinite;
+}
+
 /* Dark range slider styling (for effect popovers) */
 input[type="range"].slider-dark::-webkit-slider-runnable-track {
   background: #4b5563;

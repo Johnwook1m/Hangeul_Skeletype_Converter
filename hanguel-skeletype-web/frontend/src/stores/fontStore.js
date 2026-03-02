@@ -8,6 +8,7 @@ const useFontStore = create((set) => ({
   unitsPerEm: 1000,
   ascender: null,
   descender: null,
+  isDemo: false,
 
   // Glyph data
   glyphs: [],
@@ -119,6 +120,7 @@ const useFontStore = create((set) => ({
       ascender: data.ascender ?? null,
       descender: data.descender ?? null,
       spaceAdvanceWidth: data.space_advance_width ?? null,
+      isDemo: false,
       glyphs: [],
       centerlines: {},
       selectedGlyph: null,
@@ -126,6 +128,8 @@ const useFontStore = create((set) => ({
       previewText: '',
       extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
     }),
+
+  setIsDemo: (v) => set({ isDemo: v }),
 
   setGlyphs: (glyphs) => set({ glyphs }),
 
@@ -385,6 +389,7 @@ const useFontStore = create((set) => ({
         glyphCount: 0,
         ascender: null,
         descender: null,
+        isDemo: false,
         glyphs: [],
         selectedGlyph: null,
         selectedGlyphs: new Set(),

@@ -66,11 +66,11 @@ async function drawSVGToCanvas(ctx, svgEl, w, h) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ExportMenu() {
-  const { fontId, fontName, strokeParams, centerlines, previewText } = useFontStore();
+  const { fontId, fontName, strokeParams, previewText, isDemo } = useFontStore();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(null); // 'svg' | 'jpg' | 'otf'
 
-  const canExport = Object.keys(centerlines).length > 0;
+  const canExport = !!fontId && !isDemo;
   const closePopover = useCallback(() => setOpen(false), []);
 
   // ── SVG ────────────────────────────────────────────────────────────────────

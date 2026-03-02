@@ -18,6 +18,7 @@ async function loadDemoFont() {
     const data = await uploadFont(file);
     const store = useFontStore.getState();
     store.setFont(data);
+    store.setIsDemo(true);
     store.setFontBlobUrl(URL.createObjectURL(file));
 
     const glyphData = await getGlyphs(data.font_id);

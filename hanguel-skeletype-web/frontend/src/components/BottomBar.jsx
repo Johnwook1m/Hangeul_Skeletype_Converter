@@ -10,6 +10,45 @@ function Divider({ className = 'mx-2' }) {
   return <div className={`w-px h-5 bg-gray-400/50 shrink-0 ${className}`} />;
 }
 
+function FontChipButton({ children, className, ...props }) {
+  const ref = useRef(null);
+  const [dim, setDim] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const obs = new ResizeObserver(() => {
+      if (!ref.current) return;
+      const { width, height } = ref.current.getBoundingClientRect();
+      setDim({ w: width, h: height });
+    });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <button ref={ref} className={`font-chip relative ${className}`} {...props}>
+      {dim.w > 0 && (
+        <svg
+          style={{
+            position: 'absolute', top: 0, left: 0,
+            width: dim.w, height: dim.h,
+            overflow: 'visible', pointerEvents: 'none',
+          }}
+        >
+          <rect
+            className="marching-rect"
+            x={0} y={0}
+            width={dim.w} height={dim.h}
+            rx={dim.h / 2} ry={dim.h / 2}
+            fill="none" stroke="#9ca3af" strokeWidth={1.5}
+          />
+        </svg>
+      )}
+      {children}
+    </button>
+  );
+}
+
 export default function BottomBar() {
   const {
     fontId,
@@ -151,21 +190,21 @@ export default function BottomBar() {
             onChange={(e) => handleUploadFile(e.target.files[0])}
           />
           {!fontId ? (
-            <button
+            <FontChipButton
               onClick={() => uploadFileRef.current?.click()}
               disabled={uploadLoading}
-              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors border border-transparent hover:border-dashed hover:border-gray-500 ${chipInactive}`}
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${chipInactive}`}
             >
               {uploadLoading ? 'Loading...' : 'Upload Font'}
-            </button>
+            </FontChipButton>
           ) : (
-            <button
+            <FontChipButton
               onClick={() => uploadFileRef.current?.click()}
-              className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors overflow-hidden border border-transparent hover:border-dashed hover:border-gray-500 ${chipInactive}`}
+              className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${chipInactive}`}
               title="클릭하여 다른 폰트 업로드"
             >
               <span className="block truncate">{fontName}</span>
-            </button>
+            </FontChipButton>
           )}
           {uploadError && (
             <span className="ml-2 text-xs text-red-500">{uploadError}</span>

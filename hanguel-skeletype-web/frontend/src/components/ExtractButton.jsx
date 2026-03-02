@@ -6,6 +6,7 @@ export default function ExtractButton({ inline = false }) {
     fontId,
     glyphs,
     selectedGlyphs,
+    centerlines,
     extraction,
     setExtractionStatus,
     setCenterline,
@@ -16,6 +17,7 @@ export default function ExtractButton({ inline = false }) {
   const isRunning = extraction.status === 'running';
   const glyphsWithOutline = glyphs.filter((g) => g.has_outline);
   const selectedCount = selectedGlyphs.size;
+  const extractedCount = Object.keys(centerlines).length;
 
   let firstExtractedGlyph = null;
 
@@ -111,6 +113,14 @@ export default function ExtractButton({ inline = false }) {
   }
 
   if (inline) {
+    const label = isRunning
+      ? `${extraction.current}/${extraction.total}`
+      : extractedCount > 0
+        ? `추출됨 (${extractedCount})`
+        : selectedCount > 0
+          ? `추출 (${selectedCount})`
+          : `추출 (0)`;
+
     return (
       <button
         onClick={() => handleExtract(false)}
@@ -121,9 +131,7 @@ export default function ExtractButton({ inline = false }) {
             : 'bg-[#0cd0fc] text-white hover:bg-[#0cd0fc]/80 disabled:opacity-40'
         }`}
       >
-        {isRunning
-          ? `${extraction.current}/${extraction.total}`
-          : `추출 (${selectedCount})`}
+        {label}
       </button>
     );
   }
