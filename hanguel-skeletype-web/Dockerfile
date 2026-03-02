@@ -17,7 +17,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     build-essential git ca-certificates autoconf automake libtool pkg-config gettext \
-    libglib2.0-dev libpng-dev libmagickwand-dev \
+    libglib2.0-dev libpng-dev libmagickwand-dev pstoedit \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrace && \
@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip \
     imagemagick \
     fontforge \
+    pstoedit \
     libglib2.0-0 libpng16-16 libmagickwand-6.q16-6 \
     && rm -rf /var/lib/apt/lists/*
 
