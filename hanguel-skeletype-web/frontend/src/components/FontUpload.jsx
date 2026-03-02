@@ -3,7 +3,7 @@ import { uploadFont, getGlyphs } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
 export default function FontUpload() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -12,13 +12,10 @@ export default function FontUpload() {
   const dragCounter = useRef(0);
   const { fontId, setFont, setGlyphs, setFontBlobUrl } = useFontStore();
 
-  // Show overlay when font is reset (fontId becomes null); keep visible until font is loaded
+  // Clear timer on unmount
   useEffect(() => {
-    if (!fontId) {
-      setVisible(true);
-    }
     return () => clearTimeout(hideTimer.current);
-  }, [fontId]);
+  }, []);
 
   // Window-level drag events to detect file dragging anywhere
   const handleWindowDragEnter = useCallback((e) => {
@@ -126,23 +123,17 @@ export default function FontUpload() {
       onClick={handleOverlayClick}
       className={`
         fixed inset-0 z-50 flex items-center justify-center
-        transition-opacity duration-500 cursor-pointer
+        transition-opacity duration-300 cursor-pointer
         ${isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
       `}
-      style={{ background: 'rgba(0, 0, 0, 0.6)' }}
     >
-      {/* Dropzone border */}
-      <div
-        className={`
-          absolute m-3 rounded-2xl
-          border-2 border-dashed transition-colors duration-300
-          ${dragging ? 'border-[#0cd0fc]' : 'border-gray-500'}
-        `}
-        style={{ inset: '8px' }}
-      />
+      {/* Subtle drag highlight border */}
+      {dragging && (
+        <div className="absolute inset-3 rounded-2xl border border-[#0cd0fc]/40 pointer-events-none transition-opacity duration-200" />
+      )}
 
       {/* Content */}
-      <div className="relative text-center z-10">
+      <div className="relative text-center z-10 select-none">
         <input
           ref={fileRef}
           type="file"
@@ -152,21 +143,21 @@ export default function FontUpload() {
         />
 
         {loading ? (
-          <div className="text-white">
-            <div className="animate-spin inline-block w-10 h-10 border-3 border-white/30 border-t-white rounded-full mb-4" />
-            <p className="text-xl font-light">폰트 분석 중...</p>
+          <div>
+            <div className="animate-spin inline-block w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full mb-3" />
+            <p className="text-sm font-light tracking-widest text-white/40">분석 중...</p>
           </div>
         ) : (
           <div>
-            <p className={`text-xl font-light mb-2 ${dragging ? 'text-[#0cd0fc]' : 'text-gray-300'}`}>
-              {fontId ? '새 폰트를 드래그하세요' : '폰트 파일을 드래그하거나 클릭하여 업로드'}
+            <p className={`text-sm font-light tracking-widest mb-1.5 transition-colors duration-200 ${dragging ? 'text-[#0cd0fc]' : 'text-white/40'}`}>
+              {fontId ? '폰트 파일 업로드' : '폰트 파일 업로드'}
             </p>
-            <p className="text-sm text-gray-500">.ttf, .otf, .woff</p>
+            <p className="text-xs tracking-widest text-white/20">[.ttf, .otf, .woff]</p>
           </div>
         )}
 
         {error && (
-          <p className="mt-4 text-red-400 text-sm">{error}</p>
+          <p className="mt-4 text-red-400/70 text-xs">{error}</p>
         )}
       </div>
     </div>

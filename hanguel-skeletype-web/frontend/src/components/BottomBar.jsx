@@ -3,6 +3,7 @@ import useFontStore from '../stores/fontStore';
 import ExtractButton from './ExtractButton';
 import ExportMenu from './ExportMenu';
 import FXControls from './FXControls';
+import { uploadFont, getGlyphs } from '../api/client';
 
 
 function Divider({ className = 'mx-2' }) {
@@ -29,7 +30,36 @@ export default function BottomBar() {
     setPreviewFontSize,
     bgColor,
     setBgColor,
+    setFont,
+    setGlyphs,
+    setFontBlobUrl,
   } = useFontStore();
+
+  const uploadFileRef = useRef(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  async function handleUploadFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['ttf', 'otf', 'woff'].includes(ext)) {
+      setUploadError('TTF, OTF, WOFF 파일만 지원합니다.');
+      return;
+    }
+    setUploadLoading(true);
+    setUploadError(null);
+    try {
+      const data = await uploadFont(file);
+      setFont(data);
+      setFontBlobUrl(URL.createObjectURL(file));
+      const glyphData = await getGlyphs(data.font_id);
+      setGlyphs(glyphData.glyphs);
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || '폰트 업로드에 실패했습니다.');
+    } finally {
+      setUploadLoading(false);
+    }
+  }
 
   const bgImageActive = backgroundImageParams.enabled && !!backgroundImageParams.imageUrl;
   const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
@@ -105,26 +135,43 @@ export default function BottomBar() {
     setPreviewText(newText);
   }
 
-  if (!fontId) return null;
-
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
       <div className={`pointer-events-auto rounded-[28px] px-4 py-2 h-[65px] flex items-center gap-0 shadow-lg w-[80%] ${
         bgImageActive ? 'bg-gray-200' : 'bg-gray-200'
       }`}>
 
-        {/* ── Left section: Font name + Tab switcher (fixed) ── */}
+        {/* ── Left section: Font name (or upload) + Tab switcher ── */}
         <div className="flex items-center gap-0 shrink-0">
-          <button
-            onClick={() => useFontStore.getState().reset()}
-            className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors overflow-hidden ${chipInactive}`}
-            title={fontName || 'Load Font'}
-          >
-            <span className="block truncate">{fontName || 'Load Font'}</span>
-          </button>
+          <input
+            ref={uploadFileRef}
+            type="file"
+            accept=".ttf,.otf,.woff"
+            className="hidden"
+            onChange={(e) => handleUploadFile(e.target.files[0])}
+          />
+          {!fontId ? (
+            <button
+              onClick={() => uploadFileRef.current?.click()}
+              disabled={uploadLoading}
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors border border-transparent hover:border-dashed hover:border-gray-500 ${chipInactive}`}
+            >
+              {uploadLoading ? 'Loading...' : 'Upload Font'}
+            </button>
+          ) : (
+            <button
+              onClick={() => uploadFileRef.current?.click()}
+              className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors overflow-hidden border border-transparent hover:border-dashed hover:border-gray-500 ${chipInactive}`}
+              title="클릭하여 다른 폰트 업로드"
+            >
+              <span className="block truncate">{fontName}</span>
+            </button>
+          )}
+          {uploadError && (
+            <span className="ml-2 text-xs text-red-500">{uploadError}</span>
+          )}
 
           <Divider />
-
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('basic')}
@@ -145,9 +192,9 @@ export default function BottomBar() {
           </div>
         </div>
 
-        {/* ── Center section: tab-dependent content (flexible) ── */}
+        {/* ── Center section: always visible, disabled without font ── */}
         <Divider />
-        <div className="flex items-center gap-2 flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide">
+        <div className={`flex items-center gap-2 flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide ${!fontId ? 'pointer-events-none' : ''}`}>
 
           {/* Basic Tab Controls */}
           {activeTab === 'basic' && (
@@ -157,7 +204,7 @@ export default function BottomBar() {
                 rows={2}
                 value={text}
                 onChange={(e) => handleTextChange(e.target.value)}
-                placeholder={hasGlyphs ? '문구 입력' : '폰트를 먼저 업로드'}
+                placeholder={!fontId ? 'Upload a font first' : 'Type text'}
                 disabled={!hasGlyphs}
                 className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#0cd0fc] disabled:bg-gray-100 resize-none leading-relaxed"
               />
@@ -289,8 +336,8 @@ export default function BottomBar() {
         </div>
         <Divider />
 
-        {/* ── Right section: Extract + Export (fixed) ── */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* ── Right section: Extract + Export ── */}
+        <div className={`flex items-center gap-2 shrink-0 ${!fontId ? 'pointer-events-none' : ''}`}>
           <ExtractButton inline />
           <ExportMenu />
         </div>
