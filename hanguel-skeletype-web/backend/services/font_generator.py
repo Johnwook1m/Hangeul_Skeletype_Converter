@@ -129,7 +129,7 @@ for glyph_name, glyph_info in glyph_mapping.items():
                 long_ = max(w, h)
                 if (w > 80 and h > 80
                         and (long_ / max(short, 1)) < 2.5
-                        and dx <= 100 and dy <= 100):
+                        and dx <= 300 and dy <= 300):
                     c.closed = True
                     fore[i] = c
                     circ_fixed += 1
