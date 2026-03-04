@@ -70,8 +70,6 @@ async def export_font(font_id: str, request: ExportRequest):
         stroke_width=request.stroke_width,
         stroke_cap=request.stroke_cap,
         stroke_join=request.stroke_join,
-        hollow=request.hollow,
-        wall_ratio=request.wall_ratio,
     )
 
     if not success:

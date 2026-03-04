@@ -1,8 +1,6 @@
 """Font generation using FontForge CLI.
 
 Takes expanded stroke outlines and builds a new font file.
-Each SVG path segment is expanded independently to preserve the
-separate-tube look seen in the web preview (hollow mode).
 """
 
 import json
@@ -20,8 +18,6 @@ import json
 import sys
 import os
 import traceback
-import xml.etree.ElementTree as ET
-import re as _re
 
 args = json.loads(sys.argv[1])
 original_font_path = args["original_font_path"]
@@ -32,10 +28,8 @@ family_suffix = args.get("family_suffix", "Skeletype")
 stroke_width = args["stroke_width"]
 stroke_cap = args["stroke_cap"]
 stroke_join = args["stroke_join"]
-hollow = args.get("hollow", True)
-wall_ratio = args.get("wall_ratio", 0.15)
 
-print(f"stroke_width={stroke_width}, cap={stroke_cap}, join={stroke_join}, hollow={hollow}, wall_ratio={wall_ratio}")
+print(f"stroke_width={stroke_width}, cap={stroke_cap}, join={stroke_join}")
 print(f"FontForge version: {fontforge.version()}")
 
 # Open original font for metrics
@@ -59,21 +53,23 @@ new_font.em = original.em
 new_font.ascent = original.ascent
 new_font.descent = original.descent
 
-
 def apply_stroke(glyph, width, cap, join):
     """Try stroke expansion with fallbacks for different FontForge versions."""
+    # Try full-args form first
     try:
         glyph.stroke("circular", width, cap, join)
         return True
     except Exception as e1:
         print(f"  stroke(circular, w, cap, join) failed: {e1}")
 
+    # Fallback: basic form without cap/join
     try:
         glyph.stroke("circular", width)
         return True
     except Exception as e2:
         print(f"  stroke(circular, w) failed: {e2}")
 
+    # Fallback: caligraphic nib
     try:
         glyph.stroke("caligraphic", width, width, 0)
         return True
@@ -82,192 +78,127 @@ def apply_stroke(glyph, width, cap, join):
 
     return False
 
-
-def fix_circular_contours(glyph):
-    """Close near-circular open contours (handles ㅇ/ㅎ rings)."""
-    try:
-        fore = glyph.foreground
-        fixed = 0
-        for i, c in enumerate(fore):
-            if c.closed or len(c) < 8:
-                continue
-            on_pts = [(p.x, p.y) for p in c if p.on_curve]
-            if len(on_pts) < 4:
-                continue
-            xs = [p[0] for p in on_pts]
-            ys = [p[1] for p in on_pts]
-            w = max(xs) - min(xs)
-            h = max(ys) - min(ys)
-            dx = abs(on_pts[0][0] - on_pts[-1][0])
-            dy = abs(on_pts[0][1] - on_pts[-1][1])
-            short = min(w, h)
-            long_ = max(w, h)
-            if (w > 80 and h > 80
-                    and (long_ / max(short, 1)) < 5.0
-                    and dx <= 200 and dy <= 200):
-                c.closed = True
-                fore[i] = c
-                fixed += 1
-        if fixed:
-            glyph.foreground = fore
-        return fixed
-    except Exception as e:
-        print(f"  fix_circular error: {e}")
-        return 0
-
-
-def parse_svg_paths(svg_file):
-    """Return list of (path_d, svg_width, svg_height) from an SVG file."""
-    tree = ET.parse(svg_file)
-    root = tree.getroot()
-    ns_match = _re.match(r"\\{.*\\}", root.tag)
-    ns = ns_match.group(0) if ns_match else ""
-    paths = root.findall(f"{ns}path")
-    if not paths:
-        paths = root.findall(".//path")
-    width = root.get("width", "1000")
-    height = root.get("height", "1000")
-    return [(p.get("d", ""), width, height) for p in paths if p.get("d")]
-
-
-def make_single_path_svg(path_d, width, height):
-    """Create a minimal SVG string containing only one path."""
-    return (
-        \'<?xml version="1.0" encoding="UTF-8"?>\\n\'
-        f\'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">\\n\'
-        f\'  <path d="{path_d}"/>\\n\'
-        \'</svg>\'
-    )
-
-
-# Wall thickness for hollow tube effect
-wall_thickness = max(5.0, stroke_width * wall_ratio) if hollow else 0.0
-inner_w = stroke_width - 2.0 * wall_thickness
-
-# Scratch font — used for all temp glyph work so new_font stays clean
-scratch = fontforge.font()
-scratch.em = new_font.em
-scratch.ascent = new_font.ascent
-scratch.descent = new_font.descent
-# Two reusable scratch slots (overwritten for each path segment)
-sg_outer = scratch.createChar(1, "outer")
-sg_inner = scratch.createChar(2, "inner")
-
 # Process each glyph
 processed = 0
 for glyph_name, glyph_info in glyph_mapping.items():
     svg_file = glyph_info["svg"]
     codepoint = glyph_info["codepoint"]
     try:
+        # Verify SVG file exists
         if not os.path.exists(svg_file):
             print(f"SVG missing: {svg_file}")
             continue
 
+        # Look up original glyph by unicode codepoint
         orig_glyph = unicode_map.get(codepoint)
         if orig_glyph is None:
             print(f"Skipping {glyph_name}: U+{codepoint:04X} not in original font")
             continue
 
         new_glyph = new_font.createChar(codepoint, orig_glyph.glyphname)
+
+        # Set advance width immediately — must happen before any continue
+        # so space and other width-only glyphs always get correct metrics.
         new_glyph.width = orig_glyph.width
 
-        # Parse SVG into individual path segments
-        paths_data = parse_svg_paths(svg_file)
-        if not paths_data:
-            print(f"  {glyph_name}: no paths in SVG — skipping")
+        # Import centerline SVG
+        new_glyph.importOutlines(svg_file)
+
+        # Close near-circular open contours at the FontForge level.
+        # Autotrace may output ㅇ circles as open paths (no Z / gap > SVG tolerance).
+        # FontForge strokes open paths into 1 solid contour; closed paths yield
+        # 2 concentric contours → hollow ring after correctDirection().
+        # Criteria: open, ≥8 points, roughly square bbox (not an elongated stroke),
+        # bbox > 80 fu, endpoints within 100 fu.
+        try:
+            fore = new_glyph.foreground
+            circ_fixed = 0
+            for i, c in enumerate(fore):
+                if c.closed or len(c) < 8:
+                    continue
+                on_pts = [(p.x, p.y) for p in c if p.on_curve]
+                if len(on_pts) < 4:
+                    continue
+                xs = [p[0] for p in on_pts]
+                ys = [p[1] for p in on_pts]
+                w = max(xs) - min(xs)
+                h = max(ys) - min(ys)
+                dx = abs(on_pts[0][0] - on_pts[-1][0])
+                dy = abs(on_pts[0][1] - on_pts[-1][1])
+                short = min(w, h)
+                long_ = max(w, h)
+                if (w > 80 and h > 80
+                        and (long_ / max(short, 1)) < 2.5
+                        and dx <= 100 and dy <= 100):
+                    c.closed = True
+                    fore[i] = c
+                    circ_fixed += 1
+            if circ_fixed:
+                new_glyph.foreground = fore
+                print(f"  {glyph_name}: closed {circ_fixed} near-circular contour(s)")
+        except Exception as e:
+            print(f"  {glyph_name}: fix_circular error: {e}")
+
+        # Check contour count after import
+        contour_count = sum(len(layer) for layer in new_glyph.layers)
+        if contour_count == 0:
+            print(f"  {glyph_name}: importOutlines produced 0 contours — width set, skipping stroke")
             processed += 1
             continue
+        print(f"  {glyph_name}: {contour_count} contour(s) imported")
 
-        print(f"  {glyph_name}: {len(paths_data)} path(s), hollow={hollow}, inner_w={inner_w:.1f}")
+        # Apply stroke expansion (single-line -> filled outline)
+        ok = apply_stroke(new_glyph, stroke_width, stroke_cap, stroke_join)
+        if not ok:
+            print(f"  {glyph_name}: all stroke() attempts failed — skipping")
+            continue
 
-        temp_files = []
-        main_layer = fontforge.layer()
+        new_glyph.correctDirection()
 
-        for idx, (path_d, svg_w, svg_h) in enumerate(paths_data):
-            if not path_d:
-                continue
-
-            # Write temp single-path SVG
-            tmp_path = svg_file + f".seg{idx}.svg"
-            temp_files.append(tmp_path)
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                f.write(make_single_path_svg(path_d, svg_w, svg_h))
-
-            # --- Outer expansion (uses scratch glyph, never touches new_font) ---
-            sg_outer.clear()
-            sg_outer.importOutlines(tmp_path)
-            fix_circular_contours(sg_outer)
-            ok_outer = apply_stroke(sg_outer, stroke_width, stroke_cap, stroke_join)
-
-            if not ok_outer:
-                continue
-
-            # --- Inner expansion (for hollow tube) ---
-            if hollow and inner_w > 0:
-                sg_inner.clear()
-                sg_inner.importOutlines(tmp_path)
-                fix_circular_contours(sg_inner)
-                ok_inner = apply_stroke(sg_inner, inner_w, stroke_cap, stroke_join)
-
-                if ok_inner:
-                    # Reverse inner contour direction to create a hole
-                    sg_inner.reverseDirection()
-                    outer_layer = sg_outer.foreground
-                    for c in sg_inner.foreground:
-                        outer_layer += c
-                    sg_outer.foreground = outer_layer
-
-            # Sort winding so inner contours become proper holes
-            sg_outer.correctDirection()
-
-            # Accumulate into this glyph's layer
-            for c in sg_outer.foreground:
-                main_layer += c
-
-        new_glyph.foreground = main_layer
-
-        # Cleanup temp SVGs
-        for tf in temp_files:
-            try:
-                os.unlink(tf)
-            except OSError:
-                pass
-
+        # Verify contours survived
         after_count = sum(len(layer) for layer in new_glyph.layers)
-        print(f"  {glyph_name}: done ({after_count} contour(s))")
+        if after_count == 0:
+            print(f"  {glyph_name}: 0 contours after stroke — stroke_width may be too small ({stroke_width})")
+            # Keep the glyph anyway (width is correct, just empty outline)
+
         processed += 1
+        print(f"  {glyph_name}: done ({after_count} contour(s) after expand)")
 
     except Exception as e:
         print(f"Error processing {glyph_name} (U+{codepoint:04X}): {e}")
         traceback.print_exc()
         continue
 
-scratch.close()
-
 print(f"Processed {processed}/{len(glyph_mapping)} glyphs")
 
-# Add space glyph from original font
+# Add space glyph (no outline, just advance width) from original font
 SPACE_CP = 0x0020
 space_in_mapping = any(info.get("codepoint") == SPACE_CP for info in glyph_mapping.values())
+print(f"  space: space_in_mapping={space_in_mapping}, 0x0020 in unicode_map={SPACE_CP in unicode_map}")
 if not space_in_mapping:
     if SPACE_CP in unicode_map:
         orig_space = unicode_map[SPACE_CP]
         space_glyph = new_font.createChar(SPACE_CP, "space")
         space_glyph.width = orig_space.width
-        print(f"  space: added (width={orig_space.width})")
+        print(f"  space: added via unicode_map (width={orig_space.width})")
     else:
+        # CID fonts may not populate unicode_map for space — search by glyph name
+        space_found = False
         for g in original.glyphs():
-            if g.glyphname in ("space", "uni0020") or g.unicode == SPACE_CP:
+            if g.glyphname in ('space', 'uni0020') or g.unicode == SPACE_CP:
                 w = g.width if g.width > 0 else int(new_font.em * 0.25)
                 space_glyph = new_font.createChar(SPACE_CP, "space")
                 space_glyph.width = w
-                print(f"  space: added via name '{g.glyphname}' (width={w})")
+                print(f"  space: added via name search '{g.glyphname}' (width={w})")
+                space_found = True
                 break
-        else:
+        if not space_found:
             default_width = int(new_font.em * 0.25)
             space_glyph = new_font.createChar(SPACE_CP, "space")
             space_glyph.width = default_width
-            print(f"  space: added with default width {default_width}")
+            print(f"  space: added with default width {default_width} (not found in original)")
+else:
+    print("  space: already in glyph mapping")
 
 # Generate font
 new_font.generate(output_path)
@@ -284,15 +215,9 @@ def generate_font(
     stroke_width: float = 80.0,
     stroke_cap: str = "round",
     stroke_join: str = "round",
-    hollow: bool = True,
-    wall_ratio: float = 0.15,
 ) -> bool:
     """
     Generate a new font from centerline SVGs with stroke expansion.
-
-    Each SVG path segment is processed independently. When hollow=True,
-    each stroke is a ring (outer minus inner) so overlapping strokes
-    remain visually separate — matching the web preview look.
 
     Args:
         original_font_path: Path to original font for metrics
@@ -301,27 +226,30 @@ def generate_font(
         stroke_width: Stroke width in font units
         stroke_cap: Line cap style
         stroke_join: Line join style
-        hollow: If True, each stroke tube is hollow (ring shape)
-        wall_ratio: Tube wall thickness as fraction of stroke_width
+
+    Returns:
+        True if font generation succeeded
     """
     if not FONTFORGE_CMD:
         print("FontForge not found")
         return False
 
+    # Write the script
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(_GENERATE_SCRIPT)
         script_path = f.name
 
+    # Glyph mapping already has {name: {svg, codepoint}} from caller
+    glyph_mapping = centerline_svgs
+
     args = json.dumps({
         "original_font_path": str(original_font_path),
         "expanded_dir": str(output_path.parent),
-        "glyph_mapping": centerline_svgs,
+        "glyph_mapping": glyph_mapping,
         "output_path": str(output_path),
         "stroke_width": stroke_width,
         "stroke_cap": stroke_cap,
         "stroke_join": stroke_join,
-        "hollow": hollow,
-        "wall_ratio": wall_ratio,
     })
 
     try:
