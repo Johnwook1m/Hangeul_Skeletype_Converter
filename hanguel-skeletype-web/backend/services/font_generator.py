@@ -153,13 +153,6 @@ for glyph_name, glyph_info in glyph_mapping.items():
             print(f"  {glyph_name}: all stroke() attempts failed — skipping")
             continue
 
-        # removeOverlap() before correctDirection() cleans up self-intersecting
-        # contours that stroke() can produce on some FontForge versions, and
-        # ensures winding-order detection works reliably.
-        try:
-            new_glyph.removeOverlap()
-        except Exception as e:
-            print(f"  {glyph_name}: removeOverlap() skipped: {e}")
         new_glyph.correctDirection()
 
         # Verify contours survived
