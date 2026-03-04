@@ -422,13 +422,22 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     mx, my = float(first_m.group(1)), float(first_m.group(2))
     lx, ly = float(nums[-2]), float(nums[-1])
     dx, dy = abs(mx - lx), abs(my - ly)
+    # Tier 1: small gap — safe to close any path
     if dx <= tolerance and dy <= tolerance:
-        print(f"  [close_circular] Z added: gap=({dx:.1f},{dy:.1f})")
+        print(f"  [close_circular] Z added (t1): gap=({dx:.1f},{dy:.1f})")
         return d + ' Z'
-    # Log complex paths that were NOT closed so we can tune tolerance
+    # Tier 2: larger gap only for complex curves (≥6 cubic segments).
+    # Circular rings in Korean glyphs use 4-8 cubic beziers; simple open
+    # strokes use 1-3.  Linux Autotrace can leave gaps up to ~120 px for
+    # small ㅇ rings (e.g. the initial consonant in '움'), so we allow a
+    # wider tolerance when the path complexity confirms it is a loop.
     c_count = d.upper().count('C')
-    if c_count >= 6:
-        print(f"  [close_circular] skipped: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), tol={tolerance}")
+    extended = tolerance * 3.0  # 40 px → 120 px
+    if c_count >= 6 and dx <= extended and dy <= extended:
+        print(f"  [close_circular] Z added (t2): c_segs={c_count}, gap=({dx:.1f},{dy:.1f})")
+        return d + ' Z'
+    if c_count >= 4:
+        print(f"  [close_circular] skipped: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), tol={tolerance}/{extended:.0f}")
     return d
 
 
