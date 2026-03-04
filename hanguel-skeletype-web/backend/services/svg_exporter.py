@@ -414,10 +414,6 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     nums = re.findall(r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?', d)
     if len(nums) < 4:
         return d
-    # Require ≥4 cubic bezier segments — real closed shape, not a short open stroke
-    c_count = d.upper().count('C')
-    if c_count < 4:
-        return d
     first_m = re.search(
         r'[Mm]\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*[,\s]\s*([+-]?(?:\d+\.?\d*|\.\d+))', d
     )
@@ -429,7 +425,9 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     if dx <= tolerance and dy <= tolerance:
         print(f"  [close_circular] Z added: gap=({dx:.1f},{dy:.1f})")
         return d + ' Z'
-    if c_count >= 4:
+    # Log complex paths that were NOT closed so we can tune tolerance
+    c_count = d.upper().count('C')
+    if c_count >= 6:
         print(f"  [close_circular] skipped: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), tol={tolerance}")
     return d
 
@@ -482,7 +480,7 @@ def create_fontforge_glyph_svg(
         # Apply Z detection in pixel space (before transform).
         # After scaling to font units the gap can exceed the 2-unit tolerance,
         # so we check here where autotrace coordinates are still in pixels.
-        path_d = _close_if_circular(path_d, tolerance=40.0)
+        path_d = _close_if_circular(path_d, tolerance=10.0)
         transformed = transform_path_to_font_units(
             path_d, raster_scale, x_min, y_min, y_max,
             glyph_height, padding=20.0, ascender=ascender,
