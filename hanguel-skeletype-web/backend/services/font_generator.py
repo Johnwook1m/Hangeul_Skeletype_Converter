@@ -114,7 +114,7 @@ for glyph_name, glyph_info in glyph_mapping.items():
             fore = new_glyph.foreground
             circ_fixed = 0
             for i, c in enumerate(fore):
-                if c.closed or len(c) < 8:
+                if c.closed or len(c) < 4:
                     continue
                 on_pts = [(p.x, p.y) for p in c if p.on_curve]
                 if len(on_pts) < 4:
