@@ -114,7 +114,7 @@ for glyph_name, glyph_info in glyph_mapping.items():
             fore = new_glyph.foreground
             circ_fixed = 0
             for i, c in enumerate(fore):
-                if c.closed or len(c) < 4:
+                if c.closed or len(c) < 8:
                     continue
                 on_pts = [(p.x, p.y) for p in c if p.on_curve]
                 if len(on_pts) < 4:
@@ -127,7 +127,7 @@ for glyph_name, glyph_info in glyph_mapping.items():
                 dy = abs(on_pts[0][1] - on_pts[-1][1])
                 short = min(w, h)
                 long_ = max(w, h)
-                if (w > 40 and h > 40
+                if (w > 80 and h > 80
                         and (long_ / max(short, 1)) < 5.0
                         and dx <= 200 and dy <= 200):
                     c.closed = True
@@ -148,16 +148,10 @@ for glyph_name, glyph_info in glyph_mapping.items():
         print(f"  {glyph_name}: {contour_count} contour(s) imported")
 
         # Apply stroke expansion (single-line -> filled outline)
-        before_stroke = sum(len(layer) for layer in new_glyph.layers)
         ok = apply_stroke(new_glyph, stroke_width, stroke_cap, stroke_join)
         if not ok:
             print(f"  {glyph_name}: all stroke() attempts failed — skipping")
             continue
-
-        after_stroke = sum(len(layer) for layer in new_glyph.layers)
-        print(f"  {glyph_name}: contours before_stroke={before_stroke} after_stroke={after_stroke}")
-        if after_stroke == 1:
-            print(f"  {glyph_name}: WARNING — only 1 contour after stroke → likely open path (will fill solid)")
 
         new_glyph.correctDirection()
 

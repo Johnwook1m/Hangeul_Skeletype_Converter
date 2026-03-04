@@ -3,9 +3,6 @@
 import os
 from pathlib import Path
 
-# Build version — bump this when pushing fixes so we can verify Railway deployed latest code.
-BUILD_VERSION = "2026-03-04-v4"
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -47,7 +44,6 @@ async def health_check():
     deps = check_dependencies()
     return {
         "status": "ok",
-        "build_version": BUILD_VERSION,
         "dependencies": deps,
     }
 
