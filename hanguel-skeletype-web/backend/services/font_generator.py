@@ -148,10 +148,16 @@ for glyph_name, glyph_info in glyph_mapping.items():
         print(f"  {glyph_name}: {contour_count} contour(s) imported")
 
         # Apply stroke expansion (single-line -> filled outline)
+        before_stroke = sum(len(layer) for layer in new_glyph.layers)
         ok = apply_stroke(new_glyph, stroke_width, stroke_cap, stroke_join)
         if not ok:
             print(f"  {glyph_name}: all stroke() attempts failed — skipping")
             continue
+
+        after_stroke = sum(len(layer) for layer in new_glyph.layers)
+        print(f"  {glyph_name}: contours before_stroke={before_stroke} after_stroke={after_stroke}")
+        if after_stroke == 1:
+            print(f"  {glyph_name}: WARNING — only 1 contour after stroke → likely open path (will fill solid)")
 
         new_glyph.correctDirection()
 

@@ -409,7 +409,11 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     - Open path  → 1 contour  → solid fill ✗
     - Closed path → 2 contours → hollow ring after correctDirection() ✓
     """
-    if not d or 'Z' in d.upper():
+    if not d:
+        return d
+    if 'Z' in d.upper():
+        c_count = d.upper().count('C')
+        print(f"  [close_circular] already-Z: c_segs={c_count} (no action needed)")
         return d
     nums = re.findall(r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?', d)
     if len(nums) < 4:
@@ -422,20 +426,20 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     mx, my = float(first_m.group(1)), float(first_m.group(2))
     lx, ly = float(nums[-2]), float(nums[-1])
     dx, dy = abs(mx - lx), abs(my - ly)
+    c_count = d.upper().count('C')
+    extended = tolerance * 3.0  # 40 px → 120 px
     # Tier 1: small gap — safe to close any path
     if dx <= tolerance and dy <= tolerance:
-        print(f"  [close_circular] Z added (t1): gap=({dx:.1f},{dy:.1f})")
+        print(f"  [close_circular] Z added (t1): c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f})")
         return d + ' Z'
     # Tier 2: larger gap for paths with ≥4 cubic segments.
     # Korean ㅇ/ㅎ rings use 4-8 cubic beziers; simple open strokes use 1-3.
     # Small ㅇ rings (e.g. initial consonant in '움') can have gaps up to
     # ~120 px on Linux Autotrace.
-    c_count = d.upper().count('C')
-    extended = tolerance * 3.0  # 40 px → 120 px
     if c_count >= 4 and dx <= extended and dy <= extended:
-        print(f"  [close_circular] Z added (t2): c_segs={c_count}, gap=({dx:.1f},{dy:.1f})")
+        print(f"  [close_circular] Z added (t2): c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f})")
         return d + ' Z'
-    print(f"  [close_circular] skipped: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), tol={tolerance}/{extended:.0f}")
+    print(f"  [close_circular] SKIPPED: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f}), tol={tolerance}/{extended:.0f}")
     return d
 
 
