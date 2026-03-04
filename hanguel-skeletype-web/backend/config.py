@@ -23,6 +23,8 @@ def find_tool(name: str, extra_paths: list[str] | None = None) -> str | None:
             "/opt/homebrew/bin/convert",
             "/usr/local/bin/magick",
             "/usr/local/bin/convert",
+            "/usr/bin/magick",
+            "/usr/bin/convert",       # ImageMagick 6 on Debian/Ubuntu
         ]
     elif name == "autotrace":
         paths_to_check = [
@@ -42,6 +44,11 @@ def find_tool(name: str, extra_paths: list[str] | None = None) -> str | None:
     found = shutil.which(name)
     if found:
         return found
+    # Fallback: ImageMagick 6 on Linux uses 'convert' instead of 'magick'
+    if name == "magick":
+        found = shutil.which("convert")
+        if found:
+            return found
     return None
 
 
