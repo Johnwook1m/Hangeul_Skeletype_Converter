@@ -128,8 +128,8 @@ for glyph_name, glyph_info in glyph_mapping.items():
                 short = min(w, h)
                 long_ = max(w, h)
                 if (w > 80 and h > 80
-                        and (long_ / max(short, 1)) < 2.5
-                        and dx <= 100 and dy <= 100):
+                        and (long_ / max(short, 1)) < 5.0
+                        and dx <= 200 and dy <= 200):
                     c.closed = True
                     fore[i] = c
                     circ_fixed += 1

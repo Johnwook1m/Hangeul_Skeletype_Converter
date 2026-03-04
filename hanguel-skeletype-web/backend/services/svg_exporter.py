@@ -480,7 +480,7 @@ def create_fontforge_glyph_svg(
         # Apply Z detection in pixel space (before transform).
         # After scaling to font units the gap can exceed the 2-unit tolerance,
         # so we check here where autotrace coordinates are still in pixels.
-        path_d = _close_if_circular(path_d, tolerance=10.0)
+        path_d = _close_if_circular(path_d, tolerance=40.0)
         transformed = transform_path_to_font_units(
             path_d, raster_scale, x_min, y_min, y_max,
             glyph_height, padding=20.0, ascender=ascender,
