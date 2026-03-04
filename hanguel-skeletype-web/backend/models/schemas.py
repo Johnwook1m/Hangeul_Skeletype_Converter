@@ -42,6 +42,8 @@ class ExportRequest(BaseModel):
     stroke_cap: str = "round"
     stroke_join: str = "round"
     format: str = "otf"
+    hollow: bool = True
+    wall_ratio: float = 0.15
 
 
 class DependencyStatus(BaseModel):
