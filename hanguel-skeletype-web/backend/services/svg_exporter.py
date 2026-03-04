@@ -432,14 +432,22 @@ def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     if dx <= tolerance and dy <= tolerance:
         print(f"  [close_circular] Z added (t1): c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f})")
         return d + ' Z'
-    # Tier 2: larger gap for paths with ≥4 cubic segments.
-    # Korean ㅇ/ㅎ rings use 4-8 cubic beziers; simple open strokes use 1-3.
-    # Small ㅇ rings (e.g. initial consonant in '움') can have gaps up to
-    # ~120 px on Linux Autotrace.
+    # Tier 2: larger gap (up to 120 px) for paths with ≥4 cubic segments.
     if c_count >= 4 and dx <= extended and dy <= extended:
         print(f"  [close_circular] Z added (t2): c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f})")
         return d + ' Z'
-    print(f"  [close_circular] SKIPPED: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f}), tol={tolerance}/{extended:.0f}")
+    # Tier 3: up to 300 px gap, but only for roughly-symmetric gaps.
+    # Ring paths (ㅇ, ㅎ circle) have balanced dx/dy (the path wraps around the ring
+    # and ends at a different angular position). Long open strokes have highly
+    # asymmetric gaps — near-vertical strokes: dy >> dx, horizontal: dx >> dy.
+    # Log data shows ring candidates at gap≈(127,283) and open strokes at (1,464).
+    # Safety: require c_segs ≥ 4 AND gap_ratio < 3.5 (neither dim dominates).
+    far = tolerance * 7.5  # 40 px → 300 px
+    gap_ratio = max(dx, dy) / max(min(dx, dy), 1.0)
+    if c_count >= 4 and dx <= far and dy <= far and gap_ratio < 3.5:
+        print(f"  [close_circular] Z added (t3): c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), sym={gap_ratio:.1f}, start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f})")
+        return d + ' Z'
+    print(f"  [close_circular] SKIPPED: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), sym={gap_ratio:.1f}, start=({mx:.1f},{my:.1f}), end=({lx:.1f},{ly:.1f}), tol={tolerance}/{extended:.0f}/{far:.0f}")
     return d
 
 

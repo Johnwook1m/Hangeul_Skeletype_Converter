@@ -127,9 +127,11 @@ for glyph_name, glyph_info in glyph_mapping.items():
                 dy = abs(on_pts[0][1] - on_pts[-1][1])
                 short = min(w, h)
                 long_ = max(w, h)
+                gap_ratio = max(dx, dy) / max(min(dx, dy), 1.0)
                 if (w > 40 and h > 40
                         and (long_ / max(short, 1)) < 5.0
-                        and dx <= 200 and dy <= 200):
+                        and dx <= 400 and dy <= 400
+                        and gap_ratio < 3.5):
                     c.closed = True
                     fore[i] = c
                     circ_fixed += 1
