@@ -144,6 +144,15 @@ def make_single_path_svg(path_d, width, height):
 wall_thickness = max(5.0, stroke_width * wall_ratio) if hollow else 0.0
 inner_w = stroke_width - 2.0 * wall_thickness
 
+# Scratch font — used for all temp glyph work so new_font stays clean
+scratch = fontforge.font()
+scratch.em = new_font.em
+scratch.ascent = new_font.ascent
+scratch.descent = new_font.descent
+# Two reusable scratch slots (overwritten for each path segment)
+sg_outer = scratch.createChar(1, "outer")
+sg_inner = scratch.createChar(2, "inner")
+
 # Process each glyph
 processed = 0
 for glyph_name, glyph_info in glyph_mapping.items():
@@ -172,7 +181,7 @@ for glyph_name, glyph_info in glyph_mapping.items():
         print(f"  {glyph_name}: {len(paths_data)} path(s), hollow={hollow}, inner_w={inner_w:.1f}")
 
         temp_files = []
-        main_layer = new_glyph.foreground
+        main_layer = fontforge.layer()
 
         for idx, (path_d, svg_w, svg_h) in enumerate(paths_data):
             if not path_d:
@@ -184,43 +193,36 @@ for glyph_name, glyph_info in glyph_mapping.items():
             with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(make_single_path_svg(path_d, svg_w, svg_h))
 
-            # --- Outer expansion ---
-            outer_name = f"__outer_{glyph_name}_{idx}__"
-            t_outer = new_font.createChar(-1, outer_name)
-            t_outer.importOutlines(tmp_path)
-            fix_circular_contours(t_outer)
-            ok_outer = apply_stroke(t_outer, stroke_width, stroke_cap, stroke_join)
+            # --- Outer expansion (uses scratch glyph, never touches new_font) ---
+            sg_outer.clear()
+            sg_outer.importOutlines(tmp_path)
+            fix_circular_contours(sg_outer)
+            ok_outer = apply_stroke(sg_outer, stroke_width, stroke_cap, stroke_join)
 
             if not ok_outer:
-                new_font.removeGlyph(outer_name)
                 continue
 
             # --- Inner expansion (for hollow tube) ---
             if hollow and inner_w > 0:
-                inner_name = f"__inner_{glyph_name}_{idx}__"
-                t_inner = new_font.createChar(-1, inner_name)
-                t_inner.importOutlines(tmp_path)
-                fix_circular_contours(t_inner)
-                ok_inner = apply_stroke(t_inner, inner_w, stroke_cap, stroke_join)
+                sg_inner.clear()
+                sg_inner.importOutlines(tmp_path)
+                fix_circular_contours(sg_inner)
+                ok_inner = apply_stroke(sg_inner, inner_w, stroke_cap, stroke_join)
 
                 if ok_inner:
                     # Reverse inner contour direction to create a hole
-                    t_inner.reverseDirection()
-                    outer_layer = t_outer.foreground
-                    for c in t_inner.foreground:
+                    sg_inner.reverseDirection()
+                    outer_layer = sg_outer.foreground
+                    for c in sg_inner.foreground:
                         outer_layer += c
-                    t_outer.foreground = outer_layer
+                    sg_outer.foreground = outer_layer
 
-                new_font.removeGlyph(inner_name)
+            # Sort winding so inner contours become proper holes
+            sg_outer.correctDirection()
 
-            # Sort out winding so inner contours are proper holes
-            t_outer.correctDirection()
-
-            # Accumulate into main glyph
-            for c in t_outer.foreground:
+            # Accumulate into this glyph's layer
+            for c in sg_outer.foreground:
                 main_layer += c
-
-            new_font.removeGlyph(outer_name)
 
         new_glyph.foreground = main_layer
 
@@ -239,6 +241,8 @@ for glyph_name, glyph_info in glyph_mapping.items():
         print(f"Error processing {glyph_name} (U+{codepoint:04X}): {e}")
         traceback.print_exc()
         continue
+
+scratch.close()
 
 print(f"Processed {processed}/{len(glyph_mapping)} glyphs")
 
