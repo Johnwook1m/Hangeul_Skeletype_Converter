@@ -11,7 +11,7 @@ RUN npm run build
 # ── Stage 2: Production image with Linuxbrew ──────────────────────────────────
 # Linuxbrew installs autotrace + imagemagick from the same Homebrew formula
 # as macOS, ensuring consistent centerline output across platforms.
-FROM --platform=linux/amd64 python:3.11-slim-bullseye
+FROM --platform=linux/amd64 python:3.11-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
