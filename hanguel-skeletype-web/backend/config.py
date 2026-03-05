@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -12,6 +13,9 @@ TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 # Session expiry (seconds)
 SESSION_EXPIRY = 3600  # 1 hour
+
+# Debug: keep intermediate temp files (PNG, SVG) after extraction
+DEBUG_KEEP_TEMP = os.environ.get("DEBUG_KEEP_TEMP", "false").lower() == "true"
 
 
 def find_tool(name: str, extra_paths: list[str] | None = None) -> str | None:

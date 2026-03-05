@@ -12,6 +12,7 @@ from services.rasterizer import rasterize_glyph
 from services.centerline_extractor import extract_centerline
 from services.svg_parser import parse_svg
 from services.font_parser import get_glyph_outline_svg
+from config import DEBUG_KEEP_TEMP
 
 router = APIRouter(prefix="/api/font", tags=["centerline"])
 
@@ -203,10 +204,11 @@ async def extract_centerlines(font_id: str, request: ExtractRequest):
                 yield f"data: {json.dumps({'type': 'progress', 'glyph': name, 'index': i + 1, 'total': total, 'retry': attempt + 1})}\n\n"
 
                 # Clean up previous artifacts before retry
-                for ext in (".png", ".svg", ".bmp"):
-                    artifact = work_dir / f"{name}{ext}"
-                    if artifact.exists():
-                        artifact.unlink()
+                if not DEBUG_KEEP_TEMP:
+                    for ext in (".png", ".svg", ".bmp"):
+                        artifact = work_dir / f"{name}{ext}"
+                        if artifact.exists():
+                            artifact.unlink()
 
                 result, error_msg = await do_extract(name, work_dir)
 
