@@ -8,63 +8,45 @@ COPY frontend/ ./
 RUN npm run build
 
 
-# ── Stage 2: Build autotrace from source ─────────────────────────────────────
-# Use debian:bullseye (full, not slim): /usr/share/gettext/ intact → autopoint works,
-# ImageMagick 6 → pkg-config name is "MagickWand" matching autotrace's configure check
-FROM --platform=linux/amd64 debian:bullseye AS autotrace-builder
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y \
-    build-essential git ca-certificates autoconf automake libtool pkg-config gettext \
-    libglib2.0-dev libpng-dev libmagickwand-dev pstoedit \
-    && rm -rf /var/lib/apt/lists/* \
-    # Create .so symlink so linker can find libpstoedit (the unversioned symlink is normally in -dev)
-    && ln -sf /usr/lib/x86_64-linux-gnu/libpstoedit.so.0 \
-              /usr/lib/x86_64-linux-gnu/libpstoedit.so || true
-
-RUN git clone --depth=1 https://github.com/autotrace/autotrace.git /src/autotrace && \
-    cd /src/autotrace && \
-    # Remove gettext/i18n macros so autoreconf skips autopoint/intltool (not needed for our use case)
-    sed -i '/AM_GNU_GETTEXT/d' configure.ac && \
-    sed -i '/IT_PROG_INTLTOOL/d' configure.ac && \
-    sed -i '/^SUBDIRS/ s/ *\bpo\b//' Makefile.am 2>/dev/null || true && \
-    mkdir -p po && touch po/POTFILES.in po/Makefile.in.in && \
-    # Create fake pstoedit.pc so pkg-config can find it (pstoedit on Debian has no .pc file)
-    mkdir -p /usr/local/lib/pkgconfig && \
-    printf 'Name: pstoedit\nDescription: pstoedit\nVersion: 3.75\nLibs: -lpstoedit\nCflags: \n' \
-        > /usr/local/lib/pkgconfig/pstoedit.pc && \
-    autoreconf -i --install --force && \
-    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH} \
-    ./configure --prefix=/usr/local && \
-    make -j$(nproc) && \
-    make install
-
-
-# ── Stage 3: Production image ─────────────────────────────────────────────────
+# ── Stage 2: Production image with Linuxbrew ──────────────────────────────────
+# Linuxbrew installs autotrace + imagemagick from the same Homebrew formula
+# as macOS, ensuring consistent centerline output across platforms.
 FROM --platform=linux/amd64 python:3.11-slim-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# System dependencies
+# System dependencies:
+# - build-essential / curl / file / git: required by Linuxbrew installer
+# - fontforge: kept from apt (Linuxbrew formula is unnecessarily heavy)
+# - ffmpeg: video utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    imagemagick \
+    build-essential curl file git \
     fontforge \
-    pstoedit \
     ffmpeg \
-    libglib2.0-0 libpng16-16 libmagickwand-6.q16-6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy autotrace binary from builder stage
-COPY --from=autotrace-builder /usr/local/bin/autotrace /usr/local/bin/autotrace
-COPY --from=autotrace-builder /usr/local/lib/ /usr/local/lib/
-RUN ldconfig
+# Linuxbrew requires a non-root user — create a dedicated one
+RUN useradd -m -s /bin/bash linuxbrew
 
-# Allow ImageMagick to process all file types
-RUN sed -i 's/rights="none" pattern="PS"/rights="read|write" pattern="PS"/g' /etc/ImageMagick-6/policy.xml 2>/dev/null || true && \
-    sed -i 's/rights="none" pattern="EPS"/rights="read|write" pattern="EPS"/g' /etc/ImageMagick-6/policy.xml 2>/dev/null || true && \
-    sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/g' /etc/ImageMagick-6/policy.xml 2>/dev/null || true
+# Install Linuxbrew as the linuxbrew user (non-interactive / CI mode)
+USER linuxbrew
+ENV NONINTERACTIVE=1
+ENV HOMEBREW_NO_AUTO_UPDATE=1
+ENV HOMEBREW_NO_INSTALL_CLEANUP=1
+RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install autotrace + imagemagick (same Homebrew formula as macOS)
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+RUN brew install autotrace imagemagick
+
+# Return to root for the rest of the setup
+USER root
+
+# Make Linuxbrew binaries available to all processes (including root subprocess calls)
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+# Register Linuxbrew's shared libraries so dynamic linking works
+RUN echo "/home/linuxbrew/.linuxbrew/lib" > /etc/ld.so.conf.d/linuxbrew.conf && ldconfig
 
 WORKDIR /app/backend
 
