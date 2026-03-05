@@ -7,7 +7,40 @@ Uses ImageMagick for preprocessing and Autotrace for centerline extraction.
 import subprocess
 from pathlib import Path
 
-from config import IMAGEMAGICK_CMD, AUTOTRACE_CMD
+from config import IMAGEMAGICK_CMD, AUTOTRACE_CMD, DEBUG_KEEP_TEMP
+
+
+def _log_png_info(png_path: Path) -> None:
+    """DEBUG: Log PNG file size and color info to stdout."""
+    if not png_path.exists():
+        print(f"[DEBUG] PNG not found: {png_path.name}")
+        return
+    size_kb = png_path.stat().st_size / 1024
+    print(f"[DEBUG] PNG '{png_path.name}': {size_kb:.1f} KB")
+
+    if IMAGEMAGICK_CMD:
+        try:
+            # Get image dimensions and color count
+            result = subprocess.run(
+                [IMAGEMAGICK_CMD, str(png_path), "-format", "%wx%h px, %[colors] colors", "info:"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0:
+                print(f"[DEBUG] PNG info: {result.stdout.strip()}")
+        except Exception:
+            pass
+
+
+def _log_svg_info(svg_path: Path) -> None:
+    """DEBUG: Log SVG file size and path count to stdout."""
+    if not svg_path.exists():
+        print(f"[DEBUG] SVG not found: {svg_path.name}")
+        return
+    size_bytes = svg_path.stat().st_size
+    content = svg_path.read_text(encoding="utf-8")
+    path_count = content.count("<path")
+    polygon_count = content.count("<polygon")
+    print(f"[DEBUG] SVG '{svg_path.name}': {size_bytes} bytes, {path_count} <path>, {polygon_count} <polygon>")
 
 
 def apply_antialiasing_blur(png_path: Path) -> bool:
@@ -65,6 +98,10 @@ def extract_centerline(png_path: Path, svg_path: Path) -> bool:
     # Step 1: Apply antialiasing blur for binary images
     apply_antialiasing_blur(png_path)
 
+    # DEBUG: Log PNG info before Autotrace
+    if DEBUG_KEEP_TEMP:
+        _log_png_info(png_path)
+
     # Step 2: Run Autotrace with centerline extraction
     command = [
         AUTOTRACE_CMD,
@@ -97,6 +134,10 @@ def extract_centerline(png_path: Path, svg_path: Path) -> bool:
             tag in svg_content
             for tag in ["<path", "<polygon", "<polyline"]
         )
+
+        # DEBUG: Log SVG info after Autotrace
+        if DEBUG_KEEP_TEMP:
+            _log_svg_info(svg_path)
 
         if not has_paths:
             print(f"Empty SVG (no path data) for {png_path.name}")
