@@ -400,6 +400,25 @@ def export_svg_file(
         return False
 
 
+def _close_circular_subpaths(d: str, tolerance: float = 10.0) -> str:
+    """각 M 서브패스를 개별적으로 원형 검사하여 Z 추가.
+
+    Linux Autotrace는 글리프 여러 획을 하나의 <path>에 M 명령어로 이어 붙임.
+    전체 경로의 start↔end gap이 크더라도 서브패스 단위로는 원형일 수 있음.
+    """
+    if not d:
+        return d
+    # M 또는 m 명령어 앞에서 분리 (lookahead)
+    parts = re.split(r'(?=[Mm](?:[\s,]|[+-]?\d))', d.strip())
+    parts = [p.strip() for p in parts if p.strip()]
+    if len(parts) <= 1:
+        return _close_if_circular(d, tolerance)
+    result = []
+    for part in parts:
+        result.append(_close_if_circular(part, tolerance))
+    return ' '.join(result)
+
+
 def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
     """Add Z to a path whose start and end points coincide (handles ㅇ circles).
 
@@ -480,7 +499,7 @@ def create_fontforge_glyph_svg(
         # Apply Z detection in pixel space (before transform).
         # After scaling to font units the gap can exceed the 2-unit tolerance,
         # so we check here where autotrace coordinates are still in pixels.
-        path_d = _close_if_circular(path_d, tolerance=10.0)
+        path_d = _close_circular_subpaths(path_d, tolerance=10.0)
         transformed = transform_path_to_font_units(
             path_d, raster_scale, x_min, y_min, y_max,
             glyph_height, padding=20.0, ascender=ascender,

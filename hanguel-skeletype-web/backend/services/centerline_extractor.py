@@ -106,6 +106,7 @@ def extract_centerline(png_path: Path, svg_path: Path) -> bool:
     command = [
         AUTOTRACE_CMD,
         "-centerline",
+        "-filter-iterations", "4",
         "-output-file", str(svg_path),
         "-background-color=FFFFFF",
         "-color-count", "2",
