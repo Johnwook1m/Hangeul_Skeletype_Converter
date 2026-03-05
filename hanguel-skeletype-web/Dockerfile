@@ -51,8 +51,9 @@ RUN echo "/home/linuxbrew/.linuxbrew/lib" > /etc/ld.so.conf.d/linuxbrew.conf && 
 WORKDIR /app/backend
 
 # Install Python dependencies
+# Use absolute path to avoid Linuxbrew's Python shadowing the base image's pip
 COPY backend/requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN /usr/local/bin/pip3 install --no-cache-dir -r requirements.txt
 
 # Copy backend source
 COPY backend/ ./
