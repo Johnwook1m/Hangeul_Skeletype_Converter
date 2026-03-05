@@ -44,6 +44,7 @@ export async function exportFont(fontId, params) {
   return res.data;
 }
 
+
 export async function healthCheck() {
   const res = await api.get('/health');
   return res.data;

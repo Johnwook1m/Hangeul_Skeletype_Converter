@@ -64,14 +64,11 @@ async function drawSVGToCanvas(ctx, svgEl, w, h) {
   }
 }
 
-// ── Video helpers ─────────────────────────────────────────────────────────────
-function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
-
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ExportMenu() {
   const { fontId, fontName, strokeParams, previewText, isDemo } = useFontStore();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(null); // 'svg' | 'jpg' | 'otf' | 'video'
+  const [loading, setLoading] = useState(null); // 'svg' | 'jpg' | 'otf'
 
   const canExport = !!fontId && !isDemo;
   const closePopover = useCallback(() => setOpen(false), []);
@@ -145,99 +142,6 @@ export default function ExportMenu() {
     }
   }
 
-  // ── Video ───────────────────────────────────────────────────────────────────
-  async function handleVideo() {
-    const containerEl = document.getElementById('preview-container');
-    const svgEl = document.getElementById('skeletype-preview-svg');
-    if (!containerEl || !svgEl) return;
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-      alert('Video export is not supported in this browser. Please use Chrome or Edge.');
-      return;
-    }
-
-    setLoading('video');
-
-    const FPS = 30;
-    const DRAW_FRAMES = 75;  // 2.5s draw-on
-    const HOLD_FRAMES = 15;  // 0.5s hold
-    const TOTAL_FRAMES = DRAW_FRAMES + HOLD_FRAMES;
-
-    const rect = containerEl.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 2, 2);
-    const w = rect.width, h = rect.height;
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    // Collect animated stroke paths (skip decorative thin centerline refs)
-    const strokePaths = Array.from(svgEl.querySelectorAll('path')).filter(
-      (p) => p.getAttribute('stroke') && p.getAttribute('stroke') !== 'none'
-    );
-    const pathLengths = strokePaths.map((p) => p.getTotalLength());
-    const origArrays = strokePaths.map((p) => p.getAttribute('stroke-dasharray'));
-    const origOffsets = strokePaths.map((p) => p.getAttribute('stroke-dashoffset'));
-
-    const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
-      .find((t) => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-
-    const stream = canvas.captureStream(FPS);
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
-    const chunks = [];
-
-    const done = new Promise((resolve) => {
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `${fontName || 'skeletype'}_animation.webm`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-    });
-
-    recorder.start();
-
-    const { bgColor: currBg, backgroundImageParams: bgImg } = useFontStore.getState();
-
-    try {
-      for (let f = 0; f <= TOTAL_FRAMES; f++) {
-        const rawT = Math.min(f / DRAW_FRAMES, 1);
-        const progress = easeInOut(rawT);
-
-        strokePaths.forEach((p, i) => {
-          const len = pathLengths[i];
-          p.setAttribute('stroke-dasharray', `${len}`);
-          p.setAttribute('stroke-dashoffset', `${len * (1 - progress)}`);
-        });
-
-        ctx.fillStyle = currBg;
-        ctx.fillRect(0, 0, w, h);
-        if (bgImg.enabled && bgImg.imageUrl) await drawBackgroundImage(ctx, bgImg, w, h);
-        await drawSVGToCanvas(ctx, svgEl, w, h);
-
-        await new Promise((r) => setTimeout(r, 1000 / FPS));
-      }
-    } finally {
-      strokePaths.forEach((p, i) => {
-        origArrays[i] !== null
-          ? p.setAttribute('stroke-dasharray', origArrays[i])
-          : p.removeAttribute('stroke-dasharray');
-        origOffsets[i] !== null
-          ? p.setAttribute('stroke-dashoffset', origOffsets[i])
-          : p.removeAttribute('stroke-dashoffset');
-      });
-      recorder.stop();
-    }
-
-    await done;
-    setLoading(null);
-    setOpen(false);
-  }
-
   if (!canExport) return null;
 
   return (
@@ -299,20 +203,6 @@ export default function ExportMenu() {
               </div>
             </button>
 
-            {/* Video */}
-            <button
-              onClick={handleVideo}
-              disabled={!previewText || !!loading}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 disabled:opacity-40 transition-colors text-left"
-            >
-              <span className="text-xs font-mono font-semibold text-[#FF5714] w-8">MP4</span>
-              <div>
-                <p className="text-xs font-medium text-gray-200">
-                  {loading === 'video' ? 'Recording...' : 'Draw-on animation'}
-                </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">WebM · 30fps · 3s</p>
-              </div>
-            </button>
           </div>
         </EffectPopover>
       )}

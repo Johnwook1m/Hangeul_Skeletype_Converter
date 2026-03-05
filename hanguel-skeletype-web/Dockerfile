@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     imagemagick \
     fontforge \
     pstoedit \
+    ffmpeg \
     libglib2.0-0 libpng16-16 libmagickwand-6.q16-6 \
     && rm -rf /var/lib/apt/lists/*
 
