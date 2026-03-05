@@ -63,4 +63,4 @@ COPY --from=frontend-builder /app/frontend/dist ./dist
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "/usr/local/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
