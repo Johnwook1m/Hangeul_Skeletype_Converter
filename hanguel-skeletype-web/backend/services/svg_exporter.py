@@ -400,55 +400,85 @@ def export_svg_file(
         return False
 
 
-def _close_circular_subpaths(d: str, tolerance: float = 10.0) -> str:
-    """각 M 서브패스를 개별적으로 원형 검사하여 Z 추가.
+def _close_circular_subpaths(d: str, tolerance: float = 2.0) -> str:
+    """경로를 따라가며 시작점으로 되돌아오는 내부 루프(ㅇ 등)를 감지해 강제로 닫는다.
 
-    Linux Autotrace는 글리프 여러 획을 하나의 <path>에 M 명령어로 이어 붙임.
-    전체 경로의 start↔end gap이 크더라도 서브패스 단위로는 원형일 수 있음.
+    Linux Autotrace는 여러 획을 M 없이 L/C로 이어 한 붓 그리기로 출력하는 경우가 있음.
+    단순한 start↔end 비교로는 잡을 수 없으므로, 획을 따라가며 중간에 시작점으로
+    되돌아오는 지점을 감지한다.
+
+    루프 감지 시:  ... Z M curr_x curr_y (다음 획 계속)
+    이렇게 분리하면 FontForge가 닫힌 서브패스 → 2중 컨투어 → 속공간(hollow) 으로 처리.
     """
     if not d:
         return d
-    # M 또는 m 명령어 앞에서 분리 (lookahead)
-    parts = re.split(r'(?=[Mm](?:[\s,]|[+-]?\d))', d.strip())
-    parts = [p.strip() for p in parts if p.strip()]
-    if len(parts) <= 1:
-        return _close_if_circular(d, tolerance)
-    result = []
-    for part in parts:
-        result.append(_close_if_circular(part, tolerance))
-    return ' '.join(result)
 
+    # 명령어 + 이어지는 숫자 그룹으로 토큰화 (예: "C 123.4 56 78 90 12 34")
+    tokens = re.findall(r'([A-Za-z])([^A-Za-z]*)', d)
 
-def _close_if_circular(d: str, tolerance: float = 2.0) -> str:
-    """Add Z to a path whose start and end points coincide (handles ㅇ circles).
+    new_path: list[str] = []
+    start_x = start_y = None
+    curr_x = curr_y = 0.0
+    loops_closed = 0
 
-    Autotrace centerline output for circular shapes (ㅇ, ㅎ, etc.) often omits
-    the SVG Z (closepath) command even though the path loops back to its start.
-    FontForge treats paths without Z as open, applying stroke() differently:
-    - Open path  → 1 contour  → solid fill ✗
-    - Closed path → 2 contours → hollow ring after correctDirection() ✓
-    """
-    if not d or 'Z' in d.upper():
-        return d
-    nums = re.findall(r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?', d)
-    if len(nums) < 4:
-        return d
-    first_m = re.search(
-        r'[Mm]\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*[,\s]\s*([+-]?(?:\d+\.?\d*|\.\d+))', d
-    )
-    if not first_m:
-        return d
-    mx, my = float(first_m.group(1)), float(first_m.group(2))
-    lx, ly = float(nums[-2]), float(nums[-1])
-    dx, dy = abs(mx - lx), abs(my - ly)
-    if dx <= tolerance and dy <= tolerance:
-        print(f"  [close_circular] Z added: gap=({dx:.1f},{dy:.1f})")
-        return d + ' Z'
-    # Log complex paths that were NOT closed so we can tune tolerance
-    c_count = d.upper().count('C')
-    if c_count >= 6:
-        print(f"  [close_circular] skipped: c_segs={c_count}, gap=({dx:.1f},{dy:.1f}), tol={tolerance}")
-    return d
+    for cmd, args_str in tokens:
+        args = [
+            float(x)
+            for x in re.findall(r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?', args_str)
+        ]
+        # 원래 토큰을 그대로 재조립 (수치 재포맷 최소화)
+        new_path.append(cmd + args_str)
+
+        cmd_u = cmd.upper()
+        is_relative = cmd.islower()
+
+        if cmd_u == 'M':
+            if len(args) >= 2:
+                if is_relative:
+                    curr_x += args[-2]; curr_y += args[-1]
+                else:
+                    curr_x, curr_y = args[-2], args[-1]
+                start_x, start_y = curr_x, curr_y
+        elif cmd_u in ('L', 'T'):
+            if len(args) >= 2:
+                if is_relative:
+                    curr_x += args[-2]; curr_y += args[-1]
+                else:
+                    curr_x, curr_y = args[-2], args[-1]
+        elif cmd_u == 'H':
+            if args:
+                curr_x = (curr_x + args[-1]) if is_relative else args[-1]
+        elif cmd_u == 'V':
+            if args:
+                curr_y = (curr_y + args[-1]) if is_relative else args[-1]
+        elif cmd_u in ('C', 'S', 'Q'):
+            if len(args) >= 2:
+                if is_relative:
+                    curr_x += args[-2]; curr_y += args[-1]
+                else:
+                    curr_x, curr_y = args[-2], args[-1]
+        elif cmd_u == 'Z':
+            if start_x is not None:
+                curr_x, curr_y = start_x, start_y
+            continue  # Z는 이미 추가됨, 루프 체크 불필요
+
+        # 루프 감지: 그리기 명령어 실행 후 현재 위치가 서브패스 시작점과 일치하는지 확인
+        if cmd_u not in ('M', 'Z') and start_x is not None:
+            dx = abs(curr_x - start_x)
+            dy = abs(curr_y - start_y)
+            if dx <= tolerance and dy <= tolerance:
+                print(f"  [close_circular] loop closed: gap=({dx:.1f},{dy:.1f})")
+                new_path.append(f" Z M {curr_x:g},{curr_y:g}")
+                start_x, start_y = curr_x, curr_y
+                loops_closed += 1
+
+    result = "".join(new_path)
+    # 경로 끝에 루프 닫기 직후 남은 "M x,y" 찌꺼기 제거
+    result = re.sub(r'\s*[Mm]\s*[+-]?[\d.]+[,\s][+-]?[\d.]+\s*$', '', result).strip()
+
+    if loops_closed:
+        print(f"  [close_circular] total loops closed: {loops_closed}")
+    return result
 
 
 def create_fontforge_glyph_svg(
@@ -499,7 +529,7 @@ def create_fontforge_glyph_svg(
         # Apply Z detection in pixel space (before transform).
         # After scaling to font units the gap can exceed the 2-unit tolerance,
         # so we check here where autotrace coordinates are still in pixels.
-        path_d = _close_circular_subpaths(path_d, tolerance=10.0)
+        path_d = _close_circular_subpaths(path_d)
         transformed = transform_path_to_font_units(
             path_d, raster_scale, x_min, y_min, y_max,
             glyph_height, padding=20.0, ascender=ascender,
