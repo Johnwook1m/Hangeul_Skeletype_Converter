@@ -4,6 +4,7 @@ import useFontStore from '../stores/fontStore';
 export default function ExtractButton({ inline = false, extractRef }) {
   const {
     fontId,
+    isDemo,
     glyphs,
     selectedGlyphs,
     centerlines,
@@ -26,7 +27,7 @@ export default function ExtractButton({ inline = false, extractRef }) {
 
   async function handleExtract(extractAll = false) {
     firstExtractedGlyph = null;
-    if (!fontId || isRunning) return;
+    if (!fontId || isRunning || isDemo) return;
 
     // Determine which glyphs to extract
     const toExtract = extractAll
@@ -127,7 +128,7 @@ export default function ExtractButton({ inline = false, extractRef }) {
     return (
       <button
         onClick={() => handleExtract(false)}
-        disabled={isRunning || selectedCount === 0}
+        disabled={isRunning || selectedCount === 0 || isDemo}
         className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
           isRunning
             ? 'bg-[#FF5714]/80 text-white cursor-wait'
