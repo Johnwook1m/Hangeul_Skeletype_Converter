@@ -113,6 +113,15 @@ export default function BottomBar() {
 
   const [text, setText] = useState('');
   const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'fx'
+  const [loadingDots, setLoadingDots] = useState('.');
+
+  useEffect(() => {
+    if (!fontLoading) return;
+    const id = setInterval(() => {
+      setLoadingDots((d) => (d.length >= 12 ? '.' : d + '.'));
+    }, 120);
+    return () => clearInterval(id);
+  }, [fontLoading]);
 
   // Stroke slider auto-animation on first extraction
   const animRef = useRef(null);
@@ -211,13 +220,7 @@ export default function BottomBar() {
               className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${chipInactive}`}
             >
               {fontLoading ? (
-                <span className="flex items-center gap-1.5">
-                  <svg className="animate-spin w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Loading...
-                </span>
+                <span className="block truncate">Loading{loadingDots}</span>
               ) : (
                 <span className="block truncate">{fontName}</span>
               )}
