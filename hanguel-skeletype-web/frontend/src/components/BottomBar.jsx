@@ -56,6 +56,7 @@ function FontChipButton({ children, hoverLabel, className, ...props }) {
 export default function BottomBar() {
   const {
     fontId,
+    isDemo,
     fontName,
     strokeParams,
     setStrokeParams,
@@ -255,7 +256,7 @@ export default function BottomBar() {
                   }
                 }}
                 placeholder={!fontId ? 'Upload a font first' : 'Type text'}
-                disabled={!hasGlyphs}
+                disabled={!hasGlyphs || isDemo}
                 className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed"
               />
 
