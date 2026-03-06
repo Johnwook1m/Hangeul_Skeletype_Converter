@@ -44,6 +44,16 @@ export default function GlyphPreview({ large = false }) {
     setPan({ x: 0, y: 0 });
   }, [previewText]);
 
+  // Animated dots for font loading state
+  const [loadingDots, setLoadingDots] = useState('...');
+  useEffect(() => {
+    if (!fontLoading) return;
+    const id = setInterval(() => {
+      setLoadingDots((d) => (d.length >= 12 ? '.' : d + '.'));
+    }, 120);
+    return () => clearInterval(id);
+  }, [fontLoading]);
+
   // Standard em unit for font metrics (use font's unitsPerEm or default 1000)
   const EM_UNIT = unitsPerEm || 1000;
 
@@ -288,13 +298,7 @@ export default function GlyphPreview({ large = false }) {
   let placeholder = null;
   if (fontLoading) {
     placeholder = (
-      <div className="flex flex-col items-center gap-3 text-gray-400">
-        <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-        <p className="text-[15px]">Loading font...</p>
-      </div>
+      <p className="text-[15px] text-gray-500">Loading font{loadingDots}</p>
     );
   } else if (!previewText) {
     placeholder = glyphs.length > 0 ? (
