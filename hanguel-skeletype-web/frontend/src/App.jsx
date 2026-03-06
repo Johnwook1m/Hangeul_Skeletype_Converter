@@ -49,10 +49,10 @@ function SkeletypeLogo({ onClick, color = '#1a1a1a' }) {
   return (
     <button
       onClick={onClick}
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 opacity-50 hover:opacity-90 transition-opacity cursor-pointer"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 opacity-100 hover:opacity-40 transition-opacity cursor-pointer"
       title="Reset to home"
     >
-      <svg width="56" height="36" viewBox="0 0 74 48" fill={color} xmlns="http://www.w3.org/2000/svg">
+      <svg width="62" height="44" viewBox="-2 -2 78 52" fill={color} xmlns="http://www.w3.org/2000/svg">
         {/* S — top bar */}
         <rect x="8.5" y="11" width="22" height="5.5" rx="2.75" />
         {/* S — left dot */}
