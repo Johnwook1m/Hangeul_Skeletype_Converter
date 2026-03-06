@@ -9,6 +9,7 @@ const useFontStore = create((set) => ({
   ascender: null,
   descender: null,
   isDemo: false,
+  fontLoading: false, // true while glyphs are being fetched after font upload
 
   // Glyph data
   glyphs: [],
@@ -123,6 +124,7 @@ const useFontStore = create((set) => ({
         descender: data.descender ?? null,
         spaceAdvanceWidth: data.space_advance_width ?? null,
         isDemo: false,
+        fontLoading: true,
         glyphs: [],
         centerlines: {},
         selectedGlyph: null,
@@ -199,7 +201,8 @@ const useFontStore = create((set) => ({
 
   setIsDemo: (v) => set({ isDemo: v }),
 
-  setGlyphs: (glyphs) => set({ glyphs }),
+  setGlyphs: (glyphs) => set({ glyphs, fontLoading: false }),
+  setFontLoading: (v) => set({ fontLoading: v }),
 
   selectGlyph: (name) => set({ selectedGlyph: name }),
 
@@ -458,6 +461,7 @@ const useFontStore = create((set) => ({
         ascender: null,
         descender: null,
         isDemo: false,
+        fontLoading: false,
         glyphs: [],
         selectedGlyph: null,
         selectedGlyphs: new Set(),

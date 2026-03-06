@@ -27,6 +27,7 @@ export default function GlyphPreview({ large = false }) {
     textAlign,
     theme,
     bgColor,
+    fontLoading,
   } = useFontStore();
 
   // Pan state for trackpad/mouse navigation
@@ -285,7 +286,17 @@ export default function GlyphPreview({ large = false }) {
 
 // Determine placeholder content
   let placeholder = null;
-  if (!previewText) {
+  if (fontLoading) {
+    placeholder = (
+      <div className="flex flex-col items-center gap-3 text-gray-400">
+        <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <p className="text-[15px]">Loading font...</p>
+      </div>
+    );
+  } else if (!previewText) {
     placeholder = glyphs.length > 0 ? (
       <p className="text-[15px] text-gray-500">Enter text in the bottom bar</p>
     ) : null;
