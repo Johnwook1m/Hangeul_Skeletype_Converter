@@ -163,7 +163,7 @@ export default function GlyphPreview({ large = false }) {
   const RASTER_PADDING = 20;
 
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
-  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX; // max row width in display units (scales with X)
+  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX * (80 / glyphSize); // max row width: inversely proportional to glyphSize
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
   // Get glyph data for each character in previewText (with width-based row wrapping)
