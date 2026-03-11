@@ -55,9 +55,9 @@ function SkeletypeLogo({ onClick, isDark }) {
       <img
         src="/logo.png"
         alt="Skeletype logo"
-        height={40}
+        height={32}
         style={{
-          height: 40,
+          height: 32,
           width: 'auto',
           filter: isDark ? 'invert(1)' : 'none',
         }}

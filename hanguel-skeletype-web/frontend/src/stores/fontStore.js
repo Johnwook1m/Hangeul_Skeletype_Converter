@@ -194,7 +194,7 @@ const useFontStore = create((set) => ({
         showFlesh: false,
         textAlign: 'center',
         previewFontSize: 1.0,
-        glyphSize: 100,
+        glyphSize: 80,
         fontBlobUrl: null,
       };
     }),
