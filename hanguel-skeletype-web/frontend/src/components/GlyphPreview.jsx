@@ -31,11 +31,13 @@ export default function GlyphPreview({ large = false }) {
 
   // Pan state for trackpad/mouse navigation
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const isPanning = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const containerRef = useRef(null);
   const sizeScaleRef = useRef(1);
-  const gestureStartSizeRef = useRef(100); // For Safari GestureEvent
+  const zoomRef = useRef(1);
+  const gestureStartZoomRef = useRef(1); // For Safari GestureEvent
   const isGesturing = useRef(false); // Prevent wheel+ctrlKey double-zoom in Safari
 
   // Reset pan when preview text changes
@@ -81,8 +83,9 @@ export default function GlyphPreview({ large = false }) {
   // Display scale: maps font units to display units (base scale, without size)
   const fontToDisplay = EM_UNIT / fontHeight;
 
-  // Keep sizeScale in ref for native event listeners
+  // Keep refs in sync for native event listeners
   sizeScaleRef.current = sizeScale;
+  zoomRef.current = zoom;
 
   // Native mouse drag listeners (registered once, stable)
   useEffect(() => {
@@ -110,12 +113,11 @@ export default function GlyphPreview({ large = false }) {
         e.preventDefault();
         // Skip if Safari is already handling via gesturechange (avoids double-zoom)
         if (isGesturing.current) return;
-        const { setGlyphSize, glyphSize: curSize } = useFontStore.getState();
         // Normalize deltaY by deltaMode (0=pixel, 1=line, 2=page)
         const normalizedDelta = e.deltaMode === 0 ? e.deltaY : e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY * 300;
         // Multiplicative zoom for natural feel (~1% per pixel delta)
         const zoomFactor = 1 - normalizedDelta * 0.008;
-        setGlyphSize(Math.max(10, Math.min(500, curSize * zoomFactor)));
+        setZoom((z) => Math.max(0.2, Math.min(5.0, z * zoomFactor)));
       } else {
         e.preventDefault();
         setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
@@ -128,13 +130,12 @@ export default function GlyphPreview({ large = false }) {
       e.preventDefault();
       if (!el.contains(e.target) && e.target !== el) return;
       isGesturing.current = true;
-      gestureStartSizeRef.current = useFontStore.getState().glyphSize;
+      gestureStartZoomRef.current = zoomRef.current;
     };
     const handleGestureChange = (e) => {
       e.preventDefault();
       if (!el.contains(e.target) && e.target !== el) return;
-      const { setGlyphSize } = useFontStore.getState();
-      setGlyphSize(Math.max(10, Math.min(500, gestureStartSizeRef.current * e.scale)));
+      setZoom(Math.max(0.2, Math.min(5.0, gestureStartZoomRef.current * e.scale)));
     };
     const handleGestureEnd = () => {
       isGesturing.current = false;
@@ -328,7 +329,7 @@ export default function GlyphPreview({ large = false }) {
       }`}
       style={{ background: bgColor }}
       onWheel={undefined}
-      onDoubleClick={showSvg ? () => setPan({ x: 0, y: 0 }) : undefined}
+      onDoubleClick={showSvg ? () => { setPan({ x: 0, y: 0 }); setZoom(1); } : undefined}
     >
       {/* Background image layer — lowest z-index, sits behind SVG */}
       {backgroundImageParams.enabled && backgroundImageParams.imageUrl && (
@@ -364,7 +365,7 @@ export default function GlyphPreview({ large = false }) {
             viewBox={viewBox}
             className="w-full h-full"
             style={{
-              transform: `translate(${pan.x}px, ${pan.y}px)`,
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               transformOrigin: 'center center',
               overflow: 'visible',
             }}
