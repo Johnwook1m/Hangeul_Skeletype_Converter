@@ -192,7 +192,7 @@ function App() {
           <div
             className="absolute top-0.5 w-4 h-4 rounded-full transition-all shadow-sm"
             style={{
-              background: isDark ? '#fff' : '#333',
+              background: isDark ? '#fff' : '#444',
               left: isDark ? '22px' : '2px',
             }}
           />
@@ -202,7 +202,7 @@ function App() {
       {/* About button — top right */}
       <button
         onClick={() => setShowAbout(true)}
-        className="fixed top-4 right-4 z-50 opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+        className="fixed top-4 right-4 z-50 cursor-pointer"
       >
         <div className="w-10 h-6 rounded-full flex items-center justify-center gap-0.5"
           style={{ background: isDark ? '#444' : '#ddd' }}>

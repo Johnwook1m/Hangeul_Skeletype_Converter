@@ -274,7 +274,7 @@ export default function BottomBar() {
                 }}
                 placeholder={!fontId ? 'Upload a font first' : 'Type text'}
                 disabled={!hasGlyphs || isDemo}
-                className="flex-1 min-w-[80px] px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed"
+                className="w-[180px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed"
               />
 
               <Divider className="mx-0" />
@@ -293,7 +293,6 @@ export default function BottomBar() {
               <button
                 onClick={cycleTextAlign}
                 className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${chipInactive}`}
-                title={`Align: ${textAlign}`}
               >
                 <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
                   {textAlign === 'left' ? (
@@ -367,7 +366,6 @@ export default function BottomBar() {
                   onChange={(e) => setStrokeParams({ centerlineColor: e.target.value })}
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
-                  title="Centerline color"
                 />
               </div>
 
@@ -380,7 +378,6 @@ export default function BottomBar() {
                   onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
-                  title="Stroke color"
                 />
               </div>
 
@@ -393,7 +390,6 @@ export default function BottomBar() {
                   onChange={(e) => setBgColor(e.target.value)}
                   className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
                   style={{ padding: 0 }}
-                  title="Background color"
                 />
               </div>
             </>

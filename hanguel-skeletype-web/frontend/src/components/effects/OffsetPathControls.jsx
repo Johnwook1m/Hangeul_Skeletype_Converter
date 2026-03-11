@@ -11,7 +11,7 @@ export default function OffsetPathControls() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-medium text-gray-300 uppercase tracking-wider">Offset Path</h3>
+      <h3 className="text-xs font-medium text-gray-300 tracking-wider">Offset Path</h3>
 
       {/* Offset distance */}
       <div className="flex items-center gap-2">

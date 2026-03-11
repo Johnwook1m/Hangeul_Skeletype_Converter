@@ -44,7 +44,7 @@ export default function BackgroundImageControls() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-medium text-gray-300 uppercase tracking-wider">Background</h3>
+      <h3 className="text-xs font-medium text-gray-300 tracking-wider">Image</h3>
 
       {/* File upload */}
       <div className="flex items-center gap-2">
@@ -61,7 +61,6 @@ export default function BackgroundImageControls() {
           <button
             onClick={handleClear}
             className="text-xs text-gray-500 hover:text-gray-300 transition-colors shrink-0"
-            title="Remove image"
           >
             ✕
           </button>

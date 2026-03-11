@@ -88,7 +88,7 @@ const useFontStore = create((set) => ({
     imageName: null,     // original file name for display
     opacity: 1.0,        // 0~1
     scale: 1.0,          // image scale multiplier (0.1~3.0)
-    fit: 'cover',        // 'cover' | 'contain' | 'fill'
+    fit: 'contain',        // 'cover' | 'contain' | 'fill'
     blendMode: 'normal', // CSS mix-blend-mode value
   },
 
@@ -186,7 +186,7 @@ const useFontStore = create((set) => ({
           imageName: null,
           opacity: 1.0,
           scale: 1.0,
-          fit: 'cover',
+          fit: 'contain',
           blendMode: 'normal',
         },
         theme: 'light',
@@ -403,7 +403,7 @@ const useFontStore = create((set) => ({
         imageUrl: null,
         imageName: null,
         opacity: 1.0,
-        fit: 'cover',
+        fit: 'contain',
         blendMode: 'normal',
       },
     }),
@@ -522,7 +522,7 @@ const useFontStore = create((set) => ({
           imageName: null,
           opacity: 1.0,
           scale: 1.0,
-          fit: 'cover',
+          fit: 'contain',
           blendMode: 'normal',
         },
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },

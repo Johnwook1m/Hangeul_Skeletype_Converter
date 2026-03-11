@@ -19,7 +19,7 @@ export default function DecoratorControls() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-medium text-gray-300 uppercase tracking-wider">Decorator</h3>
+      <h3 className="text-xs font-medium text-gray-300 tracking-wider">Decorator</h3>
 
       {/* Shape selector */}
       <div className="flex items-center gap-1">

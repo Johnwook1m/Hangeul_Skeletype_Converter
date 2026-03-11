@@ -6,7 +6,7 @@ export default function SlantControls() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-medium text-gray-300 uppercase tracking-wider">Slant</h3>
+      <h3 className="text-xs font-medium text-gray-300 tracking-wider">Slant</h3>
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-400 w-12">Angle</span>
         <input
