@@ -376,11 +376,12 @@ export default function GlyphPreview({ large = false }) {
               if (!glyph.centerline) {
                 // Show placeholder for missing centerline
                 const cellWidth = EM_UNIT * fontToDisplay;
+                const midY = fontAscender * fontToDisplay / 2;
                 return (
                   <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
                     <text
                       x={cellWidth / 2}
-                      y={viewBoxHeight / 2}
+                      y={midY}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#666"
@@ -390,7 +391,7 @@ export default function GlyphPreview({ large = false }) {
                     </text>
                     <text
                       x={cellWidth / 2}
-                      y={viewBoxHeight * 0.8}
+                      y={fontAscender * fontToDisplay}
                       textAnchor="middle"
                       fill="#666"
                       fontSize={60}
