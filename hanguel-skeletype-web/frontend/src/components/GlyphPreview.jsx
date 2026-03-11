@@ -262,6 +262,17 @@ export default function GlyphPreview({ large = false }) {
   const hasCenterlines = glyphList.some((g) => g.centerline);
   const showSvg = previewText && glyphList.length > 0 && hasCenterlines;
 
+  // Entrance animation: fade + slide up whenever content appears
+  const [introVisible, setIntroVisible] = useState(false);
+  useEffect(() => {
+    if (showSvg) {
+      setIntroVisible(false);
+      requestAnimationFrame(() => requestAnimationFrame(() => setIntroVisible(true)));
+    } else {
+      setIntroVisible(false);
+    }
+  }, [showSvg]);
+
   // Calculate viewBox to fit all rows of glyphs
   const viewBoxHeight = totalRows * EM_UNIT + (totalRows - 1) * (EM_UNIT * 0.15);
   const svgPadding = 100;
@@ -374,6 +385,9 @@ export default function GlyphPreview({ large = false }) {
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               transformOrigin: 'center center',
               overflow: 'visible',
+              opacity: introVisible ? 1 : 0,
+              translate: introVisible ? '0 0' : '0 24px',
+              transition: introVisible ? 'opacity 0.7s ease, translate 0.7s ease' : 'none',
             }}
             preserveAspectRatio="xMidYMid meet"
           >

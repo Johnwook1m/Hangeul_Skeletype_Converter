@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import GlyphPreview from './components/GlyphPreview';
 import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';
@@ -49,8 +49,7 @@ function SkeletypeLogo({ onClick, isDark }) {
   return (
     <button
       onClick={onClick}
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 opacity-100 hover:opacity-60 transition-opacity cursor-pointer"
-      title="Reset to home"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 opacity-100 hover:opacity-60 transition-opacity cursor-pointer"
     >
       <img
         src="/logo.png"
@@ -66,6 +65,90 @@ function SkeletypeLogo({ onClick, isDark }) {
   );
 }
 
+function AboutPanel({ onClose }) {
+  const [active, setActive] = useState(false);
+  const strokeColor = useFontStore((s) => s.strokeParams.strokeColor);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setActive(true));
+    function onKeyDown(e) { if (e.key === 'Escape') handleClose(); }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  function handleClose() {
+    setActive(false);
+    setTimeout(onClose, 400);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[100]"
+      style={{
+        opacity: active ? 1 : 0,
+        transition: 'opacity 0.4s ease',
+      }}
+      onClick={handleClose}
+    >
+      {/* Background layer: colored rectangle with blurred corners */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: strokeColor,
+            borderRadius: '80px',
+            filter: 'blur(50px)',
+          }}
+        />
+      </div>
+
+      {/* Content layer above background */}
+      <div
+        className="relative z-10 h-full overflow-y-auto flex flex-col justify-center"
+        style={{ padding: '80px clamp(48px, 12vw, 200px)' }}
+      >
+        <table className="border-collapse mx-auto" style={{ width: '100%', maxWidth: 1000, fontSize: '1.45rem' }} onClick={(e) => e.stopPropagation()}>
+          <colgroup>
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '78%' }} />
+          </colgroup>
+          <tbody>
+            <tr className="align-top">
+              <td className="pb-12 text-white whitespace-nowrap pt-1">INFO</td>
+              <td className="pb-12">
+                <div className="text-white leading-relaxed" style={{ wordBreak: 'keep-all' }}>
+                  <p>SkeleType은 한글 서체 제작을 도와주는 웹 기반 툴입니다. 사용자가 폰트 파일을 업로드하면 한글 글리프의 중심선을 자동으로 추출하고, 그 결과에 다양한 시각 효과를 적용할 수 있습니다. 추출된 중심선을 바탕으로 형태를 변형하고 여러 파라미터를 조정해 새로운 시각적 결과를 생성할 수 있습니다.</p>
+                  <p style={{ marginTop: '0.6em' }}>SkeleType is a web-based tool that supports Hanguel type design. When a user uploads a font file, the system automatically extracts the centerlines of Hanguel glyphs and allows various visual effects to be applied to them. Based on these extracted skeletons, users can transform forms, adjust parameters to generate new visual results.</p>
+                </div>
+              </td>
+            </tr>
+            <tr className="align-top">
+              <td className="pb-12 text-white whitespace-nowrap pt-1">CONTACT</td>
+              <td className="pb-12">
+                <div className="flex gap-8 flex-wrap" style={{}}>
+                  <a href="mailto:johnwkim82@gmail.com" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">
+                    johnwkim82@gmail.com
+                  </a>
+                  <a href="https://www.instagram.com/skele.type" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">
+                    @skele.type ↗
+                  </a>
+                </div>
+              </td>
+            </tr>
+            <tr className="align-top">
+              <td className="text-white whitespace-nowrap pt-1">CREATED BY</td>
+              <td style={{}}>
+                <a href="https://www.instagram.com/joelkim.82/" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">Jongwook Kim</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const theme = useFontStore((s) => s.theme);
   const toggleTheme = useFontStore((s) => s.toggleTheme);
@@ -73,6 +156,7 @@ function App() {
   const bgColor = useFontStore((s) => s.bgColor);
   const isDark = theme === 'dark';
   const initDone = useRef(false);
+  const [showAbout, setShowAbout] = useState(false);
 
   useEffect(() => {
     if (initDone.current) return;
@@ -96,26 +180,41 @@ function App() {
         <GlyphPreview large />
       </div>
 
-      {/* Theme toggle switch - top right (폰트 로드 후에만 표시) */}
+      {/* Theme toggle switch - top left (폰트 로드 후에만 표시) */}
       {fontId && <button
         onClick={toggleTheme}
-        className="fixed top-4 right-4 z-50 cursor-pointer"
-        title="Toggle background theme"
+        className="fixed top-4 left-4 z-50 cursor-pointer"
       >
         <div
           className="relative w-10 h-5 rounded-full transition-colors"
-          style={{ background: isDark ? '#444' : '#ccc' }}
+          style={{ background: isDark ? '#444' : '#ddd' }}
         >
           <div
             className="absolute top-0.5 w-4 h-4 rounded-full transition-all shadow-sm"
             style={{
-              background: isDark ? '#1a1a1a' : '#ffffff',
-              border: `2px solid ${isDark ? '#888' : '#999'}`,
+              background: isDark ? '#fff' : '#333',
               left: isDark ? '22px' : '2px',
             }}
           />
         </div>
       </button>}
+
+      {/* About button — top right */}
+      <button
+        onClick={() => setShowAbout(true)}
+        className="fixed top-4 right-4 z-50 opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+      >
+        <div className="w-10 h-6 rounded-full flex items-center justify-center gap-0.5"
+          style={{ background: isDark ? '#444' : '#ddd' }}>
+          {[0,1,2].map(i => (
+            <div key={i} className="w-1 h-1 rounded-full"
+              style={{ background: isDark ? '#fff' : '#333' }} />
+          ))}
+        </div>
+      </button>
+
+      {/* About panel */}
+      {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
 
       {/* Full-screen dropzone overlay */}
       <FontUpload />
