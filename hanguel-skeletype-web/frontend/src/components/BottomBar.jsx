@@ -320,7 +320,7 @@ export default function BottomBar() {
 
               {/* Text Size */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className={labelCls}>Size</span>
+                <span className={labelCls}>Line</span>
                 <input
                   type="range"
                   min={20}

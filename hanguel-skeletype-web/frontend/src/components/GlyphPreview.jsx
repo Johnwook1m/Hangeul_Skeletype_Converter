@@ -27,6 +27,7 @@ export default function GlyphPreview({ large = false }) {
     theme,
     bgColor,
     fontLoading,
+    isDemo,
   } = useFontStore();
 
   // Pan state for trackpad/mouse navigation
@@ -44,6 +45,11 @@ export default function GlyphPreview({ large = false }) {
   useEffect(() => {
     setPan({ x: 0, y: 0 });
   }, [previewText]);
+
+  // Demo: 80% zoom; real font: full zoom
+  useEffect(() => {
+    setZoom(isDemo ? 0.8 : 1.0);
+  }, [isDemo]);
 
   // Animated dots for font loading state
   const [loadingDots, setLoadingDots] = useState('...');
