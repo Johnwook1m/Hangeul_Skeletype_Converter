@@ -70,8 +70,8 @@ export default function BottomBar() {
     glyphs,
     centerlines,
     backgroundImageParams,
-    previewFontSize,
-    setPreviewFontSize,
+    glyphSize,
+    setGlyphSize,
     bgColor,
     setBgColor,
     fontLoading,
@@ -320,14 +320,14 @@ export default function BottomBar() {
 
               {/* Text Size */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className={labelCls}>Sz</span>
+                <span className={labelCls}>Size</span>
                 <input
                   type="range"
-                  min={0.25}
-                  max={4.0}
-                  step={0.05}
-                  value={previewFontSize}
-                  onChange={(e) => setPreviewFontSize(+e.target.value)}
+                  min={20}
+                  max={300}
+                  step={5}
+                  value={glyphSize}
+                  onChange={(e) => setGlyphSize(+e.target.value)}
                   className="w-16 h-1 slider-white appearance-none bg-transparent"
                 />
               </div>

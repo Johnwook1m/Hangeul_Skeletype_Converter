@@ -22,7 +22,6 @@ export default function GlyphPreview({ large = false }) {
     descender,
     showFlesh,
     glyphSize,
-    previewFontSize,
     spaceAdvanceWidth,
     textAlign,
     theme,
@@ -164,8 +163,7 @@ export default function GlyphPreview({ large = false }) {
   const RASTER_PADDING = 20;
 
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
-  // previewFontSize scales apparent glyph size by reducing chars per row
-  const MAX_ROW_WIDTH = EM_UNIT * 12 / previewFontSize * fontToDisplay * scaleX; // max row width in display units (scales with X)
+  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX; // max row width in display units (scales with X)
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
   // Get glyph data for each character in previewText (with width-based row wrapping)
@@ -251,7 +249,7 @@ export default function GlyphPreview({ large = false }) {
     }
 
     return { glyphs: result, maxRowWidth, totalRows };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX, textAlign, previewFontSize]);
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX, textAlign]);
 
   const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
   const hasCenterlines = glyphList.some((g) => g.centerline);
