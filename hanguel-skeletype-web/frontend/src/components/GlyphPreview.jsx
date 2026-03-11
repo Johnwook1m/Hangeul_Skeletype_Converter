@@ -364,7 +364,7 @@ export default function GlyphPreview({ large = false }) {
             viewBox={viewBox}
             className="w-full h-full"
             style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${sizeScale})`,
+              transform: `translate(${pan.x}px, ${pan.y}px)`,
               transformOrigin: 'center center',
               overflow: 'visible',
             }}
