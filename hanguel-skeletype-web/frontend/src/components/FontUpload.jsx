@@ -10,7 +10,7 @@ export default function FontUpload() {
   const fileRef = useRef(null);
   const hideTimer = useRef(null);
   const dragCounter = useRef(0);
-  const { fontId, setFont, setGlyphs, setFontBlobUrl } = useFontStore();
+  const { fontId, setFont, setGlyphs, setFontBlobUrl, setFontLoading } = useFontStore();
 
   // Clear timer on unmount
   useEffect(() => {
@@ -76,6 +76,7 @@ export default function FontUpload() {
 
     setLoading(true);
     setError(null);
+    setFontLoading(true);
 
     try {
       const data = await uploadFont(file);
@@ -89,6 +90,7 @@ export default function FontUpload() {
       setVisible(false);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to upload font.');
+      setFontLoading(false);
     } finally {
       setLoading(false);
     }

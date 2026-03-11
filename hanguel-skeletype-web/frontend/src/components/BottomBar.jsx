@@ -78,6 +78,7 @@ export default function BottomBar() {
     setFont,
     setGlyphs,
     setFontBlobUrl,
+    setFontLoading,
   } = useFontStore();
 
   const uploadFileRef = useRef(null);
@@ -94,6 +95,7 @@ export default function BottomBar() {
     }
     setUploadLoading(true);
     setUploadError(null);
+    setFontLoading(true);
     try {
       const data = await uploadFont(file);
       setFont(data);
@@ -102,6 +104,7 @@ export default function BottomBar() {
       setGlyphs(glyphData.glyphs);
     } catch (err) {
       setUploadError(err.response?.data?.detail || 'Failed to upload font.');
+      setFontLoading(false);
     } finally {
       setUploadLoading(false);
     }
