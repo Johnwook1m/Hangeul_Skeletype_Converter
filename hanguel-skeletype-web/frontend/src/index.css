@@ -54,6 +54,20 @@ input[type="range"].slider-white::-moz-range-thumb {
   animation: march 0.5s linear infinite;
 }
 
+/* Circular color input swatch */
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 50%;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
 /* Dark range slider styling (for effect popovers) */
 input[type="range"].slider-dark::-webkit-slider-runnable-track {
   background: #4b5563;

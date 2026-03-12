@@ -123,7 +123,7 @@ export default function FXControls() {
   }
 
   return (
-    <div className="relative flex items-center gap-1.5 justify-start">
+    <div className="relative flex items-center gap-[10px] justify-start">
       {/* X-Scale */}
       <div className="flex items-center gap-2 shrink-0">
         <span className="text-xs text-gray-500">X</span>
@@ -161,7 +161,6 @@ export default function FXControls() {
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
-          title={decoratorParams.enabled ? (showDecoratorPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Decorator
         </button>
@@ -182,7 +181,6 @@ export default function FXControls() {
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
-          title={connectionParams.enabled ? (showConnPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Connect
         </button>
@@ -203,7 +201,6 @@ export default function FXControls() {
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
-          title={branchParams.enabled ? (showBranchPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Branch
         </button>
@@ -224,7 +221,6 @@ export default function FXControls() {
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
-          title={offsetPathParams.enabled ? (showOffsetPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Offset
         </button>
@@ -245,7 +241,6 @@ export default function FXControls() {
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
-          title={slantParams.enabled ? (showSlantPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Slant
         </button>
@@ -266,7 +261,6 @@ export default function FXControls() {
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
-          title={backgroundImageParams.enabled ? (showBgPopover ? 'Click: off' : 'Click: settings') : 'Click: enable'}
         >
           Image
         </button>
@@ -282,7 +276,6 @@ export default function FXControls() {
       <button
         onClick={handleReset}
         className="shrink-0 px-2.5 py-1.5 text-xs font-medium bg-gray-400 hover:bg-gray-500 text-white rounded-full transition-colors"
-        title="Reset all effects"
       >
         Reset
       </button>

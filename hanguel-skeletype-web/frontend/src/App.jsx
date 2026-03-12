@@ -118,8 +118,8 @@ function AboutPanel({ onClose }) {
               <td className="pb-12 text-white whitespace-nowrap pt-1">INFO</td>
               <td className="pb-12">
                 <div className="text-white leading-relaxed" style={{ wordBreak: 'keep-all' }}>
-                  <p>SkeleType은 한글 서체 제작을 도와주는 웹 기반 툴입니다. 사용자가 폰트 파일을 업로드하면 한글 글리프의 중심선을 자동으로 추출하고, 그 결과에 다양한 시각 효과를 적용할 수 있습니다. 추출된 중심선을 바탕으로 형태를 변형하고 여러 파라미터를 조정해 새로운 시각적 결과를 생성할 수 있습니다.</p>
-                  <p style={{ marginTop: '0.6em' }}>SkeleType is a web-based tool that supports Hanguel type design. When a user uploads a font file, the system automatically extracts the centerlines of Hanguel glyphs and allows various visual effects to be applied to them. Based on these extracted skeletons, users can transform forms, adjust parameters to generate new visual results.</p>
+                  <p>SkeleType은 한글 서체 제작을 도와주는 웹 기반 도구입니다. 사용자가 폰트 파일을 업로드하면 한글 글리프의 중심선을 자동으로 추출하고, 다양한 시각 효과를 적용할 수 있습니다. 추출된 중심선을 바탕으로 형태를 자유롭게 변형하고, 여러 파라미터를 조정해 새로운 시각적 결과물을 만들어낼 수 있습니다.</p>
+                  <p style={{ marginTop: '0.6em' }}>SkeleType is a web-based tool for designing Hanguel typefaces. Simply upload a font file to automatically extract the skeletons of Hanguel glyphs and apply various visual effects. You can then freely transform shapes and fine-tune parameters to generate unique visual results.</p>
                 </div>
               </td>
             </tr>
@@ -131,7 +131,7 @@ function AboutPanel({ onClose }) {
                     johnwkim82@gmail.com
                   </a>
                   <a href="https://www.instagram.com/skele.type" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">
-                    @skele.type ↗
+                    @skele.type <span style={{ verticalAlign: '-0.1em' }}>↗</span>
                   </a>
                 </div>
               </td>
@@ -139,7 +139,7 @@ function AboutPanel({ onClose }) {
             <tr className="align-top">
               <td className="text-white whitespace-nowrap pt-1">CREATED BY</td>
               <td style={{}}>
-                <a href="https://www.instagram.com/joelkim.82/" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">Jongwook Kim</a>
+                <a href="https://www.instagram.com/joelkim.82/" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">Jongwook Kim</a><span className="text-white">, Jangho Park</span>
               </td>
             </tr>
           </tbody>
@@ -176,7 +176,7 @@ function App() {
       <SkeletypeLogo onClick={handleLogoClick} isDark={isDark} />
 
       {/* Full-screen preview area — pb-[20%] shifts visual center 10% above screen center */}
-      <div className="w-full h-full pb-[5%]">
+      <div className="w-full h-full pt-[52px] pb-[120px]">
         <GlyphPreview large />
       </div>
 

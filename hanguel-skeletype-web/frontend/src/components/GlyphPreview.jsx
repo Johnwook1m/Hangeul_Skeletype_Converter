@@ -275,7 +275,7 @@ export default function GlyphPreview({ large = false }) {
 
   // Calculate viewBox to fit all rows of glyphs
   const viewBoxHeight = totalRows * EM_UNIT + (totalRows - 1) * (EM_UNIT * 0.15);
-  const svgPadding = 100;
+  const svgPadding = 300;
   const viewBox = `${-svgPadding} ${-svgPadding} ${maxRowWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
 
   // Compute glyph-to-glyph connections

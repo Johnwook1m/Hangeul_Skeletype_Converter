@@ -195,7 +195,7 @@ export default function BottomBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
-      <div className={`pointer-events-auto rounded-[28px] px-4 py-2 h-[65px] flex items-center gap-0 shadow-lg w-[80%] ${
+      <div className={`pointer-events-auto rounded-[28px] px-5 py-2 h-[65px] flex items-center gap-0 shadow-lg w-[80%] ${
         bgImageActive ? 'bg-gray-200' : 'bg-gray-200'
       }`}>
 
@@ -256,7 +256,7 @@ export default function BottomBar() {
 
         {/* ── Center section: always visible, disabled without font ── */}
         <Divider />
-        <div className={`flex items-center gap-2 flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide ${!fontId ? 'pointer-events-none' : ''}`}>
+        <div className={`flex items-center gap-[10px] flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide ${!fontId ? 'pointer-events-none' : ''}`}>
 
           {/* Basic Tab Controls */}
           {activeTab === 'basic' && (
@@ -347,50 +347,61 @@ export default function BottomBar() {
               </div>
 
               {/* Cap */}
-              <select
-                value={strokeParams.cap}
-                onChange={(e) => setStrokeParams({ cap: e.target.value })}
-                className="text-xs px-2 py-1.5 border border-gray-300 rounded-full bg-white shrink-0"
-              >
-                <option value="butt">Butt</option>
-                <option value="round">Round</option>
-                <option value="square">Square</option>
-              </select>
-
-              {/* Centerline Color */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={labelCls}>C</span>
-                <input
-                  type="color"
-                  value={strokeParams.centerlineColor}
-                  onChange={(e) => setStrokeParams({ centerlineColor: e.target.value })}
-                  className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
-                  style={{ padding: 0 }}
-                />
+              <div className="relative shrink-0">
+                <select
+                  value={strokeParams.cap}
+                  onChange={(e) => setStrokeParams({ cap: e.target.value })}
+                  className="text-xs pl-2 pr-[18px] py-1 border border-gray-300 rounded-xl bg-white appearance-none cursor-pointer focus:outline-none focus:border-[#FF5714]"
+                  style={{ color: 'oklch(0.446 0.03 256.802)' }}
+                >
+                  <option value="butt">Butt</option>
+                  <option value="round">Round</option>
+                  <option value="square">Square</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-[5px] flex items-center">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.446 0.03 256.802)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
 
-              {/* Stroke Color */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={labelCls}>S</span>
-                <input
-                  type="color"
-                  value={strokeParams.strokeColor}
-                  onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
-                  className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
-                  style={{ padding: 0 }}
-                />
-              </div>
+              {/* Color pickers */}
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Centerline Color */}
+                <div className="flex items-center gap-1">
+                  <span className={labelCls}>C</span>
+                  <input
+                    type="color"
+                    value={strokeParams.centerlineColor}
+                    onChange={(e) => setStrokeParams({ centerlineColor: e.target.value })}
+                    className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer overflow-hidden"
+                    style={{ padding: 0 }}
+                  />
+                </div>
 
-              {/* Background Color */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={labelCls}>BG</span>
-                <input
-                  type="color"
-                  value={bgColor}
-                  onChange={(e) => setBgColor(e.target.value)}
-                  className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer"
-                  style={{ padding: 0 }}
-                />
+                {/* Stroke Color */}
+                <div className="flex items-center gap-1">
+                  <span className={labelCls}>S</span>
+                  <input
+                    type="color"
+                    value={strokeParams.strokeColor}
+                    onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
+                    className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer overflow-hidden"
+                    style={{ padding: 0 }}
+                  />
+                </div>
+
+                {/* Background Color */}
+                <div className="flex items-center gap-1">
+                  <span className={labelCls}>BG</span>
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer overflow-hidden"
+                    style={{ padding: 0 }}
+                  />
+                </div>
               </div>
             </>
           )}
