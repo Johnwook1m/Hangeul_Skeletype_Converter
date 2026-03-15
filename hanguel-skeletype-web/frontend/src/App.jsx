@@ -116,7 +116,7 @@ function AboutPanel({ onClose }) {
           <tbody>
             <tr className="align-top">
               <td className="pb-12 text-white whitespace-nowrap pt-1">INFO</td>
-              <td className="pb-12">
+              <td className="pb-12 pt-1">
                 <div className="text-white leading-relaxed" style={{ wordBreak: 'keep-all' }}>
                   <p>SkeleType은 한글 서체 제작을 도와주는 웹 기반 도구입니다. 사용자가 폰트 파일을 업로드하면 한글 글리프의 중심선을 자동으로 추출하고, 다양한 시각 효과를 적용할 수 있습니다. 추출된 중심선을 바탕으로 형태를 자유롭게 변형하고, 여러 파라미터를 조정해 새로운 시각적 결과물을 만들어낼 수 있습니다.</p>
                   <p style={{ marginTop: '0.6em' }}>SkeleType is a web-based tool for designing Hanguel typefaces. Simply upload a font file to automatically extract the skeletons of Hanguel glyphs and apply various visual effects. You can then freely transform shapes and fine-tune parameters to generate unique visual results.</p>
@@ -125,7 +125,7 @@ function AboutPanel({ onClose }) {
             </tr>
             <tr className="align-top">
               <td className="pb-12 text-white whitespace-nowrap pt-1">CONTACT</td>
-              <td className="pb-12">
+              <td className="pb-12 pt-1">
                 <div className="flex gap-8 flex-wrap" style={{}}>
                   <a href="mailto:johnwkim82@gmail.com" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">
                     johnwkim82@gmail.com
@@ -138,12 +138,13 @@ function AboutPanel({ onClose }) {
             </tr>
             <tr className="align-top">
               <td className="text-white whitespace-nowrap pt-1">CREATED BY</td>
-              <td style={{}}>
+              <td className="pt-1">
                 <a href="https://www.instagram.com/joelkim.82/" className="text-white hover:underline transition-all" target="_blank" rel="noopener noreferrer">Jongwook Kim</a><span className="text-white">, Jangho Park</span>
               </td>
             </tr>
           </tbody>
         </table>
+        <p className="text-white text-sm opacity-70 absolute bottom-8 left-0 right-0 text-center">© 2026 skeletype by Jongwook Kim. All Rights Reserved.</p>
       </div>
     </div>
   );

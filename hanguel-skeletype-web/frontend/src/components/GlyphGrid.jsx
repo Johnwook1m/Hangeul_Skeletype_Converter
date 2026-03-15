@@ -73,7 +73,6 @@ export default function GlyphGrid({ compact = false }) {
             <button
               key={glyph.name}
               onClick={(e) => handleGlyphClick(glyph.name, e)}
-              title={`${glyph.name}${glyph.character ? ` (${glyph.character})` : ''}`}
               className={`
                 relative aspect-square flex items-center justify-center
                 rounded text-xs transition-all
