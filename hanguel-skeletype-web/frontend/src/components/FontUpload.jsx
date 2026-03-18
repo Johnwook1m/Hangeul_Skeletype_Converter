@@ -10,7 +10,7 @@ export default function FontUpload() {
   const fileRef = useRef(null);
   const hideTimer = useRef(null);
   const dragCounter = useRef(0);
-  const { fontId, setFont, setGlyphs, setFontBlobUrl, setFontLoading } = useFontStore();
+  const { fontId, isDemo, setFont, setGlyphs, setFontBlobUrl, setFontLoading } = useFontStore();
 
   // Clear timer on unmount
   useEffect(() => {
@@ -107,26 +107,27 @@ export default function FontUpload() {
 
   function handleOverlayClick() {
     if (loading) return;
-    if (!fontId) {
-      // No font loaded: click to select file
+    if (!fontId || isDemo) {
+      // No real font loaded (or demo mode): click to select file
       fileRef.current?.click();
     } else {
-      // Font loaded: click to dismiss
+      // Real font loaded: click to dismiss
       setVisible(false);
     }
   }
 
+  const isDemoClickable = isDemo && !loading;
   const isActive = visible || dragging;
 
   return (
     <div
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
-      onClick={handleOverlayClick}
+      onClick={isActive ? handleOverlayClick : undefined}
       className={`
         fixed inset-0 z-50 flex items-center justify-center
-        transition-opacity duration-300 cursor-pointer
-        ${isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+        transition-opacity duration-300
+        ${isActive ? 'opacity-100 pointer-events-auto cursor-pointer' : 'opacity-0 pointer-events-none'}
       `}
     >
       {/* Subtle drag highlight border */}
@@ -162,6 +163,24 @@ export default function FontUpload() {
           <p className="mt-4 text-red-400/70 text-xs">{error}</p>
         )}
       </div>
+
+      {/* Demo mode: invisible hit area centered over the demo text.
+          pointer-events-auto on a child works even when the parent has pointer-events-none,
+          so this only intercepts clicks in the center — not the bottombar or header buttons. */}
+      {isDemoClickable && (
+        <div
+          className="absolute cursor-pointer"
+          style={{
+            width: '70%',
+            height: '45%',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -60%)',
+            pointerEvents: 'auto',
+          }}
+          onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+        />
+      )}
     </div>
   );
 }

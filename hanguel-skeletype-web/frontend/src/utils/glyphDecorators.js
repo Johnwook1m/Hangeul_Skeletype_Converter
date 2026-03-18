@@ -318,61 +318,61 @@ const RASTER_PADDING = 20;
 
 /**
  * Compute decorator points for all glyphs.
- * Returns points in display coordinate space.
+ * Returns points grouped by glyph index in glyph-local coordinate space
+ * (relative to each glyph's xOffset/yOffset), so they can be rendered
+ * inside each glyph's scaleTransform group and follow XY/Slant transforms.
  *
  * @param {object[]} glyphList - Array of glyph render data
  * @param {object} decoratorParams - Decorator parameters from store
  * @param {number} fontToDisplay - Font-to-display scale factor
- * @returns {{ x: number, y: number }[]}
+ * @returns {{ glyphIndex: number, points: { x: number, y: number }[] }[]}
  */
 export function computeDecorators(glyphList, decoratorParams, fontToDisplay) {
   if (!decoratorParams.enabled || glyphList.length === 0) return [];
 
   const { count, spacing } = decoratorParams;
-  const allPoints = [];
 
-  if (spacing === 'endpoints') {
-    // Endpoints mode: place decorators at every subpath start/end
-    for (const glyph of glyphList) {
-      if (!glyph.centerline || !glyph.centerline.paths) continue;
-      const { K } = glyph;
-      const bounds = glyph.centerline.bounds || {};
-      const xMin = bounds.xMin || 0;
-      const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
-      const clTranslateY = -RASTER_PADDING * K;
-      const toDisplay = (pt) => ({
-        x: glyph.xOffset + pt.x * K + clTranslateX,
-        y: glyph.yOffset + pt.y * K + clTranslateY,
-      });
-
-      for (const pathD of glyph.centerline.paths) {
-        const subpaths = parsePathToSubpaths(pathD);
-        for (const segments of subpaths) {
-          if (segments.length === 0) continue;
-          allPoints.push(toDisplay(segments[0].pointAt(0)));
-          allPoints.push(toDisplay(segments[segments.length - 1].pointAt(1)));
-        }
-      }
-    }
-    return allPoints;
-  }
-
-  // Even / Random mode: use uniform spacing distance across ALL paths
-  // 1) Collect all parsed path data with their glyph transforms
-  const pathEntries = [];
-  let totalLength = 0;
-
-  for (const glyph of glyphList) {
-    if (!glyph.centerline || !glyph.centerline.paths) continue;
+  // Helper: convert raster point to glyph-local display coords (no xOffset/yOffset)
+  function makeToLocal(glyph) {
     const { K } = glyph;
     const bounds = glyph.centerline.bounds || {};
     const xMin = bounds.xMin || 0;
     const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
     const clTranslateY = -RASTER_PADDING * K;
-    const toDisplay = (pt) => ({
-      x: glyph.xOffset + pt.x * K + clTranslateX,
-      y: glyph.yOffset + pt.y * K + clTranslateY,
+    return (pt) => ({
+      x: pt.x * K + clTranslateX,
+      y: pt.y * K + clTranslateY,
     });
+  }
+
+  if (spacing === 'endpoints') {
+    // Endpoints mode: place decorators at every subpath start/end
+    const result = [];
+    glyphList.forEach((glyph, glyphIndex) => {
+      if (!glyph.centerline || !glyph.centerline.paths) return;
+      const toLocal = makeToLocal(glyph);
+      const points = [];
+      for (const pathD of glyph.centerline.paths) {
+        const subpaths = parsePathToSubpaths(pathD);
+        for (const segments of subpaths) {
+          if (segments.length === 0) continue;
+          points.push(toLocal(segments[0].pointAt(0)));
+          points.push(toLocal(segments[segments.length - 1].pointAt(1)));
+        }
+      }
+      if (points.length > 0) result.push({ glyphIndex, points });
+    });
+    return result;
+  }
+
+  // Even / Random mode: use uniform spacing distance across ALL paths
+  // 1) Collect all parsed path data with their glyph index and local transforms
+  const pathEntries = [];
+  let totalLength = 0;
+
+  glyphList.forEach((glyph, glyphIndex) => {
+    if (!glyph.centerline || !glyph.centerline.paths) return;
+    const toLocal = makeToLocal(glyph);
 
     for (const pathD of glyph.centerline.paths) {
       const segments = parsePathToSegments(pathD);
@@ -380,25 +380,29 @@ export function computeDecorators(glyphList, decoratorParams, fontToDisplay) {
       const pathLength = segments.reduce((sum, s) => sum + s.length, 0);
       if (pathLength < 0.1) continue;
       totalLength += pathLength;
-      pathEntries.push({ segments, pathLength, toDisplay });
+      pathEntries.push({ segments, pathLength, toLocal, glyphIndex });
     }
-  }
+  });
 
-  if (totalLength < 0.1 || pathEntries.length === 0) return allPoints;
+  if (totalLength < 0.1 || pathEntries.length === 0) return [];
 
   // 2) Compute uniform spacing distance based on average path length
-  //    count slider controls density: count points per average-length path
   const avgPathLength = totalLength / pathEntries.length;
   const spacingDist = avgPathLength / Math.max(count, 1);
 
-  // 3) Each path gets points proportional to its own length
-  for (const { segments, pathLength, toDisplay } of pathEntries) {
+  // 3) Each path gets points proportional to its own length, grouped by glyph
+  const byGlyph = {};
+  for (const { segments, pathLength, toLocal, glyphIndex } of pathEntries) {
     const localCount = Math.max(1, Math.round(pathLength / spacingDist));
-    const points = samplePoints(segments, localCount, spacing);
-    for (const pt of points) {
-      allPoints.push(toDisplay(pt));
+    const pts = samplePoints(segments, localCount, spacing);
+    if (!byGlyph[glyphIndex]) byGlyph[glyphIndex] = [];
+    for (const pt of pts) {
+      byGlyph[glyphIndex].push(toLocal(pt));
     }
   }
 
-  return allPoints;
+  return Object.entries(byGlyph).map(([idx, points]) => ({
+    glyphIndex: Number(idx),
+    points,
+  }));
 }

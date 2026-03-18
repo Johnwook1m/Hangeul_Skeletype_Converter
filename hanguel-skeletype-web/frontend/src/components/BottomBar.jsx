@@ -267,6 +267,11 @@ export default function BottomBar() {
                 value={text}
                 onChange={(e) => handleTextChange(e.target.value)}
                 onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+                    e.stopPropagation();
+                    e.target.select();
+                    return;
+                  }
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     extractRef.current?.();

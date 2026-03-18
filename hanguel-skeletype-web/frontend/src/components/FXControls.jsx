@@ -126,7 +126,7 @@ export default function FXControls() {
     <div className="relative flex items-center gap-[10px] justify-start">
       {/* X-Scale */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-gray-500">X</span>
+        <span className="text-xs text-gray-500">Width</span>
         <input
           type="range"
           min={0.2}
@@ -140,7 +140,7 @@ export default function FXControls() {
 
       {/* Y-Scale */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-gray-500">Y</span>
+        <span className="text-xs text-gray-500">Height</span>
         <input
           type="range"
           min={0.2}

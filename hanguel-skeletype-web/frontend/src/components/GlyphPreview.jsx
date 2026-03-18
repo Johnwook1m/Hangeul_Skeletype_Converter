@@ -290,11 +290,18 @@ export default function GlyphPreview({ large = false }) {
     [glyphList, branchParams, fontToDisplay]
   );
 
-  // Compute decorator points
-  const decoratorPoints = useMemo(
+  // Compute decorator points (grouped by glyphIndex, in glyph-local coords)
+  const decoratorPointsByGlyph = useMemo(
     () => computeDecorators(glyphList, decoratorParams, fontToDisplay),
     [glyphList, decoratorParams, fontToDisplay]
   );
+  const decoratorsByIndex = useMemo(() => {
+    const map = {};
+    for (const { glyphIndex, points } of decoratorPointsByGlyph) {
+      map[glyphIndex] = points;
+    }
+    return map;
+  }, [decoratorPointsByGlyph]);
 
   // Compute offset ring paths (vector pill shapes)
   const offsetRingPaths = useMemo(
@@ -506,6 +513,53 @@ export default function GlyphPreview({ large = false }) {
                       ))}
                     </g>
                   </g>
+
+                  {/* Decorator shapes — inside scaleTransform so they follow XY/Slant */}
+                  {decoratorParams.enabled && decoratorsByIndex[index] && (
+                    decoratorsByIndex[index].map((pt, i) => {
+                      const s = decoratorParams.size;
+                      const fill = decoratorParams.filled ? decoratorParams.color : 'none';
+                      const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
+                      const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
+                      switch (decoratorParams.shape) {
+                        case 'circle':
+                          return (
+                            <circle
+                              key={`dec-${i}`}
+                              cx={pt.x} cy={pt.y} r={s / 2}
+                              fill={fill} stroke={stroke} strokeWidth={sw}
+                            />
+                          );
+                        case 'square':
+                          return (
+                            <rect
+                              key={`dec-${i}`}
+                              x={pt.x - s / 2} y={pt.y - s / 2}
+                              width={s} height={s}
+                              fill={fill} stroke={stroke} strokeWidth={sw}
+                            />
+                          );
+                        case 'diamond':
+                          return (
+                            <polygon
+                              key={`dec-${i}`}
+                              points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
+                              fill={fill} stroke={stroke} strokeWidth={sw}
+                            />
+                          );
+                        case 'triangle':
+                          return (
+                            <polygon
+                              key={`dec-${i}`}
+                              points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
+                              fill={fill} stroke={stroke} strokeWidth={sw}
+                            />
+                          );
+                        default:
+                          return null;
+                      }
+                    })
+                  )}
                  </g>
                 </g>
               );
@@ -544,55 +598,6 @@ export default function GlyphPreview({ large = false }) {
               </g>
             )}
 
-            {/* Decorator shapes along centerline paths */}
-            {decoratorParams.enabled && decoratorPoints.length > 0 && (
-              <g>
-                {decoratorPoints.map((pt, i) => {
-                  const s = decoratorParams.size;
-                  const fill = decoratorParams.filled ? decoratorParams.color : 'none';
-                  const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
-                  const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
-
-                  switch (decoratorParams.shape) {
-                    case 'circle':
-                      return (
-                        <circle
-                          key={`dec-${i}`}
-                          cx={pt.x} cy={pt.y} r={s / 2}
-                          fill={fill} stroke={stroke} strokeWidth={sw}
-                        />
-                      );
-                    case 'square':
-                      return (
-                        <rect
-                          key={`dec-${i}`}
-                          x={pt.x - s / 2} y={pt.y - s / 2}
-                          width={s} height={s}
-                          fill={fill} stroke={stroke} strokeWidth={sw}
-                        />
-                      );
-                    case 'diamond':
-                      return (
-                        <polygon
-                          key={`dec-${i}`}
-                          points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
-                          fill={fill} stroke={stroke} strokeWidth={sw}
-                        />
-                      );
-                    case 'triangle':
-                      return (
-                        <polygon
-                          key={`dec-${i}`}
-                          points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
-                          fill={fill} stroke={stroke} strokeWidth={sw}
-                        />
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </g>
-            )}
           </svg>
         </>
       ) : null}
