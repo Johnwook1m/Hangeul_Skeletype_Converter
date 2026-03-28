@@ -4,6 +4,7 @@ import { computeConnections } from '../utils/glyphConnections';
 import { computeBranches } from '../utils/glyphBranches';
 import { computeDecorators } from '../utils/glyphDecorators';
 import { computeOffsetPaths } from '../utils/glyphOffsetPath';
+import { applyTransformToPath } from '../utils/transformPath';
 
 export default function GlyphPreview({ large = false }) {
   const {
@@ -443,9 +444,6 @@ export default function GlyphPreview({ large = false }) {
                 ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
                 : '';
 
-              // Stroke width in pixel space (inside scale(K) transform)
-              const strokeWidthInPixelSpace = strokeParams.width * rasterScale;
-
               // Baseline position in display coords
               const baselineY = glyphAscender * fontToDisplay;
               const slantAngle = slantParams.enabled ? slantParams.angle : 0;
@@ -454,113 +452,127 @@ export default function GlyphPreview({ large = false }) {
                 ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`
                 : '';
 
+              // 센터라인 경로를 픽셀 공간 → 디스플레이 공간 + scaleX/scaleY/slant 적용하여 사전 변환
+              // stroke는 이미 변형된 경로 위에 균일하게 그려지므로 scale 왜곡이 없음
+              const tanSlant = Math.tan(slantAngle * Math.PI / 180);
+              const pointTransform = (px, py) => {
+                const dx = clTranslateX + px * K;
+                const dy = clTranslateY + py * K;
+                const fx = scaleX * dx - scaleX * tanSlant * (dy - baselineY);
+                const fy = scaleY * (dy - baselineY) + baselineY;
+                return [fx, fy];
+              };
+              const transformedPaths = glyph.centerline.paths.map(d => applyTransformToPath(d, pointTransform));
+
+              // 디스플레이 공간 기준 stroke 두께 (균일, 방향 무관)
+              // width * rasterScale * K = width * fontToDisplay
+              const displayStrokeWidth = strokeParams.width * fontToDisplay;
+
               return (
                 <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
-                 <g transform={scaleTransform || undefined}>
-                  {/* Original glyph outline (flesh) - rendered behind skeleton */}
-                  {showFlesh && glyphOutline && glyphOutline.path && (
-                    <g transform={outlineTransform}>
-                      <path
-                        d={glyphOutline.path}
-                        fill={theme === 'dark' ? '#ffffff' : '#000000'}
-                        fillOpacity={0.4}
-                        stroke="none"
-                      />
-                    </g>
-                  )}
-
-                  {/* Centerline paths (in Autotrace pixel coordinates) */}
-                  <g
-                    transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}
-                  >
-                    {/* Offset path ring: vector pill-shaped paths rendered as strokes */}
-                    {offsetPathParams.enabled && (offsetRingsByIndex[index] || []).map((d, pi) => (
-                      <path
-                        key={`offset-${pi}`}
-                        d={d}
-                        fill="none"
-                        stroke={offsetPathParams.color}
-                        strokeWidth={offsetPathParams.weight}
-                        strokeLinecap={offsetPathParams.corner === 'round' ? 'round' : 'square'}
-                        strokeLinejoin={offsetPathParams.corner === 'round' ? 'round' : 'miter'}
-                      />
-                    ))}
-
-                    {/* Centerline with stroke applied */}
-                    {glyph.centerline.paths.map((d, i) => (
-                      <path
-                        key={i}
-                        d={d}
-                        fill="none"
-                        stroke={strokeParams.strokeColor}
-                        strokeWidth={strokeWidthInPixelSpace}
-                        strokeLinecap={strokeParams.cap}
-                        strokeLinejoin={strokeParams.join}
-                      />
-                    ))}
-
-                    {/* Thin centerline reference (colored) */}
-                    <g>
-                      {glyph.centerline.paths.map((d, i) => (
+                  {/* 1. Flesh + 오프셋 링: scaleTransform 내부, stroke 뒤에 렌더링 */}
+                  <g transform={scaleTransform || undefined}>
+                    {/* Original glyph outline (flesh) - rendered behind skeleton */}
+                    {showFlesh && glyphOutline && glyphOutline.path && (
+                      <g transform={outlineTransform}>
                         <path
-                          key={`ref-${i}`}
+                          d={glyphOutline.path}
+                          fill={theme === 'dark' ? '#ffffff' : '#000000'}
+                          fillOpacity={0.4}
+                          stroke="none"
+                        />
+                      </g>
+                    )}
+
+                    {/* Offset path ring: 픽셀 공간 경로 (후속 작업: 현재는 scaleTransform 내부 유지) */}
+                    <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
+                      {offsetPathParams.enabled && (offsetRingsByIndex[index] || []).map((d, pi) => (
+                        <path
+                          key={`offset-${pi}`}
                           d={d}
                           fill="none"
-                          stroke={strokeParams.centerlineColor}
-                          strokeWidth={3 / K}
-                          opacity={0.9}
+                          stroke={offsetPathParams.color}
+                          strokeWidth={offsetPathParams.weight}
+                          strokeLinecap={offsetPathParams.corner === 'round' ? 'round' : 'square'}
+                          strokeLinejoin={offsetPathParams.corner === 'round' ? 'round' : 'miter'}
                         />
                       ))}
                     </g>
                   </g>
 
-                  {/* Decorator shapes — inside scaleTransform so they follow XY/Slant */}
+                  {/* 2. 센터라인 stroke: 사전 변환된 경로 — scale 트랜스폼 없이 균일한 두께 */}
+                  {transformedPaths.map((d, i) => (
+                    <path
+                      key={i}
+                      d={d}
+                      fill="none"
+                      stroke={strokeParams.strokeColor}
+                      strokeWidth={displayStrokeWidth}
+                      strokeLinecap={strokeParams.cap}
+                      strokeLinejoin={strokeParams.join}
+                    />
+                  ))}
+
+                  {/* 3. 얇은 센터라인 참조선 (사전 변환) */}
+                  {transformedPaths.map((d, i) => (
+                    <path
+                      key={`ref-${i}`}
+                      d={d}
+                      fill="none"
+                      stroke={strokeParams.centerlineColor}
+                      strokeWidth={3}
+                      opacity={0.9}
+                    />
+                  ))}
+
+                  {/* 4. 데코레이터: scaleTransform 내부, stroke 위에 렌더링 */}
                   {decoratorParams.enabled && decoratorsByIndex[index] && (
-                    decoratorsByIndex[index].map((pt, i) => {
-                      const s = decoratorParams.size;
-                      const fill = decoratorParams.filled ? decoratorParams.color : 'none';
-                      const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
-                      const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
-                      switch (decoratorParams.shape) {
-                        case 'circle':
-                          return (
-                            <circle
-                              key={`dec-${i}`}
-                              cx={pt.x} cy={pt.y} r={s / 2}
-                              fill={fill} stroke={stroke} strokeWidth={sw}
-                            />
-                          );
-                        case 'square':
-                          return (
-                            <rect
-                              key={`dec-${i}`}
-                              x={pt.x - s / 2} y={pt.y - s / 2}
-                              width={s} height={s}
-                              fill={fill} stroke={stroke} strokeWidth={sw}
-                            />
-                          );
-                        case 'diamond':
-                          return (
-                            <polygon
-                              key={`dec-${i}`}
-                              points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
-                              fill={fill} stroke={stroke} strokeWidth={sw}
-                            />
-                          );
-                        case 'triangle':
-                          return (
-                            <polygon
-                              key={`dec-${i}`}
-                              points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
-                              fill={fill} stroke={stroke} strokeWidth={sw}
-                            />
-                          );
-                        default:
-                          return null;
-                      }
-                    })
+                    <g transform={scaleTransform || undefined}>
+                      {decoratorsByIndex[index].map((pt, i) => {
+                        const s = decoratorParams.size;
+                        const fill = decoratorParams.filled ? decoratorParams.color : 'none';
+                        const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
+                        const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
+                        switch (decoratorParams.shape) {
+                          case 'circle':
+                            return (
+                              <circle
+                                key={`dec-${i}`}
+                                cx={pt.x} cy={pt.y} r={s / 2}
+                                fill={fill} stroke={stroke} strokeWidth={sw}
+                              />
+                            );
+                          case 'square':
+                            return (
+                              <rect
+                                key={`dec-${i}`}
+                                x={pt.x - s / 2} y={pt.y - s / 2}
+                                width={s} height={s}
+                                fill={fill} stroke={stroke} strokeWidth={sw}
+                              />
+                            );
+                          case 'diamond':
+                            return (
+                              <polygon
+                                key={`dec-${i}`}
+                                points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
+                                fill={fill} stroke={stroke} strokeWidth={sw}
+                              />
+                            );
+                          case 'triangle':
+                            return (
+                              <polygon
+                                key={`dec-${i}`}
+                                points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
+                                fill={fill} stroke={stroke} strokeWidth={sw}
+                              />
+                            );
+                          default:
+                            return null;
+                        }
+                      })}
+                    </g>
                   )}
-                 </g>
                 </g>
               );
             })}
