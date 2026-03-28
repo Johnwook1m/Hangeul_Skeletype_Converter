@@ -214,18 +214,27 @@ export default function LayerPanel() {
 
                 {/* ── Effect sub-items (expanded) ── */}
                 {isExpanded && (
-                  <div className="ml-4 mb-1">
+                  <div className="ml-6 mb-1">
                     {effectItems.map((item, i) => {
                       const isLast = i === effectItems.length - 1;
                       return (
                         <div
                           key={item.key}
-                          className="flex items-center gap-1.5 px-2 py-0.5"
+                          className="flex items-center gap-1.5 py-[3px] relative"
                         >
-                          {/* Tree line */}
-                          <span className="text-gray-400 text-[9px] w-3 shrink-0 text-center">
-                            {isLast ? '└' : '├'}
-                          </span>
+                          {/* Tree line: vertical + horizontal */}
+                          <div className="w-4 shrink-0 self-stretch relative">
+                            {/* Vertical segment */}
+                            <div
+                              className="absolute w-px bg-gray-400/50"
+                              style={{ left: 6, top: 0, bottom: isLast ? '50%' : 0 }}
+                            />
+                            {/* Horizontal segment */}
+                            <div
+                              className="absolute h-px bg-gray-400/50"
+                              style={{ left: 6, right: 0, top: '50%' }}
+                            />
+                          </div>
 
                           {/* Effect color dot */}
                           <div
