@@ -82,7 +82,7 @@ export default function LayerPanel() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-          <span className="text-[10px] text-gray-500 tracking-wide font-medium">Layers</span>
+          <span className="text-[10px] text-gray-500 tracking-wide font-bold">Layers</span>
           <button
             onClick={addLayer}
             className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9] text-base leading-none transition-colors cursor-pointer"
@@ -168,7 +168,7 @@ export default function LayerPanel() {
                     />
                   ) : (
                     <span
-                      className="text-[11px] font-medium flex-1 truncate min-w-0"
+                      className="text-[11px] font-bold flex-1 truncate min-w-0"
                       style={{ color: isActive ? 'white' : '#4b5563' }}
                       onDoubleClick={(e) => { e.stopPropagation(); startRename(layer); }}
                     >
