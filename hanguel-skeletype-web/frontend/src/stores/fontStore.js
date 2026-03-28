@@ -527,6 +527,20 @@ const useFontStore = create((set) => ({
       return { layers };
     }),
 
+  // effectKey: 'slantParams' | 'connectionParams' | 'branchParams' | 'decoratorParams' | 'offsetPathParams'
+  setLayerEffectEnabled: (layerId, effectKey, enabled) =>
+    set((state) => {
+      const newLayers = state.layers.map(l =>
+        l.id !== layerId ? l : { ...l, [effectKey]: { ...l[effectKey], enabled } }
+      );
+      // active layer면 top-level도 동기화
+      if (layerId === state.activeLayerId) {
+        const updated = newLayers.find(l => l.id === layerId);
+        return { layers: newLayers, [effectKey]: updated[effectKey] };
+      }
+      return { layers: newLayers };
+    }),
+
   // ─── Display / session ───────────────────────────────────────────────────────
   toggleTheme: () =>
     set((state) => {

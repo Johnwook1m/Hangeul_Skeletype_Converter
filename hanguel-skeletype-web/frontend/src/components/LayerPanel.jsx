@@ -1,36 +1,30 @@
 import { useState } from 'react';
 import useFontStore from '../stores/fontStore';
 
-// 레이어에 적용된 이펙트 서브아이템 목록 생성
+const EyeIcon = ({ size = 12, off = false }) =>
+  off ? (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  ) : (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+
+// 레이어의 모든 이펙트 목록 (enabled 여부 포함, 항상 6개)
 function getEffectItems(layer) {
   const { strokeParams, slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams } = layer;
-  const items = [];
-
-  // Stroke — 항상 표시
-  items.push({
-    key: 'stroke',
-    label: 'Stroke',
-    color: strokeParams.strokeColor,
-    detail: strokeParams.width,
-  });
-
-  if (slantParams.enabled) {
-    items.push({ key: 'slant', label: 'Slant', color: '#6b7280', detail: `${slantParams.angle}°` });
-  }
-  if (connectionParams.enabled) {
-    items.push({ key: 'connect', label: 'Connect', color: connectionParams.color, detail: connectionParams.shape });
-  }
-  if (branchParams.enabled) {
-    items.push({ key: 'branch', label: 'Branch', color: branchParams.color, detail: `×${branchParams.count}` });
-  }
-  if (decoratorParams.enabled) {
-    items.push({ key: 'deco', label: 'Deco', color: decoratorParams.color, detail: decoratorParams.shape });
-  }
-  if (offsetPathParams.enabled) {
-    items.push({ key: 'offset', label: 'Offset', color: offsetPathParams.color, detail: `×${offsetPathParams.count}` });
-  }
-
-  return items;
+  return [
+    { key: 'stroke',  effectKey: null,               label: 'Stroke',  color: strokeParams.strokeColor,  detail: strokeParams.width,          enabled: true,                       permanent: true },
+    { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',   color: '#6b7280',                 detail: `${slantParams.angle}°`,     enabled: slantParams.enabled },
+    { key: 'connect', effectKey: 'connectionParams',  label: 'Connect', color: connectionParams.color,    detail: connectionParams.shape,      enabled: connectionParams.enabled },
+    { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',  color: branchParams.color,        detail: `×${branchParams.count}`,    enabled: branchParams.enabled },
+    { key: 'deco',    effectKey: 'decoratorParams',   label: 'Deco',    color: decoratorParams.color,     detail: decoratorParams.shape,       enabled: decoratorParams.enabled },
+    { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',  color: offsetPathParams.color,    detail: `×${offsetPathParams.count}`,enabled: offsetPathParams.enabled },
+  ];
 }
 
 export default function LayerPanel() {
@@ -42,8 +36,8 @@ export default function LayerPanel() {
     setActiveLayerId,
     toggleLayerVisible,
     renameLayer,
-    duplicateLayer,
     reorderLayer,
+    setLayerEffectEnabled,
   } = useFontStore();
 
   const [editingId, setEditingId] = useState(null);
@@ -82,7 +76,7 @@ export default function LayerPanel() {
       className="fixed left-4 top-1/2 -translate-y-1/2 z-40 select-none"
       style={{ pointerEvents: 'auto' }}
     >
-      <div className="bg-gray-200 rounded-[20px] shadow-lg overflow-hidden" style={{ minWidth: 160 }}>
+      <div className="bg-gray-200 rounded-[20px] shadow-lg overflow-hidden" style={{ minWidth: 164 }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
@@ -139,11 +133,12 @@ export default function LayerPanel() {
                   {/* Expand arrow */}
                   <button
                     onClick={(e) => toggleExpand(layer.id, e)}
-                    className="w-3 h-3 flex items-center justify-center shrink-0 cursor-pointer transition-transform"
+                    className="w-3 h-3 flex items-center justify-center shrink-0 cursor-pointer"
                     style={{
                       color: isActive ? 'rgba(255,255,255,0.8)' : '#9ca3af',
                       transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                       fontSize: 8,
+                      transition: 'transform 0.15s',
                     }}
                   >
                     ▶
@@ -179,37 +174,17 @@ export default function LayerPanel() {
                     </span>
                   )}
 
-                  {/* Visibility toggle */}
+                  {/* Layer visibility */}
                   <button
-                    className="text-[10px] shrink-0 transition-opacity cursor-pointer"
+                    className="shrink-0 transition-opacity cursor-pointer"
                     style={{ opacity: layer.visible ? (isActive ? 0.8 : 0.5) : 0.25, color: isActive ? 'white' : '#6b7280' }}
                     title={layer.visible ? 'Hide layer' : 'Show layer'}
                     onClick={(e) => { e.stopPropagation(); toggleLayerVisible(layer.id); }}
                   >
-                    {layer.visible ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
-                    ) : (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
-                      </svg>
-                    )}
+                    <EyeIcon size={12} off={!layer.visible} />
                   </button>
 
-                  {/* Duplicate */}
-                  <button
-                    className="text-[10px] shrink-0 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity cursor-pointer"
-                    style={{ color: isActive ? 'white' : '#6b7280' }}
-                    title="Duplicate layer"
-                    onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }}
-                  >
-                    ⊕
-                  </button>
-
-                  {/* Delete */}
+                  {/* Delete layer */}
                   {layers.length > 1 && (
                     <button
                       className="text-[10px] shrink-0 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity cursor-pointer"
@@ -230,20 +205,15 @@ export default function LayerPanel() {
                       return (
                         <div
                           key={item.key}
-                          className="flex items-center gap-1.5 py-[3px] relative"
+                          className="flex items-center gap-1.5 py-[3px] relative group/fx"
+                          style={{ opacity: item.enabled ? 1 : 0.35 }}
                         >
-                          {/* Tree line: vertical + horizontal */}
+                          {/* Tree line */}
                           <div className="w-4 shrink-0 self-stretch relative">
-                            {/* Vertical segment */}
-                            <div
-                              className="absolute w-px bg-gray-400/50"
-                              style={{ left: 6, top: 0, bottom: isLast ? '50%' : 0 }}
-                            />
-                            {/* Horizontal segment */}
-                            <div
-                              className="absolute h-px bg-gray-400/50"
-                              style={{ left: 6, right: 0, top: '50%' }}
-                            />
+                            <div className="absolute w-px bg-gray-400/50"
+                              style={{ left: 6, top: 0, bottom: isLast ? '50%' : 0 }} />
+                            <div className="absolute h-px bg-gray-400/50"
+                              style={{ left: 6, right: 0, top: '50%' }} />
                           </div>
 
                           {/* Effect color dot */}
@@ -256,7 +226,38 @@ export default function LayerPanel() {
                           <span className="text-[10px] text-gray-500 shrink-0">{item.label}</span>
 
                           {/* Detail value */}
-                          <span className="text-[10px] text-gray-400 truncate">{item.detail}</span>
+                          <span className="text-[10px] text-gray-400 flex-1 truncate">{item.detail}</span>
+
+                          {/* Eye + X — permanent 이펙트(Stroke)는 숨김 */}
+                          {!item.permanent && (
+                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
+                              {/* Eye: toggle enabled */}
+                              <button
+                                className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+                                title={item.enabled ? 'Disable effect' : 'Enable effect'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLayerEffectEnabled(layer.id, item.effectKey, !item.enabled);
+                                }}
+                              >
+                                <EyeIcon size={10} off={!item.enabled} />
+                              </button>
+
+                              {/* X: disable */}
+                              {item.enabled && (
+                                <button
+                                  className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors text-[9px] leading-none"
+                                  title="Remove effect"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLayerEffectEnabled(layer.id, item.effectKey, false);
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
