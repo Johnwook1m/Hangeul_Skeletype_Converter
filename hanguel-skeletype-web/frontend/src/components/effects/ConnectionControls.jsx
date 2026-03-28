@@ -39,7 +39,7 @@ export default function ConnectionControls() {
         <span className="text-xs text-gray-400 w-12">Color</span>
         <input type="color" value={connectionParams.color}
           onChange={(e) => set({ color: e.target.value })}
-          className="w-6 h-6 rounded border border-gray-600 cursor-pointer" style={{ padding: 0 }} />
+          className="w-5 h-5 rounded-full border border-gray-600 cursor-pointer" style={{ padding: 0 }} />
       </div>
 
       {/* Max distance */}
