@@ -225,24 +225,22 @@ export default function LayerPanel() {
                           />
 
                           {/* Label */}
-                          <span className="text-[10px] text-gray-500 shrink-0">{item.label}</span>
-
-                          <span className="flex-1" />
+                          <span className="text-[11px] text-gray-500 flex-1 shrink-0">{item.label}</span>
 
                           {/* Eye: 미리보기 숨김/표시 토글 | X: 완전 비활성화 */}
-                          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
                             <button
-                              className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+                              className="shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
                               title={item.visible ? 'Hide from preview' : 'Show in preview'}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setLayerEffectVisible(layer.id, item.effectKey, !item.visible);
                               }}
                             >
-                              <EyeIcon size={10} off={!item.visible} />
+                              <EyeIcon size={12} off={!item.visible} />
                             </button>
                             <button
-                              className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors text-[9px] leading-none"
+                              className="text-[10px] shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors leading-none"
                               title="Remove effect"
                               onClick={(e) => {
                                 e.stopPropagation();
