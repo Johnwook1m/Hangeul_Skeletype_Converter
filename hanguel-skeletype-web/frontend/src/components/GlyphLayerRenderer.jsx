@@ -88,7 +88,7 @@ export default function GlyphLayerRenderer({
 
         // Baseline position in display coords
         const baselineY = glyphAscender * fontToDisplay;
-        const slantAngle = slantParams.enabled ? slantParams.angle : 0;
+        const slantAngle = slantParams.enabled && slantParams.visible !== false ? slantParams.angle : 0;
         const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
         const scaleTransform = needsTransform
           ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`
@@ -125,7 +125,7 @@ export default function GlyphLayerRenderer({
 
               {/* Offset path ring: 픽셀 공간 경로 (후속 작업: 현재는 scaleTransform 내부 유지) */}
               <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
-                {offsetPathParams.enabled && (offsetRingsByIndex[index] || []).map((d, pi) => (
+                {offsetPathParams.enabled && offsetPathParams.visible !== false && (offsetRingsByIndex[index] || []).map((d, pi) => (
                   <path
                     key={`offset-${pi}`}
                     d={d}
@@ -165,7 +165,7 @@ export default function GlyphLayerRenderer({
             ))}
 
             {/* 4. 데코레이터: scaleTransform 내부, stroke 위에 렌더링 */}
-            {decoratorParams.enabled && decoratorsByIndex[index] && (
+            {decoratorParams.enabled && decoratorParams.visible !== false && decoratorsByIndex[index] && (
               <g transform={scaleTransform || undefined}>
                 {decoratorsByIndex[index].map((pt, i) => {
                   const s = decoratorParams.size;
@@ -206,7 +206,7 @@ export default function GlyphLayerRenderer({
       })}
 
       {/* Branch lines */}
-      {branchParams.enabled && branches.length > 0 && (
+      {branchParams.enabled && branchParams.visible !== false && branches.length > 0 && (
         <g>
           {branches.map((b, i) => (
             <path
@@ -222,7 +222,7 @@ export default function GlyphLayerRenderer({
       )}
 
       {/* Connection lines */}
-      {connectionParams.enabled && connections.length > 0 && (
+      {connectionParams.enabled && connectionParams.visible !== false && connections.length > 0 && (
         <g>
           {connections.map((conn, i) => (
             <path

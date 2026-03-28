@@ -15,6 +15,7 @@ const defaultLayerStrokeParams = (strokeColor = '#FF5714') => ({
 
 const defaultConnectionParams = () => ({
   enabled: false,
+  visible: true,
   shape: 'curve',
   color: '#FF5714',
   tension: 0.5,
@@ -26,6 +27,7 @@ const defaultConnectionParams = () => ({
 
 const defaultBranchParams = () => ({
   enabled: false,
+  visible: true,
   angle: 90,
   count: 2,
   length: 105,
@@ -35,6 +37,7 @@ const defaultBranchParams = () => ({
 
 const defaultDecoratorParams = () => ({
   enabled: false,
+  visible: true,
   shape: 'circle',
   size: 40,
   count: 6,
@@ -46,6 +49,7 @@ const defaultDecoratorParams = () => ({
 
 const defaultOffsetPathParams = () => ({
   enabled: false,
+  visible: true,
   offset: 10,
   count: 1,
   weight: 10,
@@ -55,6 +59,7 @@ const defaultOffsetPathParams = () => ({
 
 const defaultSlantParams = () => ({
   enabled: false,
+  visible: true,
   angle: -15,
 });
 
@@ -528,6 +533,18 @@ const useFontStore = create((set) => ({
     }),
 
   // effectKey: 'slantParams' | 'connectionParams' | 'branchParams' | 'decoratorParams' | 'offsetPathParams'
+  setLayerEffectVisible: (layerId, effectKey, visible) =>
+    set((state) => {
+      const newLayers = state.layers.map(l =>
+        l.id !== layerId ? l : { ...l, [effectKey]: { ...l[effectKey], visible } }
+      );
+      if (layerId === state.activeLayerId) {
+        const updated = newLayers.find(l => l.id === layerId);
+        return { layers: newLayers, [effectKey]: updated[effectKey] };
+      }
+      return { layers: newLayers };
+    }),
+
   setLayerEffectEnabled: (layerId, effectKey, enabled) =>
     set((state) => {
       const newLayers = state.layers.map(l =>
