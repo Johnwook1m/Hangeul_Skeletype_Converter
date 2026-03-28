@@ -1,10 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import useFontStore from '../stores/fontStore';
-import { computeConnections } from '../utils/glyphConnections';
-import { computeBranches } from '../utils/glyphBranches';
-import { computeDecorators } from '../utils/glyphDecorators';
-import { computeOffsetPaths } from '../utils/glyphOffsetPath';
-import { applyTransformToPath } from '../utils/transformPath';
+import GlyphLayerRenderer from './GlyphLayerRenderer';
 
 export default function GlyphPreview({ large = false }) {
   const {
@@ -12,12 +8,8 @@ export default function GlyphPreview({ large = false }) {
     previewText,
     centerlines,
     strokeParams,
-    connectionParams,
-    branchParams,
-    decoratorParams,
-    offsetPathParams,
-    slantParams,
     backgroundImageParams,
+    layers,
     unitsPerEm,
     ascender,
     descender,
@@ -167,9 +159,6 @@ export default function GlyphPreview({ large = false }) {
     };
   }, []);
 
-  // Rasterizer padding (must match backend rasterizer.py padding=20)
-  const RASTER_PADDING = 20;
-
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
   const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX * (80 / glyphSize); // max row width: inversely proportional to glyphSize
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
@@ -279,43 +268,7 @@ export default function GlyphPreview({ large = false }) {
   const svgPadding = 300;
   const viewBox = `${-svgPadding} ${-svgPadding} ${maxRowWidth + svgPadding * 2} ${viewBoxHeight + svgPadding * 2}`;
 
-  // Compute glyph-to-glyph connections
-  const connections = useMemo(
-    () => computeConnections(glyphList, connectionParams, fontToDisplay),
-    [glyphList, connectionParams, fontToDisplay]
-  );
-
-  // Compute endpoint branches
-  const branches = useMemo(
-    () => computeBranches(glyphList, branchParams, fontToDisplay),
-    [glyphList, branchParams, fontToDisplay]
-  );
-
-  // Compute decorator points (grouped by glyphIndex, in glyph-local coords)
-  const decoratorPointsByGlyph = useMemo(
-    () => computeDecorators(glyphList, decoratorParams, fontToDisplay),
-    [glyphList, decoratorParams, fontToDisplay]
-  );
-  const decoratorsByIndex = useMemo(() => {
-    const map = {};
-    for (const { glyphIndex, points } of decoratorPointsByGlyph) {
-      map[glyphIndex] = points;
-    }
-    return map;
-  }, [decoratorPointsByGlyph]);
-
-  // Compute offset ring paths (vector pill shapes)
-  const offsetRingPaths = useMemo(
-    () => computeOffsetPaths(glyphList, offsetPathParams),
-    [glyphList, offsetPathParams]
-  );
-  const offsetRingsByIndex = useMemo(() => {
-    const map = {};
-    for (const { glyphIndex, paths } of offsetRingPaths) {
-      map[glyphIndex] = paths;
-    }
-    return map;
-  }, [offsetRingPaths]);
+  // connections/branches/decorators/offsetRings는 각 GlyphLayerRenderer에서 독립 계산
 
 
 // Determine placeholder content
@@ -399,216 +352,38 @@ export default function GlyphPreview({ large = false }) {
             }}
             preserveAspectRatio="xMidYMid meet"
           >
+            {/* 센터라인 없는 글리프 — placeholder (레이어와 무관하게 한 번만 렌더링) */}
             {glyphList.map((glyph, index) => {
-              if (!glyph.centerline) {
-                // Show placeholder for missing centerline
-                const cellWidth = EM_UNIT * fontToDisplay;
-                const midY = fontAscender * fontToDisplay / 2;
-                return (
-                  <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
-                    <text
-                      x={cellWidth / 2}
-                      y={midY}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill="#666"
-                      fontSize={200}
-                    >
-                      {glyph.char}
-                    </text>
-                    <text
-                      x={cellWidth / 2}
-                      y={fontAscender * fontToDisplay}
-                      textAnchor="middle"
-                      fill="#666"
-                      fontSize={60}
-                    >
-                      (test required)
-                    </text>
-                  </g>
-                );
-              }
-
-              const { K, rasterScale } = glyph;
-              const glyphOutline = glyph.centerline.outline;
-              const bounds = glyph.centerline.bounds || {};
-              const xMin = bounds.xMin || 0;
-              const glyphAscender = glyph.centerline.ascender ?? fontAscender;
-
-              // Centerline transform: pixel/SVG coords → display coords
-              const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
-              const clTranslateY = -RASTER_PADDING * K;
-
-              // Outline transform: font coords → display coords
-              const outlineTransform = glyphOutline
-                ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
-                : '';
-
-              // Baseline position in display coords
-              const baselineY = glyphAscender * fontToDisplay;
-              const slantAngle = slantParams.enabled ? slantParams.angle : 0;
-              const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
-              const scaleTransform = needsTransform
-                ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`
-                : '';
-
-              // 센터라인 경로를 픽셀 공간 → 디스플레이 공간 + scaleX/scaleY/slant 적용하여 사전 변환
-              // stroke는 이미 변형된 경로 위에 균일하게 그려지므로 scale 왜곡이 없음
-              const tanSlant = Math.tan(slantAngle * Math.PI / 180);
-              const pointTransform = (px, py) => {
-                const dx = clTranslateX + px * K;
-                const dy = clTranslateY + py * K;
-                const fx = scaleX * dx - scaleX * tanSlant * (dy - baselineY);
-                const fy = scaleY * (dy - baselineY) + baselineY;
-                return [fx, fy];
-              };
-              const transformedPaths = glyph.centerline.paths.map(d => applyTransformToPath(d, pointTransform));
-
-              // 디스플레이 공간 기준 stroke 두께 (균일, 방향 무관)
-              // width * rasterScale * K = width * fontToDisplay
-              const displayStrokeWidth = strokeParams.width * fontToDisplay;
-
+              if (glyph.centerline) return null;
+              const cellWidth = EM_UNIT * fontToDisplay;
+              const midY = fontAscender * fontToDisplay / 2;
               return (
                 <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
-                  {/* 1. Flesh + 오프셋 링: scaleTransform 내부, stroke 뒤에 렌더링 */}
-                  <g transform={scaleTransform || undefined}>
-                    {/* Original glyph outline (flesh) - rendered behind skeleton */}
-                    {showFlesh && glyphOutline && glyphOutline.path && (
-                      <g transform={outlineTransform}>
-                        <path
-                          d={glyphOutline.path}
-                          fill={theme === 'dark' ? '#ffffff' : '#000000'}
-                          fillOpacity={0.4}
-                          stroke="none"
-                        />
-                      </g>
-                    )}
-
-                    {/* Offset path ring: 픽셀 공간 경로 (후속 작업: 현재는 scaleTransform 내부 유지) */}
-                    <g transform={`translate(${clTranslateX}, ${clTranslateY}) scale(${K})`}>
-                      {offsetPathParams.enabled && (offsetRingsByIndex[index] || []).map((d, pi) => (
-                        <path
-                          key={`offset-${pi}`}
-                          d={d}
-                          fill="none"
-                          stroke={offsetPathParams.color}
-                          strokeWidth={offsetPathParams.weight}
-                          strokeLinecap={offsetPathParams.corner === 'round' ? 'round' : 'square'}
-                          strokeLinejoin={offsetPathParams.corner === 'round' ? 'round' : 'miter'}
-                        />
-                      ))}
-                    </g>
-                  </g>
-
-                  {/* 2. 센터라인 stroke: 사전 변환된 경로 — scale 트랜스폼 없이 균일한 두께 */}
-                  {transformedPaths.map((d, i) => (
-                    <path
-                      key={i}
-                      d={d}
-                      fill="none"
-                      stroke={strokeParams.strokeColor}
-                      strokeWidth={displayStrokeWidth}
-                      strokeLinecap={strokeParams.cap}
-                      strokeLinejoin={strokeParams.join}
-                    />
-                  ))}
-
-                  {/* 3. 얇은 센터라인 참조선 (사전 변환) */}
-                  {transformedPaths.map((d, i) => (
-                    <path
-                      key={`ref-${i}`}
-                      d={d}
-                      fill="none"
-                      stroke={strokeParams.centerlineColor}
-                      strokeWidth={3}
-                      opacity={0.9}
-                    />
-                  ))}
-
-                  {/* 4. 데코레이터: scaleTransform 내부, stroke 위에 렌더링 */}
-                  {decoratorParams.enabled && decoratorsByIndex[index] && (
-                    <g transform={scaleTransform || undefined}>
-                      {decoratorsByIndex[index].map((pt, i) => {
-                        const s = decoratorParams.size;
-                        const fill = decoratorParams.filled ? decoratorParams.color : 'none';
-                        const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
-                        const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
-                        switch (decoratorParams.shape) {
-                          case 'circle':
-                            return (
-                              <circle
-                                key={`dec-${i}`}
-                                cx={pt.x} cy={pt.y} r={s / 2}
-                                fill={fill} stroke={stroke} strokeWidth={sw}
-                              />
-                            );
-                          case 'square':
-                            return (
-                              <rect
-                                key={`dec-${i}`}
-                                x={pt.x - s / 2} y={pt.y - s / 2}
-                                width={s} height={s}
-                                fill={fill} stroke={stroke} strokeWidth={sw}
-                              />
-                            );
-                          case 'diamond':
-                            return (
-                              <polygon
-                                key={`dec-${i}`}
-                                points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
-                                fill={fill} stroke={stroke} strokeWidth={sw}
-                              />
-                            );
-                          case 'triangle':
-                            return (
-                              <polygon
-                                key={`dec-${i}`}
-                                points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
-                                fill={fill} stroke={stroke} strokeWidth={sw}
-                              />
-                            );
-                          default:
-                            return null;
-                        }
-                      })}
-                    </g>
-                  )}
+                  <text x={cellWidth / 2} y={midY} textAnchor="middle" dominantBaseline="middle" fill="#666" fontSize={200}>
+                    {glyph.char}
+                  </text>
+                  <text x={cellWidth / 2} y={fontAscender * fontToDisplay} textAnchor="middle" fill="#666" fontSize={60}>
+                    (test required)
+                  </text>
                 </g>
               );
             })}
 
-            {/* Branch lines from glyph endpoints */}
-            {branchParams.enabled && branches.length > 0 && (
-              <g>
-                {branches.map((b, i) => (
-                  <path
-                    key={`branch-${i}`}
-                    d={b.d}
-                    fill="none"
-                    stroke={branchParams.color}
-                    strokeWidth={b.widthRatio * strokeParams.width * fontToDisplay}
-                    strokeLinecap="round"
-                  />
-                ))}
-              </g>
-            )}
-
-            {/* Connection lines between adjacent glyphs */}
-            {connectionParams.enabled && connections.length > 0 && (
-              <g>
-                {connections.map((conn, i) => (
-                  <path
-                    key={`conn-${i}`}
-                    d={conn.d}
-                    fill="none"
-                    stroke={connectionParams.color}
-                    strokeWidth={strokeParams.width * fontToDisplay}
-                    strokeLinecap={strokeParams.cap}
-                    strokeLinejoin={strokeParams.join}
-                  />
-                ))}
-              </g>
-            )}
+            {/* 레이어별 렌더링 — 가시성 켜진 레이어를 순서대로 쌓음 */}
+            {layers.filter(l => l.visible).map(layer => (
+              <GlyphLayerRenderer
+                key={layer.id}
+                layer={layer}
+                glyphList={glyphList}
+                fontToDisplay={fontToDisplay}
+                fontAscender={fontAscender}
+                EM_UNIT={EM_UNIT}
+                theme={theme}
+                showFlesh={showFlesh}
+                scaleX={scaleX}
+                scaleY={scaleY}
+              />
+            ))}
 
           </svg>
         </>

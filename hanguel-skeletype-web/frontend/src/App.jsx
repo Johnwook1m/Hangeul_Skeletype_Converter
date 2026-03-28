@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import GlyphPreview from './components/GlyphPreview';
 import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';
+import LayerPanel from './components/LayerPanel';
 import useFontStore from './stores/fontStore';
 import './index.css';
 
@@ -216,6 +217,9 @@ function App() {
 
       {/* About panel */}
       {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
+
+      {/* Layer panel — left fixed, shown after font loaded */}
+      {fontId && <LayerPanel />}
 
       {/* Full-screen dropzone overlay */}
       <FontUpload />

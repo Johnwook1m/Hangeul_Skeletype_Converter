@@ -1,5 +1,91 @@
 import { create } from 'zustand';
 
+// ─── 레이어 색상 팔레트 (새 레이어 자동 색상) ────────────────────────────────
+const LAYER_COLORS = ['#FF5714', '#1a1a1a', '#ffffff', '#4A90D9', '#7ED321', '#BD10E0'];
+
+// ─── 레이어별 기본값 팩토리 ────────────────────────────────────────────────────
+// (scaleX/scaleY는 세션 공유 → 레이어 strokeParams에 포함되지 않음)
+const defaultLayerStrokeParams = (strokeColor = '#FF5714') => ({
+  width: 80,
+  cap: 'round',
+  join: 'round',
+  strokeColor,
+  centerlineColor: '#1a1a1a',
+});
+
+const defaultConnectionParams = () => ({
+  enabled: false,
+  shape: 'curve',
+  color: '#FF5714',
+  tension: 0.5,
+  waveAmplitude: 15,
+  waveFrequency: 3,
+  maxDistance: 500,
+  maxConnections: 2,
+});
+
+const defaultBranchParams = () => ({
+  enabled: false,
+  angle: 90,
+  count: 2,
+  length: 105,
+  depth: 1,
+  color: '#FF5714',
+});
+
+const defaultDecoratorParams = () => ({
+  enabled: false,
+  shape: 'circle',
+  size: 40,
+  count: 6,
+  position: 0.5,
+  spacing: 'endpoints',
+  filled: true,
+  color: '#000000',
+});
+
+const defaultOffsetPathParams = () => ({
+  enabled: false,
+  offset: 10,
+  count: 1,
+  weight: 10,
+  corner: 'round',
+  color: '#FF5714',
+});
+
+const defaultSlantParams = () => ({
+  enabled: false,
+  angle: -15,
+});
+
+// 레이어 객체 생성
+const createLayer = (id, name, colorIndex = 0) => ({
+  id,
+  name,
+  visible: true,
+  strokeParams: defaultLayerStrokeParams(LAYER_COLORS[colorIndex % LAYER_COLORS.length]),
+  connectionParams: defaultConnectionParams(),
+  branchParams: defaultBranchParams(),
+  decoratorParams: defaultDecoratorParams(),
+  offsetPathParams: defaultOffsetPathParams(),
+  slantParams: defaultSlantParams(),
+});
+
+// 레이어의 params를 top-level state로 복사 (active layer 전환 시 사용)
+// scaleX/scaleY는 global이므로 현재 값을 유지
+const syncLayerToTopLevel = (layer, currentStrokeParams) => ({
+  strokeParams: {
+    ...currentStrokeParams,          // scaleX/scaleY 보존
+    ...layer.strokeParams,           // 레이어별 width/color/cap/join 덮어쓰기
+  },
+  connectionParams: { ...layer.connectionParams },
+  branchParams: { ...layer.branchParams },
+  decoratorParams: { ...layer.decoratorParams },
+  offsetPathParams: { ...layer.offsetPathParams },
+  slantParams: { ...layer.slantParams },
+});
+
+// ─── 스토어 ────────────────────────────────────────────────────────────────────
 const useFontStore = create((set) => ({
   // Font session
   fontId: null,
@@ -9,98 +95,60 @@ const useFontStore = create((set) => ({
   ascender: null,
   descender: null,
   isDemo: false,
-  fontLoading: false, // true while glyphs are being fetched after font upload
+  fontLoading: false,
 
   // Glyph data
   glyphs: [],
   selectedGlyph: null,
-  selectedGlyphs: new Set(), // Multi-select for extraction
-  previewText: '', // Text to preview (full string)
+  selectedGlyphs: new Set(),
+  previewText: '',
 
   // Centerline data: { glyph_name: { paths, view_box, width, height } }
   centerlines: {},
 
-  // Stroke parameters
+  // ─── 세션 공유 stroke params (scaleX/scaleY 포함) ─────────────────────────
+  // top-level strokeParams는 항상 active layer와 동기화됨
   strokeParams: {
     width: 80,
     cap: 'round',
     join: 'round',
     strokeColor: '#FF5714',
     centerlineColor: '#1a1a1a',
-    scaleX: 1.0,
-    scaleY: 1.0,
+    scaleX: 1.0,   // 세션 공유
+    scaleY: 1.0,   // 세션 공유
   },
 
-  // Connection parameters (glyph-to-glyph linking)
-  connectionParams: {
-    enabled: false,
-    shape: 'curve',       // 'line' | 'curve' | 'wave'
-    color: '#FF5714',     // connection line color
-    tension: 0.5,         // curve bend amount (0=straight, 1=very curved)
-    waveAmplitude: 15,    // wave height
-    waveFrequency: 3,     // wave count
-    maxDistance: 500,      // skip connection if endpoints further than this
-    maxConnections: 2,    // max connections per glyph pair
-  },
+  // top-level 이펙트 params (항상 active layer와 동기화)
+  connectionParams: defaultConnectionParams(),
+  branchParams: defaultBranchParams(),
+  decoratorParams: defaultDecoratorParams(),
+  offsetPathParams: defaultOffsetPathParams(),
+  slantParams: defaultSlantParams(),
 
-  // Branch parameters (endpoint branching / fractal tree)
-  branchParams: {
-    enabled: false,
-    angle: 90,           // branch spread angle (degrees, 0~90)
-    count: 2,            // branches per endpoint (1~5)
-    length: 105,         // first branch length (display units)
-    depth: 1,            // recursion depth (1~4)
-    color: '#FF5714',    // branch color
-  },
-
-  // Decorator parameters (shapes placed along centerline paths)
-  decoratorParams: {
-    enabled: false,
-    shape: 'circle',     // 'circle' | 'square' | 'diamond' | 'triangle'
-    size: 40,            // shape size in display units (5~100)
-    count: 6,            // shapes per path (1~30)
-    position: 0.5,       // offset along path (0~1)
-    spacing: 'endpoints', // 'even' | 'endpoints' | 'random'
-    filled: true,        // filled or outline-only
-    color: '#000000',    // shape color
-  },
-
-  // Offset Path parameters (parallel paths along centerlines)
-  offsetPathParams: {
-    enabled: false,
-    offset: 10,          // offset distance in pixel space (1~100)
-    count: 1,            // number of offset repetitions (1~5)
-    weight: 10,          // stroke weight of offset ring (independent of Basic weight)
-    corner: 'round',     // 'round' | 'sharp' — end cap / corner style
-    color: '#FF5714',    // offset path color
-  },
-
-  // Slant parameters (skew/italic transform)
-  slantParams: {
-    enabled: false,
-    angle: -15,          // degrees: negative = lean right (italic), positive = lean left
-  },
-
-  // Background image parameters
+  // Background image (세션 공유, 레이어와 무관)
   backgroundImageParams: {
     enabled: false,
-    imageUrl: null,      // base64 data URL of uploaded image
-    imageName: null,     // original file name for display
-    opacity: 1.0,        // 0~1
-    scale: 1.0,          // image scale multiplier (0.1~3.0)
-    fit: 'contain',        // 'cover' | 'contain' | 'fill'
-    blendMode: 'normal', // CSS mix-blend-mode value
+    imageUrl: null,
+    imageName: null,
+    opacity: 1.0,
+    scale: 1.0,
+    fit: 'contain',
+    blendMode: 'normal',
   },
 
+  // ─── 레이어 상태 ────────────────────────────────────────────────────────────
+  layers: [createLayer('layer-1', 'Layer 1', 0)],
+  activeLayerId: 'layer-1',
+
   // Display options
-  theme: 'light', // 'dark' | 'light'
-  bgColor: '#ffffff', // Custom background color
-  textAlign: 'center', // 'center' | 'left' | 'right'
-  showFlesh: false, // Show original glyph outline behind skeleton
-  glyphSize: 100, // Glyph size percentage (50-500) — viewport zoom
-  previewFontSize: 1.0, // Text size multiplier (0.25~4.0) — chars per row
-  spaceAdvanceWidth: null, // Space glyph advance width in font units (from uploaded font)
-  fontBlobUrl: null, // Blob URL for loading original font in preview
+  theme: 'light',
+  bgColor: '#ffffff',
+  textAlign: 'center',
+  showFlesh: false,
+  glyphSize: 100,
+  previewFontSize: 1.0,
+  spaceAdvanceWidth: null,
+  fontBlobUrl: null,
 
   // Extraction state
   extraction: {
@@ -111,10 +159,12 @@ const useFontStore = create((set) => ({
     errors: [],
   },
 
-  // Actions
+  // ─── Actions ────────────────────────────────────────────────────────────────
+
   setFont: (data) =>
     set((state) => {
       if (state.fontBlobUrl) URL.revokeObjectURL(state.fontBlobUrl);
+      const initialLayer = createLayer('layer-1', 'Layer 1', 0);
       return {
         fontId: data.font_id,
         fontName: data.family_name,
@@ -131,64 +181,15 @@ const useFontStore = create((set) => ({
         selectedGlyphs: new Set(),
         previewText: '',
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
-        strokeParams: {
-          width: 80,
-          cap: 'round',
-          join: 'round',
-          strokeColor: '#FF5714',
-          centerlineColor: '#1a1a1a',
-          scaleX: 1.0,
-          scaleY: 1.0,
-        },
-        connectionParams: {
-          enabled: false,
-          shape: 'curve',
-          color: '#FF5714',
-          tension: 0.5,
-          waveAmplitude: 15,
-          waveFrequency: 3,
-          maxDistance: 500,
-          maxConnections: 2,
-        },
-        branchParams: {
-          enabled: false,
-          angle: 90,
-          count: 2,
-          length: 105,
-          depth: 1,
-          color: '#FF5714',
-        },
-        decoratorParams: {
-          enabled: false,
-          shape: 'circle',
-          size: 40,
-          count: 6,
-          position: 0.5,
-          spacing: 'endpoints',
-          filled: true,
-          color: '#000000',
-        },
-        offsetPathParams: {
-          enabled: false,
-          offset: 10,
-          count: 1,
-          weight: 10,
-          corner: 'round',
-          color: '#FF5714',
-        },
-        slantParams: {
-          enabled: false,
-          angle: -15,
-        },
-        backgroundImageParams: {
-          enabled: false,
-          imageUrl: null,
-          imageName: null,
-          opacity: 1.0,
-          scale: 1.0,
-          fit: 'contain',
-          blendMode: 'normal',
-        },
+        strokeParams: { width: 80, cap: 'round', join: 'round', strokeColor: '#FF5714', centerlineColor: '#1a1a1a', scaleX: 1.0, scaleY: 1.0 },
+        connectionParams: defaultConnectionParams(),
+        branchParams: defaultBranchParams(),
+        decoratorParams: defaultDecoratorParams(),
+        offsetPathParams: defaultOffsetPathParams(),
+        slantParams: defaultSlantParams(),
+        backgroundImageParams: { enabled: false, imageUrl: null, imageName: null, opacity: 1.0, scale: 1.0, fit: 'contain', blendMode: 'normal' },
+        layers: [initialLayer],
+        activeLayerId: 'layer-1',
         theme: 'light',
         bgColor: '#ffffff',
         showFlesh: false,
@@ -200,189 +201,239 @@ const useFontStore = create((set) => ({
     }),
 
   setIsDemo: (v) => set({ isDemo: v }),
-
   setGlyphs: (glyphs) => set({ glyphs, fontLoading: false }),
   setFontLoading: (v) => set({ fontLoading: v }),
-
   selectGlyph: (name) => set({ selectedGlyph: name }),
-
   setPreviewText: (text) => set({ previewText: text }),
 
   toggleGlyphSelection: (name) =>
     set((state) => {
       const newSet = new Set(state.selectedGlyphs);
-      if (newSet.has(name)) {
-        newSet.delete(name);
-      } else {
-        newSet.add(name);
-      }
+      if (newSet.has(name)) newSet.delete(name);
+      else newSet.add(name);
       return { selectedGlyphs: newSet };
     }),
 
   selectAllGlyphs: () =>
     set((state) => ({
-      selectedGlyphs: new Set(
-        state.glyphs.filter((g) => g.has_outline).map((g) => g.name)
-      ),
+      selectedGlyphs: new Set(state.glyphs.filter((g) => g.has_outline).map((g) => g.name)),
     })),
 
   clearGlyphSelection: () => set({ selectedGlyphs: new Set() }),
 
-  // Select glyphs by text input - returns { found, notFound } for feedback
   selectGlyphsByText: (text) => {
     let found = [];
     let notFound = [];
-
     set((state) => {
-      // Build character -> glyph name map
       const charToGlyph = new Map();
       for (const g of state.glyphs) {
-        if (g.character && g.has_outline) {
-          charToGlyph.set(g.character, g.name);
-        }
+        if (g.character && g.has_outline) charToGlyph.set(g.character, g.name);
       }
-
-      // Find glyphs for each unique character in text
       const uniqueChars = [...new Set(text)];
       const newSelection = new Set(state.selectedGlyphs);
-
       for (const char of uniqueChars) {
-        if (char.trim() === '') continue; // Skip whitespace
+        if (char.trim() === '') continue;
         const glyphName = charToGlyph.get(char);
-        if (glyphName) {
-          newSelection.add(glyphName);
-          found.push(char);
-        } else {
-          notFound.push(char);
-        }
+        if (glyphName) { newSelection.add(glyphName); found.push(char); }
+        else notFound.push(char);
       }
-
       return { selectedGlyphs: newSelection };
     });
-
     return { found, notFound };
   },
 
+  // ─── Stroke params ──────────────────────────────────────────────────────────
+  // scaleX/scaleY는 세션 공유 → top-level만 업데이트
+  // 나머지는 active layer도 함께 업데이트
   setStrokeParams: (params) =>
-    set((state) => ({
-      strokeParams: { ...state.strokeParams, ...params },
-    })),
+    set((state) => {
+      const newStrokeParams = { ...state.strokeParams, ...params };
+      // 레이어별 params: scaleX/scaleY 제외
+      const layerKeys = ['width', 'cap', 'join', 'strokeColor', 'centerlineColor'];
+      const layerUpdate = Object.fromEntries(
+        Object.entries(params).filter(([k]) => layerKeys.includes(k))
+      );
+      const newLayers = Object.keys(layerUpdate).length > 0
+        ? state.layers.map(l =>
+            l.id === state.activeLayerId
+              ? { ...l, strokeParams: { ...l.strokeParams, ...layerUpdate } }
+              : l
+          )
+        : state.layers;
+      return { strokeParams: newStrokeParams, layers: newLayers };
+    }),
 
+  // ─── Connection params ───────────────────────────────────────────────────────
   setConnectionParams: (params) =>
-    set((state) => ({
-      connectionParams: { ...state.connectionParams, ...params },
-    })),
+    set((state) => {
+      const newParams = { ...state.connectionParams, ...params };
+      return {
+        connectionParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, connectionParams: newParams } : l
+        ),
+      };
+    }),
 
   toggleConnection: () =>
-    set((state) => ({
-      connectionParams: {
-        ...state.connectionParams,
-        enabled: !state.connectionParams.enabled,
-      },
-    })),
+    set((state) => {
+      const newParams = { ...state.connectionParams, enabled: !state.connectionParams.enabled };
+      return {
+        connectionParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, connectionParams: newParams } : l
+        ),
+      };
+    }),
 
   resetConnection: () =>
-    set({
-      connectionParams: {
-        enabled: false,
-        shape: 'curve',
-        color: '#FF5714',
-        tension: 0.5,
-        waveAmplitude: 15,
-        waveFrequency: 3,
-        maxDistance: 500,
-        maxConnections: 2,
-      },
+    set((state) => {
+      const defaults = defaultConnectionParams();
+      return {
+        connectionParams: defaults,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, connectionParams: defaults } : l
+        ),
+      };
     }),
 
+  // ─── Branch params ───────────────────────────────────────────────────────────
   setBranchParams: (params) =>
-    set((state) => ({
-      branchParams: { ...state.branchParams, ...params },
-    })),
+    set((state) => {
+      const newParams = { ...state.branchParams, ...params };
+      return {
+        branchParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, branchParams: newParams } : l
+        ),
+      };
+    }),
 
   toggleBranch: () =>
-    set((state) => ({
-      branchParams: {
-        ...state.branchParams,
-        enabled: !state.branchParams.enabled,
-      },
-    })),
+    set((state) => {
+      const newParams = { ...state.branchParams, enabled: !state.branchParams.enabled };
+      return {
+        branchParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, branchParams: newParams } : l
+        ),
+      };
+    }),
 
   resetBranch: () =>
-    set({
-      branchParams: {
-        enabled: false,
-        angle: 90,
-        count: 2,
-        length: 105,
-        depth: 1,
-        color: '#FF5714',
-      },
+    set((state) => {
+      const defaults = defaultBranchParams();
+      return {
+        branchParams: defaults,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, branchParams: defaults } : l
+        ),
+      };
     }),
 
+  // ─── Decorator params ────────────────────────────────────────────────────────
   setDecoratorParams: (params) =>
-    set((state) => ({
-      decoratorParams: { ...state.decoratorParams, ...params },
-    })),
+    set((state) => {
+      const newParams = { ...state.decoratorParams, ...params };
+      return {
+        decoratorParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, decoratorParams: newParams } : l
+        ),
+      };
+    }),
 
   toggleDecorator: () =>
-    set((state) => ({
-      decoratorParams: {
-        ...state.decoratorParams,
-        enabled: !state.decoratorParams.enabled,
-      },
-    })),
+    set((state) => {
+      const newParams = { ...state.decoratorParams, enabled: !state.decoratorParams.enabled };
+      return {
+        decoratorParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, decoratorParams: newParams } : l
+        ),
+      };
+    }),
 
   resetDecorator: () =>
-    set({
-      decoratorParams: {
-        enabled: false,
-        shape: 'circle',
-        size: 30,
-        count: 6,
-        position: 0.5,
-        spacing: 'endpoints',
-        filled: true,
-        color: '#000000',
-      },
+    set((state) => {
+      const defaults = { ...defaultDecoratorParams(), size: 30 }; // 기존 reset 동작 유지
+      return {
+        decoratorParams: defaults,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, decoratorParams: defaults } : l
+        ),
+      };
     }),
 
+  // ─── Offset path params ──────────────────────────────────────────────────────
   setOffsetPathParams: (params) =>
-    set((state) => ({
-      offsetPathParams: { ...state.offsetPathParams, ...params },
-    })),
+    set((state) => {
+      const newParams = { ...state.offsetPathParams, ...params };
+      return {
+        offsetPathParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, offsetPathParams: newParams } : l
+        ),
+      };
+    }),
 
   toggleOffsetPath: () =>
-    set((state) => ({
-      offsetPathParams: {
-        ...state.offsetPathParams,
-        enabled: !state.offsetPathParams.enabled,
-      },
-    })),
-
-  resetOffsetPath: () =>
-    set({
-      offsetPathParams: {
-        enabled: false,
-        offset: 10,
-        count: 1,
-        weight: 10,
-        corner: 'round',
-        color: '#FF5714',
-      },
+    set((state) => {
+      const newParams = { ...state.offsetPathParams, enabled: !state.offsetPathParams.enabled };
+      return {
+        offsetPathParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, offsetPathParams: newParams } : l
+        ),
+      };
     }),
 
+  resetOffsetPath: () =>
+    set((state) => {
+      const defaults = defaultOffsetPathParams();
+      return {
+        offsetPathParams: defaults,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, offsetPathParams: defaults } : l
+        ),
+      };
+    }),
+
+  // ─── Slant params ────────────────────────────────────────────────────────────
   setSlantParams: (params) =>
-    set((state) => ({ slantParams: { ...state.slantParams, ...params } })),
+    set((state) => {
+      const newParams = { ...state.slantParams, ...params };
+      return {
+        slantParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, slantParams: newParams } : l
+        ),
+      };
+    }),
 
   toggleSlant: () =>
-    set((state) => ({
-      slantParams: { ...state.slantParams, enabled: !state.slantParams.enabled },
-    })),
+    set((state) => {
+      const newParams = { ...state.slantParams, enabled: !state.slantParams.enabled };
+      return {
+        slantParams: newParams,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, slantParams: newParams } : l
+        ),
+      };
+    }),
 
   resetSlant: () =>
-    set({ slantParams: { enabled: false, angle: -15 } }),
+    set((state) => {
+      const defaults = defaultSlantParams();
+      return {
+        slantParams: defaults,
+        layers: state.layers.map(l =>
+          l.id === state.activeLayerId ? { ...l, slantParams: defaults } : l
+        ),
+      };
+    }),
 
+  // ─── Background image (세션 공유) ────────────────────────────────────────────
   setBackgroundImageParams: (params) =>
     set((state) => ({
       backgroundImageParams: { ...state.backgroundImageParams, ...params },
@@ -390,31 +441,86 @@ const useFontStore = create((set) => ({
 
   toggleBackgroundImage: () =>
     set((state) => ({
-      backgroundImageParams: {
-        ...state.backgroundImageParams,
-        enabled: !state.backgroundImageParams.enabled,
-      },
+      backgroundImageParams: { ...state.backgroundImageParams, enabled: !state.backgroundImageParams.enabled },
     })),
 
   resetBackgroundImage: () =>
     set({
-      backgroundImageParams: {
-        enabled: false,
-        imageUrl: null,
-        imageName: null,
-        opacity: 1.0,
-        fit: 'contain',
-        blendMode: 'normal',
-      },
+      backgroundImageParams: { enabled: false, imageUrl: null, imageName: null, opacity: 1.0, fit: 'contain', blendMode: 'normal' },
     }),
 
+  // ─── 레이어 관리 ────────────────────────────────────────────────────────────
+  addLayer: () =>
+    set((state) => {
+      const colorIndex = state.layers.length;
+      const newId = `layer-${Date.now()}`;
+      const newName = `Layer ${state.layers.length + 1}`;
+      const newLayer = createLayer(newId, newName, colorIndex);
+      return {
+        layers: [...state.layers, newLayer],
+        // 새 레이어를 active로 설정하고 top-level 동기화
+        activeLayerId: newId,
+        ...syncLayerToTopLevel(newLayer, state.strokeParams),
+      };
+    }),
+
+  removeLayer: (id) =>
+    set((state) => {
+      if (state.layers.length <= 1) return {}; // 최소 1개 유지
+      const newLayers = state.layers.filter(l => l.id !== id);
+      // 삭제한 레이어가 active였으면 마지막 레이어로 전환
+      if (state.activeLayerId !== id) return { layers: newLayers };
+      const newActive = newLayers[newLayers.length - 1];
+      return {
+        layers: newLayers,
+        activeLayerId: newActive.id,
+        ...syncLayerToTopLevel(newActive, state.strokeParams),
+      };
+    }),
+
+  setActiveLayerId: (id) =>
+    set((state) => {
+      const layer = state.layers.find(l => l.id === id);
+      if (!layer || layer.id === state.activeLayerId) return {};
+      return {
+        activeLayerId: id,
+        ...syncLayerToTopLevel(layer, state.strokeParams),
+      };
+    }),
+
+  toggleLayerVisible: (id) =>
+    set((state) => ({
+      layers: state.layers.map(l =>
+        l.id === id ? { ...l, visible: !l.visible } : l
+      ),
+    })),
+
+  renameLayer: (id, name) =>
+    set((state) => ({
+      layers: state.layers.map(l => l.id === id ? { ...l, name } : l),
+    })),
+
+  duplicateLayer: (id) =>
+    set((state) => {
+      const source = state.layers.find(l => l.id === id);
+      if (!source) return {};
+      const newId = `layer-${Date.now()}`;
+      const copy = { ...source, id: newId, name: `${source.name} copy` };
+      const sourceIndex = state.layers.findIndex(l => l.id === id);
+      const newLayers = [...state.layers];
+      newLayers.splice(sourceIndex + 1, 0, copy);
+      return {
+        layers: newLayers,
+        activeLayerId: newId,
+        ...syncLayerToTopLevel(copy, state.strokeParams),
+      };
+    }),
+
+  // ─── Display / session ───────────────────────────────────────────────────────
   toggleTheme: () =>
     set((state) => {
       const newTheme = state.theme === 'dark' ? 'light' : 'dark';
-      return {
-        theme: newTheme,
-        bgColor: newTheme === 'dark' ? '#1a1a1a' : '#ffffff',
-      };
+      return { theme: newTheme, bgColor: newTheme === 'dark' ? '#1a1a1a' : '#ffffff' };
     }),
 
   cycleTextAlign: () =>
@@ -431,29 +537,20 @@ const useFontStore = create((set) => ({
   setFontBlobUrl: (url) => set({ fontBlobUrl: url }),
 
   setCenterline: (name, data) =>
-    set((state) => ({
-      centerlines: { ...state.centerlines, [name]: data },
-    })),
+    set((state) => ({ centerlines: { ...state.centerlines, [name]: data } })),
 
   setExtractionStatus: (update) =>
-    set((state) => ({
-      extraction: { ...state.extraction, ...update },
-    })),
+    set((state) => ({ extraction: { ...state.extraction, ...update } })),
 
   addExtractionError: (error) =>
     set((state) => ({
-      extraction: {
-        ...state.extraction,
-        errors: [...state.extraction.errors, error],
-      },
+      extraction: { ...state.extraction, errors: [...state.extraction.errors, error] },
     })),
 
   reset: () =>
     set((state) => {
-      // Revoke old blob URL to free memory
-      if (state.fontBlobUrl) {
-        URL.revokeObjectURL(state.fontBlobUrl);
-      }
+      if (state.fontBlobUrl) URL.revokeObjectURL(state.fontBlobUrl);
+      const initialLayer = createLayer('layer-1', 'Layer 1', 0);
       return {
         fontId: null,
         fontName: '',
@@ -467,64 +564,15 @@ const useFontStore = create((set) => ({
         selectedGlyphs: new Set(),
         previewText: '',
         centerlines: {},
-        strokeParams: {
-          width: 80,
-          cap: 'round',
-          join: 'round',
-          strokeColor: '#FF5714',
-          centerlineColor: '#1a1a1a',
-          scaleX: 1.0,
-          scaleY: 1.0,
-        },
-        connectionParams: {
-          enabled: false,
-          shape: 'curve',
-          color: '#FF5714',
-          tension: 0.5,
-          waveAmplitude: 15,
-          waveFrequency: 3,
-          maxDistance: 500,
-          maxConnections: 2,
-        },
-        branchParams: {
-          enabled: false,
-          angle: 90,
-          count: 2,
-          length: 105,
-          depth: 1,
-          color: '#FF5714',
-        },
-        decoratorParams: {
-          enabled: false,
-          shape: 'circle',
-          size: 30,
-          count: 6,
-          position: 0.5,
-          spacing: 'endpoints',
-          filled: true,
-          color: '#000000',
-        },
-        offsetPathParams: {
-          enabled: false,
-          offset: 10,
-          count: 1,
-          weight: 10,
-          corner: 'round',
-          color: '#FF5714',
-        },
-        slantParams: {
-          enabled: false,
-          angle: -15,
-        },
-        backgroundImageParams: {
-          enabled: false,
-          imageUrl: null,
-          imageName: null,
-          opacity: 1.0,
-          scale: 1.0,
-          fit: 'contain',
-          blendMode: 'normal',
-        },
+        strokeParams: { width: 80, cap: 'round', join: 'round', strokeColor: '#FF5714', centerlineColor: '#1a1a1a', scaleX: 1.0, scaleY: 1.0 },
+        connectionParams: defaultConnectionParams(),
+        branchParams: defaultBranchParams(),
+        decoratorParams: { ...defaultDecoratorParams(), size: 30 }, // reset은 size 30
+        offsetPathParams: defaultOffsetPathParams(),
+        slantParams: defaultSlantParams(),
+        backgroundImageParams: { enabled: false, imageUrl: null, imageName: null, opacity: 1.0, scale: 1.0, fit: 'contain', blendMode: 'normal' },
+        layers: [initialLayer],
+        activeLayerId: 'layer-1',
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },
         theme: 'light',
         bgColor: '#ffffff',
