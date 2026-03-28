@@ -80,7 +80,7 @@ export default function LayerPanel() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-          <span className="text-[10px] text-gray-500 tracking-widest font-medium uppercase">Layers</span>
+          <span className="text-[10px] text-gray-500 tracking-wide font-medium">Layers</span>
           <button
             onClick={addLayer}
             className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9] text-base leading-none transition-colors cursor-pointer"
