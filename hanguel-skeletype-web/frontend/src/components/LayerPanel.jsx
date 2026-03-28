@@ -227,8 +227,7 @@ export default function LayerPanel() {
                           {/* Label */}
                           <span className="text-[10px] text-gray-500 shrink-0">{item.label}</span>
 
-                          {/* Detail value */}
-                          <span className="text-[10px] text-gray-400 flex-1 truncate">{item.detail}</span>
+                          <span className="flex-1" />
 
                           {/* Eye: 미리보기 숨김/표시 토글 | X: 완전 비활성화 */}
                           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
