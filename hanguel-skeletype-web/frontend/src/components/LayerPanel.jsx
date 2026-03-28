@@ -14,17 +14,16 @@ const EyeIcon = ({ size = 12, off = false }) =>
     </svg>
   );
 
-// 레이어의 모든 이펙트 목록 (enabled 여부 포함, 항상 6개)
+// 활성화된 이펙트만 반환 (FX에서 켠 것만 표시)
 function getEffectItems(layer) {
-  const { strokeParams, slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams } = layer;
+  const { slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams } = layer;
   return [
-    { key: 'stroke',  effectKey: null,               label: 'Stroke',  color: strokeParams.strokeColor,  detail: strokeParams.width,          enabled: true,                       permanent: true },
-    { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',   color: '#6b7280',                 detail: `${slantParams.angle}°`,     enabled: slantParams.enabled },
-    { key: 'connect', effectKey: 'connectionParams',  label: 'Connect', color: connectionParams.color,    detail: connectionParams.shape,      enabled: connectionParams.enabled },
-    { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',  color: branchParams.color,        detail: `×${branchParams.count}`,    enabled: branchParams.enabled },
-    { key: 'deco',    effectKey: 'decoratorParams',   label: 'Deco',    color: decoratorParams.color,     detail: decoratorParams.shape,       enabled: decoratorParams.enabled },
-    { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',  color: offsetPathParams.color,    detail: `×${offsetPathParams.count}`,enabled: offsetPathParams.enabled },
-  ];
+    { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',   color: '#6b7280',               detail: `${slantParams.angle}°`,      enabled: slantParams.enabled },
+    { key: 'connect', effectKey: 'connectionParams',  label: 'Connect', color: connectionParams.color,  detail: connectionParams.shape,       enabled: connectionParams.enabled },
+    { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',  color: branchParams.color,      detail: `×${branchParams.count}`,     enabled: branchParams.enabled },
+    { key: 'deco',    effectKey: 'decoratorParams',   label: 'Deco',    color: decoratorParams.color,   detail: decoratorParams.shape,        enabled: decoratorParams.enabled },
+    { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',  color: offsetPathParams.color,  detail: `×${offsetPathParams.count}`, enabled: offsetPathParams.enabled },
+  ].filter(item => item.enabled);
 }
 
 export default function LayerPanel() {
@@ -206,7 +205,6 @@ export default function LayerPanel() {
                         <div
                           key={item.key}
                           className="flex items-center gap-1.5 py-[3px] relative group/fx"
-                          style={{ opacity: item.enabled ? 1 : 0.35 }}
                         >
                           {/* Tree line */}
                           <div className="w-4 shrink-0 self-stretch relative">
@@ -228,36 +226,29 @@ export default function LayerPanel() {
                           {/* Detail value */}
                           <span className="text-[10px] text-gray-400 flex-1 truncate">{item.detail}</span>
 
-                          {/* Eye + X — permanent 이펙트(Stroke)는 숨김 */}
-                          {!item.permanent && (
-                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
-                              {/* Eye: toggle enabled */}
-                              <button
-                                className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
-                                title={item.enabled ? 'Disable effect' : 'Enable effect'}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLayerEffectEnabled(layer.id, item.effectKey, !item.enabled);
-                                }}
-                              >
-                                <EyeIcon size={10} off={!item.enabled} />
-                              </button>
-
-                              {/* X: disable */}
-                              {item.enabled && (
-                                <button
-                                  className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors text-[9px] leading-none"
-                                  title="Remove effect"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setLayerEffectEnabled(layer.id, item.effectKey, false);
-                                  }}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          {/* Eye + X */}
+                          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
+                            <button
+                              className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+                              title="Hide effect"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLayerEffectEnabled(layer.id, item.effectKey, false);
+                              }}
+                            >
+                              <EyeIcon size={10} />
+                            </button>
+                            <button
+                              className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors text-[9px] leading-none"
+                              title="Remove effect"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLayerEffectEnabled(layer.id, item.effectKey, false);
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
