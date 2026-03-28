@@ -516,6 +516,17 @@ const useFontStore = create((set) => ({
       };
     }),
 
+  reorderLayer: (fromId, toId) =>
+    set((state) => {
+      const layers = [...state.layers];
+      const fromIdx = layers.findIndex(l => l.id === fromId);
+      const toIdx = layers.findIndex(l => l.id === toId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return state;
+      const [moved] = layers.splice(fromIdx, 1);
+      layers.splice(toIdx, 0, moved);
+      return { layers };
+    }),
+
   // ─── Display / session ───────────────────────────────────────────────────────
   toggleTheme: () =>
     set((state) => {

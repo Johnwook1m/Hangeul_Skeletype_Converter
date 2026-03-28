@@ -11,10 +11,12 @@ export default function LayerPanel() {
     toggleLayerVisible,
     renameLayer,
     duplicateLayer,
+    reorderLayer,
   } = useFontStore();
 
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [dragOverId, setDragOverId] = useState(null);
 
   const displayLayers = [...layers].reverse(); // 위가 맨 위 레이어
 
@@ -63,15 +65,43 @@ export default function LayerPanel() {
         <div className="py-1">
           {displayLayers.map((layer) => {
             const isActive = layer.id === activeLayerId;
+            const isDragOver = dragOverId === layer.id;
             return (
               <div
                 key={layer.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('layerId', layer.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  setDragOverId(layer.id);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const fromId = e.dataTransfer.getData('layerId');
+                  if (fromId && fromId !== layer.id) reorderLayer(fromId, layer.id);
+                  setDragOverId(null);
+                }}
+                onDragEnd={() => setDragOverId(null)}
                 className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer group"
                 style={{
                   background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  outline: isDragOver ? '1px solid rgba(255,255,255,0.35)' : 'none',
+                  outlineOffset: '-1px',
                 }}
                 onClick={() => setActiveLayerId(layer.id)}
               >
+                {/* Drag handle — hover 시 표시 */}
+                <span
+                  className="text-white/0 group-hover:text-white/30 text-[11px] w-3 shrink-0 cursor-grab transition-colors"
+                  style={{ letterSpacing: '-1px' }}
+                >
+                  ⠿
+                </span>
+
                 {/* Active indicator */}
                 <span
                   className="text-white/80 text-[10px] w-3 shrink-0"
