@@ -207,7 +207,7 @@ export default function LayerPanel() {
                       return (
                         <div
                           key={item.key}
-                          className="flex items-center gap-1.5 py-[3px] relative group/fx"
+                          className="flex items-center gap-1.5 py-[3px] pr-2 relative group/fx"
                           style={{ opacity: item.visible ? 1 : 0.35 }}
                         >
                           {/* Tree line */}
