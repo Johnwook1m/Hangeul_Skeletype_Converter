@@ -77,7 +77,16 @@ const createLayer = (id, name, colorIndex = 0) => ({
   decoratorParams: defaultDecoratorParams(),
   offsetPathParams: defaultOffsetPathParams(),
   slantParams: defaultSlantParams(),
+  effectOrder: [],  // 효과 적용 순서 추적 (effectKey 배열)
 });
+
+// effectOrder 업데이트 헬퍼: 켜면 추가, 끄면 제거
+const updateEffectOrder = (order = [], effectKey, enabling) => {
+  if (enabling) {
+    return order.includes(effectKey) ? order : [...order, effectKey];
+  }
+  return order.filter(k => k !== effectKey);
+};
 
 // 레이어의 params를 top-level state로 복사 (active layer 전환 시 사용)
 const syncLayerToTopLevel = (layer, currentStrokeParams) => ({
@@ -282,11 +291,14 @@ const useFontStore = create((set) => ({
 
   toggleConnection: () =>
     set((state) => {
-      const newParams = { ...state.connectionParams, enabled: !state.connectionParams.enabled };
+      const enabling = !state.connectionParams.enabled;
+      const newParams = { ...state.connectionParams, enabled: enabling };
       return {
         connectionParams: newParams,
         layers: state.layers.map(l =>
-          l.id === state.activeLayerId ? { ...l, connectionParams: newParams } : l
+          l.id === state.activeLayerId
+            ? { ...l, connectionParams: newParams, effectOrder: updateEffectOrder(l.effectOrder, 'connectionParams', enabling) }
+            : l
         ),
       };
     }),
@@ -316,11 +328,14 @@ const useFontStore = create((set) => ({
 
   toggleBranch: () =>
     set((state) => {
-      const newParams = { ...state.branchParams, enabled: !state.branchParams.enabled };
+      const enabling = !state.branchParams.enabled;
+      const newParams = { ...state.branchParams, enabled: enabling };
       return {
         branchParams: newParams,
         layers: state.layers.map(l =>
-          l.id === state.activeLayerId ? { ...l, branchParams: newParams } : l
+          l.id === state.activeLayerId
+            ? { ...l, branchParams: newParams, effectOrder: updateEffectOrder(l.effectOrder, 'branchParams', enabling) }
+            : l
         ),
       };
     }),
@@ -350,11 +365,14 @@ const useFontStore = create((set) => ({
 
   toggleDecorator: () =>
     set((state) => {
-      const newParams = { ...state.decoratorParams, enabled: !state.decoratorParams.enabled };
+      const enabling = !state.decoratorParams.enabled;
+      const newParams = { ...state.decoratorParams, enabled: enabling };
       return {
         decoratorParams: newParams,
         layers: state.layers.map(l =>
-          l.id === state.activeLayerId ? { ...l, decoratorParams: newParams } : l
+          l.id === state.activeLayerId
+            ? { ...l, decoratorParams: newParams, effectOrder: updateEffectOrder(l.effectOrder, 'decoratorParams', enabling) }
+            : l
         ),
       };
     }),
@@ -384,11 +402,14 @@ const useFontStore = create((set) => ({
 
   toggleOffsetPath: () =>
     set((state) => {
-      const newParams = { ...state.offsetPathParams, enabled: !state.offsetPathParams.enabled };
+      const enabling = !state.offsetPathParams.enabled;
+      const newParams = { ...state.offsetPathParams, enabled: enabling };
       return {
         offsetPathParams: newParams,
         layers: state.layers.map(l =>
-          l.id === state.activeLayerId ? { ...l, offsetPathParams: newParams } : l
+          l.id === state.activeLayerId
+            ? { ...l, offsetPathParams: newParams, effectOrder: updateEffectOrder(l.effectOrder, 'offsetPathParams', enabling) }
+            : l
         ),
       };
     }),
@@ -418,11 +439,14 @@ const useFontStore = create((set) => ({
 
   toggleSlant: () =>
     set((state) => {
-      const newParams = { ...state.slantParams, enabled: !state.slantParams.enabled };
+      const enabling = !state.slantParams.enabled;
+      const newParams = { ...state.slantParams, enabled: enabling };
       return {
         slantParams: newParams,
         layers: state.layers.map(l =>
-          l.id === state.activeLayerId ? { ...l, slantParams: newParams } : l
+          l.id === state.activeLayerId
+            ? { ...l, slantParams: newParams, effectOrder: updateEffectOrder(l.effectOrder, 'slantParams', enabling) }
+            : l
         ),
       };
     }),
@@ -548,7 +572,11 @@ const useFontStore = create((set) => ({
   setLayerEffectEnabled: (layerId, effectKey, enabled) =>
     set((state) => {
       const newLayers = state.layers.map(l =>
-        l.id !== layerId ? l : { ...l, [effectKey]: { ...l[effectKey], enabled } }
+        l.id !== layerId ? l : {
+          ...l,
+          [effectKey]: { ...l[effectKey], enabled },
+          effectOrder: updateEffectOrder(l.effectOrder, effectKey, enabled),
+        }
       );
       // active layer면 top-level도 동기화
       if (layerId === state.activeLayerId) {

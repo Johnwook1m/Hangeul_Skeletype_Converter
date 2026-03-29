@@ -194,7 +194,7 @@ export default function BottomBar() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[40px] px-3 pointer-events-none">
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[35px] px-3 pointer-events-none">
       <div className={`pointer-events-auto rounded-[28px] px-5 py-2 h-[65px] flex items-center gap-0 shadow-lg w-[80%] ${
         bgImageActive ? 'bg-gray-200' : 'bg-gray-200'
       }`}>

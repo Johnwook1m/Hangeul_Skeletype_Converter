@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useFontStore from '../stores/fontStore';
 
 const EyeIcon = ({ size = 12, off = false }) =>
@@ -15,25 +15,42 @@ const EyeIcon = ({ size = 12, off = false }) =>
   );
 
 // 활성화된 이펙트만 반환 (FX에서 켠 것만 표시), visible 상태 포함
+// Width/Height는 상단 고정, 나머지는 적용 순서(effectOrder)대로 정렬
 function getEffectItems(layer) {
   const { slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams, strokeParams } = layer;
-  const items = [
-    { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',   color: '#6b7280',              visible: slantParams.visible !== false },
-    { key: 'connect', effectKey: 'connectionParams',  label: 'Connect', color: connectionParams.color, visible: connectionParams.visible !== false },
-    { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',  color: branchParams.color,     visible: branchParams.visible !== false },
-    { key: 'deco',    effectKey: 'decoratorParams',   label: 'Deco',    color: decoratorParams.color,  visible: decoratorParams.visible !== false },
-    { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',  color: offsetPathParams.color, visible: offsetPathParams.visible !== false },
-  ].filter(item => layer[item.effectKey].enabled);
+  const effectOrder = layer.effectOrder || [];
 
-  // Width/Height: scaleX/scaleY ≠ 1일 때 표시
+  // Width/Height: 상단 고정
+  const scaleItems = [];
   if ((strokeParams.scaleX ?? 1) !== 1) {
-    items.push({ key: 'scaleX', label: 'Width', color: '#6b7280', visible: strokeParams.scaleXVisible !== false, isScale: true, axis: 'x' });
+    scaleItems.push({ key: 'scaleX', label: 'Width', color: '#6b7280', visible: strokeParams.scaleXVisible !== false, isScale: true, axis: 'x' });
   }
   if ((strokeParams.scaleY ?? 1) !== 1) {
-    items.push({ key: 'scaleY', label: 'Height', color: '#6b7280', visible: strokeParams.scaleYVisible !== false, isScale: true, axis: 'y' });
+    scaleItems.push({ key: 'scaleY', label: 'Height', color: '#6b7280', visible: strokeParams.scaleYVisible !== false, isScale: true, axis: 'y' });
   }
 
-  return items;
+  // 나머지 이펙트: effectOrder 순서대로
+  const effectMap = {
+    slantParams:      { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',     color: '#6b7280',              visible: slantParams.visible !== false },
+    connectionParams: { key: 'connect', effectKey: 'connectionParams',  label: 'Connect',   color: connectionParams.color, visible: connectionParams.visible !== false },
+    branchParams:     { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',    color: branchParams.color,     visible: branchParams.visible !== false },
+    decoratorParams:  { key: 'deco',    effectKey: 'decoratorParams',   label: 'Decorator', color: decoratorParams.color,  visible: decoratorParams.visible !== false },
+    offsetPathParams: { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',    color: offsetPathParams.color, visible: offsetPathParams.visible !== false },
+  };
+
+  const orderedEffects = effectOrder
+    .filter(k => effectMap[k] && layer[k].enabled)
+    .map(k => effectMap[k]);
+
+  // effectOrder에 없지만 enabled인 이펙트도 뒤에 추가 (호환성)
+  const orderedKeys = new Set(effectOrder);
+  Object.entries(effectMap).forEach(([k, item]) => {
+    if (!orderedKeys.has(k) && layer[k].enabled) {
+      orderedEffects.push(item);
+    }
+  });
+
+  return [...scaleItems, ...orderedEffects];
 }
 
 export default function LayerPanel() {
@@ -56,6 +73,20 @@ export default function LayerPanel() {
   const [editingName, setEditingName] = useState('');
   const [dragOverId, setDragOverId] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef(null);
+
+  // 패널 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
 
   const displayLayers = [...layers].reverse();
 
@@ -83,19 +114,68 @@ export default function LayerPanel() {
     if (e.key === 'Escape') setEditingId(null);
   }
 
+  // 닫힌 상태 크기 (세로 탭)
+  const closedW = 30;
+  const closedH = 80;
+  // 열린 상태 크기
+  const openW = 200;
+
   return (
     <div
-      className="fixed left-4 top-1/2 -translate-y-1/2 z-40 select-none"
-      style={{ pointerEvents: 'auto' }}
+      ref={panelRef}
+      className="fixed left-4 top-1/3 -translate-y-1/2 z-40 select-none cursor-pointer"
+      style={{
+        pointerEvents: 'auto',
+        width: open ? openW : closedW,
+        borderRadius: open ? 20 : 12,
+        background: '#e5e5e5',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+        overflow: 'hidden',
+        transition: 'width 0.35s cubic-bezier(0.34,1.3,0.64,1), border-radius 0.3s ease',
+      }}
+      onClick={() => { if (!open) setOpen(true); }}
     >
-      <div className="bg-gray-200 rounded-[20px] shadow-lg overflow-hidden" style={{ minWidth: 164 }}>
+      {/* ── 닫힌 상태: 세로 Layers 텍스트 ── */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          writingMode: 'vertical-lr',
+          fontSize: 12,
+          fontWeight: 500,
+          color: '#6b7280',
+          letterSpacing: '0.05em',
+          opacity: open ? 0 : 1,
+          transition: 'opacity 0.15s ease',
+          pointerEvents: open ? 'none' : 'auto',
+          height: closedH,
+        }}
+      >
+        Layers
+      </div>
 
+      {/* ── 열린 상태: 패널 콘텐츠 ── */}
+      <div
+        style={{
+          opacity: open ? 1 : 0,
+          transition: 'opacity 0.2s ease 0.1s',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-          <span className="text-[10px] text-gray-500 tracking-wide font-bold">Layers</span>
+          <span
+            className="text-[12px] text-gray-500 tracking-wide font-medium cursor-pointer"
+            onClick={() => setOpen(false)}
+          >
+            Layers
+          </span>
           <button
             onClick={addLayer}
-            className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9] text-base leading-none transition-colors cursor-pointer"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] text-base leading-none transition-colors cursor-pointer"
             title="Add layer"
           >
             +
@@ -210,22 +290,22 @@ export default function LayerPanel() {
                 </div>
 
                 {/* ── Effect sub-items (expanded) ── */}
-                {isExpanded && (
-                  <div className="ml-6 mb-1">
+                {isExpanded && effectItems.length > 0 && (
+                  <div className="ml-6 mb-1 relative">
                     {effectItems.map((item, i) => {
                       const isLast = i === effectItems.length - 1;
                       return (
                         <div
                           key={item.key}
-                          className="flex items-center gap-1.5 py-[3px] pr-2 relative group/fx"
-                          style={{ opacity: item.visible ? 1 : 0.35 }}
+                          className="flex items-center gap-1.5 pr-2 relative group/fx"
+                          style={{ opacity: item.visible ? 1 : 0.35, height: 24 }}
                         >
-                          {/* Tree line */}
+                          {/* Blender-style tree line */}
                           <div className="w-4 shrink-0 self-stretch relative">
                             <div className="absolute w-px bg-gray-400/50"
                               style={{ left: 6, top: 0, bottom: isLast ? '50%' : 0 }} />
                             <div className="absolute h-px bg-gray-400/50"
-                              style={{ left: 6, right: 0, top: '50%' }} />
+                              style={{ left: 6, width: 8, top: '50%' }} />
                           </div>
 
                           {/* Effect color dot */}
@@ -237,7 +317,7 @@ export default function LayerPanel() {
                           {/* Label */}
                           <span className="text-[11px] text-gray-500 flex-1 shrink-0">{item.label}</span>
 
-                          {/* Eye: 미리보기 숨김/표시 토글 | X: 완전 비활성화 */}
+                          {/* Eye + X */}
                           <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover/fx:opacity-100 transition-opacity">
                             <button
                               className="shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
