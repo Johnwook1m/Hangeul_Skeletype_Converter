@@ -123,7 +123,7 @@ export default function LayerPanel() {
   return (
     <div
       ref={panelRef}
-      className="fixed left-4 top-1/3 -translate-y-1/2 z-40 select-none cursor-pointer"
+      className="fixed left-4 top-[120px] z-40 select-none cursor-pointer"
       style={{
         pointerEvents: 'auto',
         width: open ? openW : closedW,
