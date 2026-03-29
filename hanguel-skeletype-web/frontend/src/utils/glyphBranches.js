@@ -51,7 +51,7 @@ function generateBranches(ox, oy, dirAngle, length, widthRatio, depth, params) {
  * Compute branch paths for all glyph endpoints.
  * Each branch's widthRatio is relative to 1.0 (multiplied by strokeParams.width at render time).
  */
-export function computeBranches(glyphList, branchParams, fontToDisplay) {
+export function computeBranches(glyphList, branchParams, fontToDisplay, scaleX = 1, scaleY = 1, slantAngle = 0, fontAscender = 800) {
   if (!branchParams.enabled || glyphList.length === 0) return [];
 
   const { angle, count, length, depth } = branchParams;
@@ -60,7 +60,7 @@ export function computeBranches(glyphList, branchParams, fontToDisplay) {
   for (const glyph of glyphList) {
     if (!glyph.centerline) continue;
 
-    const endpoints = getGlyphEndpoints(glyph, fontToDisplay);
+    const endpoints = getGlyphEndpoints(glyph, fontToDisplay, 20, scaleX, scaleY, slantAngle, fontAscender);
 
     for (const ep of endpoints) {
       const dirAngle = Math.atan2(ep.ty, ep.tx);

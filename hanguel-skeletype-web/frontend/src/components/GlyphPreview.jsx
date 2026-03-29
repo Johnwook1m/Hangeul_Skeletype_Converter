@@ -380,8 +380,6 @@ export default function GlyphPreview({ large = false }) {
                 EM_UNIT={EM_UNIT}
                 theme={theme}
                 showFlesh={showFlesh}
-                scaleX={scaleX}
-                scaleY={scaleY}
               />
             ))}
 

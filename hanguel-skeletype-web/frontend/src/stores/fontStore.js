@@ -4,13 +4,16 @@ import { create } from 'zustand';
 const LAYER_COLORS = ['#FF5714', '#1a1a1a', '#ffffff', '#4A90D9', '#7ED321', '#BD10E0'];
 
 // ─── 레이어별 기본값 팩토리 ────────────────────────────────────────────────────
-// (scaleX/scaleY는 세션 공유 → 레이어 strokeParams에 포함되지 않음)
 const defaultLayerStrokeParams = (strokeColor = '#FF5714') => ({
   width: 80,
   cap: 'round',
   join: 'round',
   strokeColor,
   centerlineColor: '#1a1a1a',
+  scaleX: 1.0,
+  scaleY: 1.0,
+  scaleXVisible: true,
+  scaleYVisible: true,
 });
 
 const defaultConnectionParams = () => ({
@@ -77,11 +80,10 @@ const createLayer = (id, name, colorIndex = 0) => ({
 });
 
 // 레이어의 params를 top-level state로 복사 (active layer 전환 시 사용)
-// scaleX/scaleY는 global이므로 현재 값을 유지
 const syncLayerToTopLevel = (layer, currentStrokeParams) => ({
   strokeParams: {
-    ...currentStrokeParams,          // scaleX/scaleY 보존
-    ...layer.strokeParams,           // 레이어별 width/color/cap/join 덮어쓰기
+    ...currentStrokeParams,
+    ...layer.strokeParams,           // 레이어별 모든 params 덮어쓰기 (scaleX/scaleY 포함)
   },
   connectionParams: { ...layer.connectionParams },
   branchParams: { ...layer.branchParams },
@@ -248,13 +250,11 @@ const useFontStore = create((set) => ({
   },
 
   // ─── Stroke params ──────────────────────────────────────────────────────────
-  // scaleX/scaleY는 세션 공유 → top-level만 업데이트
-  // 나머지는 active layer도 함께 업데이트
+  // 모든 params가 active layer에도 동기화됨 (scaleX/scaleY 포함)
   setStrokeParams: (params) =>
     set((state) => {
       const newStrokeParams = { ...state.strokeParams, ...params };
-      // 레이어별 params: scaleX/scaleY 제외
-      const layerKeys = ['width', 'cap', 'join', 'strokeColor', 'centerlineColor'];
+      const layerKeys = ['width', 'cap', 'join', 'strokeColor', 'centerlineColor', 'scaleX', 'scaleY'];
       const layerUpdate = Object.fromEntries(
         Object.entries(params).filter(([k]) => layerKeys.includes(k))
       );
@@ -554,6 +554,33 @@ const useFontStore = create((set) => ({
       if (layerId === state.activeLayerId) {
         const updated = newLayers.find(l => l.id === layerId);
         return { layers: newLayers, [effectKey]: updated[effectKey] };
+      }
+      return { layers: newLayers };
+    }),
+
+  // axis: 'x' | 'y'
+  setScaleVisible: (layerId, axis, visible) =>
+    set((state) => {
+      const key = axis === 'x' ? 'scaleXVisible' : 'scaleYVisible';
+      const newLayers = state.layers.map(l =>
+        l.id !== layerId ? l : { ...l, strokeParams: { ...l.strokeParams, [key]: visible } }
+      );
+      if (layerId === state.activeLayerId) {
+        const updated = newLayers.find(l => l.id === layerId);
+        return { layers: newLayers, strokeParams: updated.strokeParams };
+      }
+      return { layers: newLayers };
+    }),
+
+  resetLayerScale: (layerId, axis) =>
+    set((state) => {
+      const key = axis === 'x' ? 'scaleX' : 'scaleY';
+      const newLayers = state.layers.map(l =>
+        l.id !== layerId ? l : { ...l, strokeParams: { ...l.strokeParams, [key]: 1 } }
+      );
+      if (layerId === state.activeLayerId) {
+        const updated = newLayers.find(l => l.id === layerId);
+        return { layers: newLayers, strokeParams: updated.strokeParams };
       }
       return { layers: newLayers };
     }),

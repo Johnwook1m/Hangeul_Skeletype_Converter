@@ -16,16 +16,24 @@ const EyeIcon = ({ size = 12, off = false }) =>
 
 // 활성화된 이펙트만 반환 (FX에서 켠 것만 표시), visible 상태 포함
 function getEffectItems(layer) {
-  const { slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams } = layer;
-  return [
-    { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',   color: '#6b7280',               detail: `${slantParams.angle}°`,      visible: slantParams.visible !== false },
-    { key: 'connect', effectKey: 'connectionParams',  label: 'Connect', color: connectionParams.color,  detail: connectionParams.shape,       visible: connectionParams.visible !== false },
-    { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',  color: branchParams.color,      detail: `×${branchParams.count}`,     visible: branchParams.visible !== false },
-    { key: 'deco',    effectKey: 'decoratorParams',   label: 'Deco',    color: decoratorParams.color,   detail: decoratorParams.shape,        visible: decoratorParams.visible !== false },
-    { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',  color: offsetPathParams.color,  detail: `×${offsetPathParams.count}`, visible: offsetPathParams.visible !== false },
-  ].filter(item =>
-    layer[item.effectKey].enabled
-  );
+  const { slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams, strokeParams } = layer;
+  const items = [
+    { key: 'slant',   effectKey: 'slantParams',       label: 'Slant',   color: '#6b7280',              visible: slantParams.visible !== false },
+    { key: 'connect', effectKey: 'connectionParams',  label: 'Connect', color: connectionParams.color, visible: connectionParams.visible !== false },
+    { key: 'branch',  effectKey: 'branchParams',      label: 'Branch',  color: branchParams.color,     visible: branchParams.visible !== false },
+    { key: 'deco',    effectKey: 'decoratorParams',   label: 'Deco',    color: decoratorParams.color,  visible: decoratorParams.visible !== false },
+    { key: 'offset',  effectKey: 'offsetPathParams',  label: 'Offset',  color: offsetPathParams.color, visible: offsetPathParams.visible !== false },
+  ].filter(item => layer[item.effectKey].enabled);
+
+  // Width/Height: scaleX/scaleY ≠ 1일 때 표시
+  if ((strokeParams.scaleX ?? 1) !== 1) {
+    items.push({ key: 'scaleX', label: 'Width', color: '#6b7280', visible: strokeParams.scaleXVisible !== false, isScale: true, axis: 'x' });
+  }
+  if ((strokeParams.scaleY ?? 1) !== 1) {
+    items.push({ key: 'scaleY', label: 'Height', color: '#6b7280', visible: strokeParams.scaleYVisible !== false, isScale: true, axis: 'y' });
+  }
+
+  return items;
 }
 
 export default function LayerPanel() {
@@ -40,6 +48,8 @@ export default function LayerPanel() {
     reorderLayer,
     setLayerEffectEnabled,
     setLayerEffectVisible,
+    setScaleVisible,
+    resetLayerScale,
   } = useFontStore();
 
   const [editingId, setEditingId] = useState(null);
@@ -234,7 +244,8 @@ export default function LayerPanel() {
                               title={item.visible ? 'Hide from preview' : 'Show in preview'}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setLayerEffectVisible(layer.id, item.effectKey, !item.visible);
+                                if (item.isScale) setScaleVisible(layer.id, item.axis, !item.visible);
+                                else setLayerEffectVisible(layer.id, item.effectKey, !item.visible);
                               }}
                             >
                               <EyeIcon size={12} off={!item.visible} />
@@ -244,7 +255,8 @@ export default function LayerPanel() {
                               title="Remove effect"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setLayerEffectEnabled(layer.id, item.effectKey, false);
+                                if (item.isScale) resetLayerScale(layer.id, item.axis);
+                                else setLayerEffectEnabled(layer.id, item.effectKey, false);
                               }}
                             >
                               ✕

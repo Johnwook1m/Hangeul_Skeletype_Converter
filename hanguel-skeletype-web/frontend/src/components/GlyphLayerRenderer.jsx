@@ -20,21 +20,25 @@ export default function GlyphLayerRenderer({
   EM_UNIT,
   theme,
   showFlesh,
-  scaleX,  // 세션 공유 (GlyphPreview에서 전달)
-  scaleY,  // 세션 공유 (GlyphPreview에서 전달)
 }) {
   const { strokeParams, slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams } = layer;
 
+  // scaleX/scaleY는 per-layer strokeParams에서 읽음 (visible 플래그 반영)
+  const scaleX = (strokeParams.scaleXVisible !== false) ? (strokeParams.scaleX ?? 1) : 1;
+  const scaleY = (strokeParams.scaleYVisible !== false) ? (strokeParams.scaleY ?? 1) : 1;
+
   // ─── 레이어별 독립 computed values ────────────────────────────────────────────
 
+  const slantAngle = slantParams.enabled && slantParams.visible !== false ? slantParams.angle : 0;
+
   const connections = useMemo(
-    () => computeConnections(glyphList, connectionParams, fontToDisplay),
-    [glyphList, connectionParams, fontToDisplay]
+    () => computeConnections(glyphList, connectionParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender),
+    [glyphList, connectionParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender]
   );
 
   const branches = useMemo(
-    () => computeBranches(glyphList, branchParams, fontToDisplay),
-    [glyphList, branchParams, fontToDisplay]
+    () => computeBranches(glyphList, branchParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender),
+    [glyphList, branchParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender]
   );
 
   const decoratorPointsByGlyph = useMemo(
@@ -88,7 +92,6 @@ export default function GlyphLayerRenderer({
 
         // Baseline position in display coords
         const baselineY = glyphAscender * fontToDisplay;
-        const slantAngle = slantParams.enabled && slantParams.visible !== false ? slantParams.angle : 0;
         const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
         const scaleTransform = needsTransform
           ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`

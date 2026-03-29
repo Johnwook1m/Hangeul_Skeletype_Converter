@@ -68,7 +68,7 @@ function buildConnectionPath(p1, p2, shape, params) {
  * @param {number} fontToDisplay - Font-to-display scale factor
  * @returns {{ d: string }[]} Array of connection path data
  */
-export function computeConnections(glyphList, connectionParams, fontToDisplay) {
+export function computeConnections(glyphList, connectionParams, fontToDisplay, scaleX = 1, scaleY = 1, slantAngle = 0, fontAscender = 800) {
   if (!connectionParams.enabled || glyphList.length < 2) return [];
 
   const { shape, maxDistance, maxConnections } = connectionParams;
@@ -92,8 +92,8 @@ export function computeConnections(glyphList, connectionParams, fontToDisplay) {
       const leftGlyph = rowGlyphs[r].glyph;
       const rightGlyph = rowGlyphs[r + 1].glyph;
 
-      const leftEndpoints = getGlyphEndpoints(leftGlyph, fontToDisplay);
-      const rightEndpoints = getGlyphEndpoints(rightGlyph, fontToDisplay);
+      const leftEndpoints = getGlyphEndpoints(leftGlyph, fontToDisplay, 20, scaleX, scaleY, slantAngle, fontAscender);
+      const rightEndpoints = getGlyphEndpoints(rightGlyph, fontToDisplay, 20, scaleX, scaleY, slantAngle, fontAscender);
 
       if (leftEndpoints.length === 0 || rightEndpoints.length === 0) continue;
 

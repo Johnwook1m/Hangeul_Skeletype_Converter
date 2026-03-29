@@ -225,13 +225,18 @@ export function parseSvgPathEndpoints(d) {
 /**
  * Extract all endpoints from a glyph's centerline paths and convert to display coordinates.
  * Each endpoint includes a tangent unit vector pointing outward from the path.
+ * Optionally applies the same scaleX/scaleY/slant transform as GlyphLayerRenderer.pointTransform.
  *
  * @param {object} glyph - Glyph render data from GlyphPreview (with centerline, xOffset, yOffset, K)
  * @param {number} fontToDisplay - Font-to-display scale factor
  * @param {number} RASTER_PADDING - Rasterizer padding (default 20)
+ * @param {number} scaleX - Horizontal scale (default 1)
+ * @param {number} scaleY - Vertical scale (default 1)
+ * @param {number} slantAngle - Slant angle in degrees (default 0)
+ * @param {number} fontAscender - Font ascender in font units, used when glyph has no own ascender (default 800)
  * @returns {{ x: number, y: number, tx: number, ty: number }[]} Array of endpoint coordinates + tangent in display space
  */
-export function getGlyphEndpoints(glyph, fontToDisplay, RASTER_PADDING = 20) {
+export function getGlyphEndpoints(glyph, fontToDisplay, RASTER_PADDING = 20, scaleX = 1, scaleY = 1, slantAngle = 0, fontAscender = 800) {
   if (!glyph.centerline || !glyph.centerline.paths) return [];
 
   const { K } = glyph;
@@ -242,27 +247,46 @@ export function getGlyphEndpoints(glyph, fontToDisplay, RASTER_PADDING = 20) {
   const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
   const clTranslateY = -RASTER_PADDING * K;
 
+  const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
+  const tanSlant = needsTransform ? Math.tan(slantAngle * Math.PI / 180) : 0;
+  const glyphAscender = glyph.centerline.ascender ?? fontAscender;
+  const baselineY = glyphAscender * fontToDisplay; // relative to glyph origin
+
   const endpoints = [];
 
   for (const pathD of glyph.centerline.paths) {
     const parsed = parseSvgPathEndpoints(pathD);
     if (!parsed) continue;
 
-    // Convert from pixel space to display space:
-    // display = glyphOffset + (pixel * K) + clTranslate
-    // Tangent vectors are direction-only so they don't need translation, but K scaling
-    // preserves direction (uniform scale), so tangent unit vectors stay the same.
     const pairs = [
       { pt: parsed.start, tangent: parsed.startTangent },
       { pt: parsed.end, tangent: parsed.endTangent },
     ];
     for (const { pt, tangent } of pairs) {
-      endpoints.push({
-        x: glyph.xOffset + pt.x * K + clTranslateX,
-        y: glyph.yOffset + pt.y * K + clTranslateY,
-        tx: tangent.x,
-        ty: tangent.y,
-      });
+      // Convert pixel space → display space (relative to glyph origin)
+      const relX = pt.x * K + clTranslateX;
+      const relY = pt.y * K + clTranslateY;
+
+      let finalX, finalY, finalTX, finalTY;
+      if (needsTransform) {
+        // Apply same transform as pointTransform in GlyphLayerRenderer
+        finalX = glyph.xOffset + scaleX * relX - scaleX * tanSlant * (relY - baselineY);
+        finalY = glyph.yOffset + scaleY * (relY - baselineY) + baselineY;
+
+        // Transform tangent through the linear (non-translating) part of the transform
+        const rawTX = scaleX * tangent.x - scaleX * tanSlant * tangent.y;
+        const rawTY = scaleY * tangent.y;
+        const len = Math.sqrt(rawTX * rawTX + rawTY * rawTY);
+        finalTX = len > 0 ? rawTX / len : tangent.x;
+        finalTY = len > 0 ? rawTY / len : tangent.y;
+      } else {
+        finalX = glyph.xOffset + relX;
+        finalY = glyph.yOffset + relY;
+        finalTX = tangent.x;
+        finalTY = tangent.y;
+      }
+
+      endpoints.push({ x: finalX, y: finalY, tx: finalTX, ty: finalTY });
     }
   }
 
