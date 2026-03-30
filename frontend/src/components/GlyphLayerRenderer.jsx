@@ -20,6 +20,8 @@ export default function GlyphLayerRenderer({
   EM_UNIT,
   theme,
   showFlesh,
+  maxRowWidth,
+  totalRows,
 }) {
   const { strokeParams, slantParams, connectionParams, branchParams, decoratorParams, offsetPathParams } = layer;
 
@@ -97,6 +99,12 @@ export default function GlyphLayerRenderer({
           ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`
           : '';
 
+        // 전체 텍스트 중심 기준으로 글리프 위치 조정
+        const globalCenterX = maxRowWidth / 2;
+        const adjustedXOffset = globalCenterX + scaleX * (glyph.xOffset - globalCenterX);
+        const globalCenterY = totalRows * EM_UNIT / 2;
+        const adjustedYOffset = globalCenterY + scaleY * (glyph.yOffset - globalCenterY);
+
         // 센터라인 경로를 픽셀 공간 → 디스플레이 공간 + scaleX/scaleY/slant 사전 변환
         const tanSlant = Math.tan(slantAngle * Math.PI / 180);
         const pointTransform = (px, py) => {
@@ -112,7 +120,7 @@ export default function GlyphLayerRenderer({
         const displayStrokeWidth = strokeParams.width * fontToDisplay;
 
         return (
-          <g key={index} transform={`translate(${glyph.xOffset}, ${glyph.yOffset})`}>
+          <g key={index} transform={`translate(${adjustedXOffset}, ${adjustedYOffset})`}>
             {/* 1. Flesh + 오프셋 링: scaleTransform 내부, stroke 뒤에 렌더링 */}
             <g transform={scaleTransform || undefined}>
               {showFlesh && glyphOutline && glyphOutline.path && (

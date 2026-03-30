@@ -108,6 +108,7 @@ export default function FXControls() {
   }
 
   function handleReset() {
+    setStrokeParams({ scaleX: 1, scaleY: 1 });
     resetConnection();
     resetBranch();
     resetDecorator();

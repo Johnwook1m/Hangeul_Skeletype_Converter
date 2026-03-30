@@ -376,6 +376,8 @@ export default function GlyphPreview({ large = false }) {
                 EM_UNIT={EM_UNIT}
                 theme={theme}
                 showFlesh={showFlesh}
+                maxRowWidth={maxRowWidth}
+                totalRows={totalRows}
               />
             ))}
 
