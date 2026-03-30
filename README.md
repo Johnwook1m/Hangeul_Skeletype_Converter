@@ -1,77 +1,98 @@
-# Hanguel Skeletype Converter Plugin
+# Hanguel Skeletype Web
 
-Glyphs 3용 플러그인: 한글 글리프를 스켈레톤 타입(SVG centerline)으로 변환하는 통합 도구
+폰트 파일에서 중심선(스켈레톤)을 추출하고, 스트로크 파라미터를 조정해 새로운 서체를 생성하는 웹 애플리케이션입니다.
 
-## 개요
+## 요구 사항
 
-이 플러그인은 Glyphs 3에서 선택한 글리프의 중심선(centerline)을 자동으로 추출하여 "Converted Skeletype" 레이어에 생성합니다. 한글 글리프를 스켈레톤 타입으로 변환하는 데 유용합니다.
+### 시스템 도구
 
-## 주요 기능
+```bash
+# macOS (Homebrew)
+brew install imagemagick autotrace fontforge
+```
 
-- **중심선 추출**: 선택한 글리프의 중심선을 자동으로 추출
-- **자동 레이어 생성**: 추출된 중심선을 "Converted Skeletype" 레이어에 자동 생성
-- **정렬 및 스케일링**: 원본 글리프에 맞춰 자동 정렬 및 크기 조정
-- **레이어 관리**: Converted Skeletype 레이어 자동 생성 및 visibility 설정
+### Python 3.10+
 
-## 필수 요구사항
+```bash
+cd hanguel-skeletype-web
+python3 -m venv venv
+source venv/bin/activate
+pip install -r backend/requirements.txt
+```
 
-- **Glyphs 3**: 최신 버전 권장
-- **ImageMagick**: `brew install imagemagick`
-- **Autotrace**: `brew install autotrace`
+### Node.js 18+
 
-## 설치 방법
+```bash
+cd frontend
+npm install
+```
 
-### 플러그인 설치
+## 실행 방법
 
-1. `HanguelSkeletypeConverter.glyphsPlugin` 파일을 **Glyphs 3 앱 아이콘**에 드래그 앤 드롭
-2. "복사" 선택
-3. Glyphs 3 재시작
-4. `Edit` 메뉴에서 "Hanguel Skeletype Converter" 확인
+### 1. 백엔드 서버 (포트 8000)
 
-자세한 설치 방법은 [docs/PLUGIN_GUIDE.md](docs/PLUGIN_GUIDE.md)를 참고하세요.
+```bash
+cd backend
+source ../venv/bin/activate
+python -m uvicorn main:app --reload --port 8000
+```
 
-## 사용 방법
+### 2. 프론트엔드 개발 서버 (포트 5173)
 
-1. Glyphs 3에서 중심선을 추출하고 싶은 글리프 선택
-2. `Edit` 메뉴 > **"Hanguel Skeletype Converter"** 클릭
-3. `Window` > `Macro Panel`에서 진행 상황 확인
-4. 자동으로 중심선이 추출되어 **"Converted Skeletype" 레이어**에 생성됨
+```bash
+cd frontend
+npm run dev
+```
 
-## 작동 원리
+### 또는 개발 스크립트 사용
 
-플러그인은 내부적으로 다음 과정을 거쳐 중심선을 추출합니다:
-1. 선택한 글리프를 임시 폴더에 PNG로 렌더링
-2. ImageMagick과 Autotrace를 사용하여 PNG → BMP → SVG centerline 변환
-3. 변환된 중심선을 원본 글리프의 "Converted Skeletype" 레이어에 Import
-4. 원본 글리프에 맞춰 자동 정렬 및 크기 조정
-5. 임시 파일 정리
+```bash
+./scripts/dev.sh
+```
 
-## 개발 상태
+브라우저에서 http://localhost:5173 접속
 
-- [x] 중심선 추출 기능 구현
-- [x] Converted Skeletype 레이어 자동 생성
-- [x] 원본 글리프에 맞춘 자동 정렬 및 스케일링
-- [x] 레이어 visibility 자동 설정
-- [x] 플러그인 번들(.glyphsPlugin) 제작 완료
-- [x] 플러그인 테스트 완료
-- [ ] 베타 테스트
-- [ ] 공유 준비
+## 사용법
 
-## 문서
+1. **폰트 업로드**: .ttf, .otf, .woff 파일 드래그 앤 드롭
+2. **중심선 추출**: "중심선 추출" 버튼 클릭
+3. **글리프 선택**: 그리드에서 글리프 클릭하여 미리보기
+4. **스트로크 조정**: 우측 패널에서 Width, Line Cap, Line Join 조정
+5. **폰트 내보내기**: Export 버튼으로 새 폰트 다운로드
 
-- [플러그인 가이드](docs/PLUGIN_GUIDE.md) - 개발, 설치, 사용, 배포 가이드
+## 기술 스택
 
-## 참고 자료
+- **백엔드**: Python, FastAPI, fontTools, FreeTypePen
+- **프론트엔드**: React 19, Vite, TailwindCSS 4, Zustand
+- **중심선 추출**: ImageMagick + Autotrace
+- **폰트 생성**: FontForge CLI
 
-- [Glyphs Handbook - Plug-ins](https://handbook.glyphsapp.com/plugins/)
-- [Glyphs SDK](https://github.com/schriftgestalt/GlyphsSDK)
+## API 엔드포인트
 
-## 라이선스
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api/font/upload` | 폰트 업로드 |
+| GET | `/api/font/{id}/glyphs` | 글리프 목록 |
+| POST | `/api/font/{id}/extract` | 중심선 추출 (SSE) |
+| GET | `/api/font/{id}/centerline/{name}` | 중심선 데이터 |
+| POST | `/api/font/{id}/export` | 폰트 생성/다운로드 |
 
-Copyright (c) 2025 Jongwook Kim, Jangho Park. All Rights Reserved.
+## 프로젝트 구조
 
-This software is protected by copyright law. For permission requests, please contact johnwkim82@gmail.com or jpzawakun@gmail.com.
-
-개별 연구 프로젝트용
-
-자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
+```
+hanguel-skeletype-web/
+├── backend/
+│   ├── main.py              # FastAPI 서버
+│   ├── routers/             # API 엔드포인트
+│   ├── services/            # 비즈니스 로직
+│   └── models/              # Pydantic 모델
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx          # 메인 컴포넌트
+│   │   ├── components/      # UI 컴포넌트
+│   │   └── stores/          # Zustand 상태
+│   └── index.html
+└── scripts/
+    ├── dev.sh               # 개발 서버 실행
+    └── check_deps.sh        # 의존성 확인
+```

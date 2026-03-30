@@ -5,12 +5,8 @@ __pycache__/
 *.so
 .Python
 
-# Glyphs
-*.glyphs.backup
-*.glyphsFile
-
-# Glyphs Plugins (개발 중인 플러그인은 포함)
-# *.glyphsPlugin
+# Node
+node_modules/
 
 # macOS
 .DS_Store
@@ -32,4 +28,3 @@ dist/
 *.tmp
 *.log
 temp/
-
