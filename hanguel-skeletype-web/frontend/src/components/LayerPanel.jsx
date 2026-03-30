@@ -76,17 +76,7 @@ export default function LayerPanel() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
-  // 패널 바깥 클릭 시 닫기
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e) {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
+  // "Layers" 헤더 클릭으로만 닫힘 (바깥 클릭으로 닫히지 않음)
 
   const displayLayers = [...layers].reverse();
 
@@ -165,16 +155,16 @@ export default function LayerPanel() {
           pointerEvents: open ? 'auto' : 'none',
         }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-          <span
-            className="text-[12px] text-gray-500 tracking-wide font-medium cursor-pointer"
-            onClick={() => setOpen(false)}
-          >
+        {/* Header — 클릭하면 패널 접힘 */}
+        <div
+          className="flex items-center justify-between px-3 pt-2.5 pb-1.5 cursor-pointer"
+          onClick={() => setOpen(false)}
+        >
+          <span className="text-[12px] text-gray-500 tracking-wide font-medium">
             Layers
           </span>
           <button
-            onClick={addLayer}
+            onClick={(e) => { e.stopPropagation(); addLayer(); }}
             className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] text-base leading-none transition-colors cursor-pointer"
             title="Add layer"
           >

@@ -7,7 +7,6 @@ export default function GlyphPreview({ large = false }) {
     glyphs,
     previewText,
     centerlines,
-    strokeParams,
     backgroundImageParams,
     layers,
     unitsPerEm,
@@ -75,9 +74,6 @@ export default function GlyphPreview({ large = false }) {
 
   // Size scaling — pure display transform (like SkeleText's scale(sc))
   const sizeScale = glyphSize / 100;
-
-  // X/Y type scale — independent axis scaling for condensed/extended type
-  const { scaleX = 1, scaleY = 1 } = strokeParams;
 
   // Display scale: maps font units to display units (base scale, without size)
   const fontToDisplay = EM_UNIT / fontHeight;
@@ -160,7 +156,7 @@ export default function GlyphPreview({ large = false }) {
   }, []);
 
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
-  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * scaleX * (80 / glyphSize); // max row width: inversely proportional to glyphSize
+  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * (80 / glyphSize); // max row width: inversely proportional to glyphSize
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
   // Get glyph data for each character in previewText (with width-based row wrapping)
@@ -182,7 +178,7 @@ export default function GlyphPreview({ large = false }) {
         continue;
       }
       if (char === ' ') {
-        const spaceWidth = (spaceAdvanceWidth ?? EM_UNIT / 2) * fontToDisplay * scaleX;
+        const spaceWidth = (spaceAdvanceWidth ?? EM_UNIT / 2) * fontToDisplay;
         if (rowWidths[rowIdx] + spaceWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
           rowIdx++;
           rows.push([]);
@@ -198,8 +194,8 @@ export default function GlyphPreview({ large = false }) {
 
       const centerline = centerlines[glyphName];
       const glyphWidth = centerline
-        ? (centerline.advance_width || EM_UNIT) * fontToDisplay * scaleX
-        : EM_UNIT * fontToDisplay * scaleX;
+        ? (centerline.advance_width || EM_UNIT) * fontToDisplay
+        : EM_UNIT * fontToDisplay;
 
       if (rowWidths[rowIdx] + glyphWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
         rowIdx++;
@@ -246,7 +242,7 @@ export default function GlyphPreview({ large = false }) {
     }
 
     return { glyphs: result, maxRowWidth, totalRows };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, scaleX, textAlign]);
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, textAlign]);
 
   const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
   const hasCenterlines = glyphList.some((g) => g.centerline);
