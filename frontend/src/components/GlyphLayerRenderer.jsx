@@ -33,14 +33,25 @@ export default function GlyphLayerRenderer({
 
   const slantAngle = slantParams.enabled && slantParams.visible !== false ? slantParams.angle : 0;
 
+  // 전체 텍스트 중심 기준 위치 조정된 glyphList (connection/branch 계산용)
+  const adjustedGlyphList = useMemo(() => {
+    const cx = maxRowWidth / 2;
+    const cy = totalRows * EM_UNIT / 2;
+    return glyphList.map(g => ({
+      ...g,
+      xOffset: cx + scaleX * (g.xOffset - cx),
+      yOffset: cy + scaleY * (g.yOffset - cy),
+    }));
+  }, [glyphList, maxRowWidth, totalRows, EM_UNIT, scaleX, scaleY]);
+
   const connections = useMemo(
-    () => computeConnections(glyphList, connectionParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender),
-    [glyphList, connectionParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender]
+    () => computeConnections(adjustedGlyphList, connectionParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender),
+    [adjustedGlyphList, connectionParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender]
   );
 
   const branches = useMemo(
-    () => computeBranches(glyphList, branchParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender),
-    [glyphList, branchParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender]
+    () => computeBranches(adjustedGlyphList, branchParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender),
+    [adjustedGlyphList, branchParams, fontToDisplay, scaleX, scaleY, slantAngle, fontAscender]
   );
 
   const decoratorPointsByGlyph = useMemo(
@@ -175,10 +186,13 @@ export default function GlyphLayerRenderer({
               />
             ))}
 
-            {/* 4. 데코레이터: scaleTransform 내부, stroke 위에 렌더링 */}
+            {/* 4. 데코레이터: 좌표만 변환하여 왜곡 없이 렌더링 */}
             {decoratorParams.enabled && decoratorParams.visible !== false && decoratorsByIndex[index] && (
-              <g transform={scaleTransform || undefined}>
+              <g>
                 {decoratorsByIndex[index].map((pt, i) => {
+                  // 데코레이터 좌표를 scaleX/scaleY/slant 적용 (도형 크기는 유지)
+                  const tx = scaleX * pt.x - scaleX * tanSlant * (pt.y - baselineY);
+                  const ty = scaleY * (pt.y - baselineY) + baselineY;
                   const s = decoratorParams.size;
                   const fill = decoratorParams.filled ? decoratorParams.color : 'none';
                   const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
@@ -186,24 +200,24 @@ export default function GlyphLayerRenderer({
                   switch (decoratorParams.shape) {
                     case 'circle':
                       return (
-                        <circle key={`dec-${i}`} cx={pt.x} cy={pt.y} r={s / 2}
+                        <circle key={`dec-${i}`} cx={tx} cy={ty} r={s / 2}
                           fill={fill} stroke={stroke} strokeWidth={sw} />
                       );
                     case 'square':
                       return (
-                        <rect key={`dec-${i}`} x={pt.x - s / 2} y={pt.y - s / 2}
+                        <rect key={`dec-${i}`} x={tx - s / 2} y={ty - s / 2}
                           width={s} height={s} fill={fill} stroke={stroke} strokeWidth={sw} />
                       );
                     case 'diamond':
                       return (
                         <polygon key={`dec-${i}`}
-                          points={`${pt.x},${pt.y - s / 2} ${pt.x + s / 2},${pt.y} ${pt.x},${pt.y + s / 2} ${pt.x - s / 2},${pt.y}`}
+                          points={`${tx},${ty - s / 2} ${tx + s / 2},${ty} ${tx},${ty + s / 2} ${tx - s / 2},${ty}`}
                           fill={fill} stroke={stroke} strokeWidth={sw} />
                       );
                     case 'triangle':
                       return (
                         <polygon key={`dec-${i}`}
-                          points={`${pt.x},${pt.y - s * 0.577} ${pt.x + s / 2},${pt.y + s * 0.289} ${pt.x - s / 2},${pt.y + s * 0.289}`}
+                          points={`${tx},${ty - s * 0.577} ${tx + s / 2},${ty + s * 0.289} ${tx - s / 2},${ty + s * 0.289}`}
                           fill={fill} stroke={stroke} strokeWidth={sw} />
                       );
                     default:

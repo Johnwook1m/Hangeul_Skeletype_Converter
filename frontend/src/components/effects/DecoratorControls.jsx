@@ -79,7 +79,7 @@ export default function DecoratorControls() {
       {/* Size */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-400 w-12">Size</span>
-        <input type="range" min={5} max={100} step={1} value={decoratorParams.size}
+        <input type="range" min={5} max={200} step={1} value={decoratorParams.size}
           onChange={(e) => set({ size: +e.target.value })}
           className="flex-1 h-1 slider-dark appearance-none bg-transparent" />
         <span className="text-xs text-gray-500 w-8 text-right">{decoratorParams.size}</span>
