@@ -9,11 +9,11 @@ export default function GlyphPreview({ large = false }) {
     centerlines,
     backgroundImageParams,
     layers,
+    activeLayerId,
     unitsPerEm,
     ascender,
     descender,
     showFlesh,
-    glyphSize,
     spaceAdvanceWidth,
     textAlign,
     theme,
@@ -28,7 +28,6 @@ export default function GlyphPreview({ large = false }) {
   const isPanning = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const containerRef = useRef(null);
-  const sizeScaleRef = useRef(1);
   const zoomRef = useRef(1);
   const gestureStartZoomRef = useRef(1); // For Safari GestureEvent
   const isGesturing = useRef(false); // Prevent wheel+ctrlKey double-zoom in Safari
@@ -72,14 +71,10 @@ export default function GlyphPreview({ large = false }) {
     return map;
   }, [glyphs]);
 
-  // Size scaling — pure display transform (like SkeleText's scale(sc))
-  const sizeScale = glyphSize / 100;
-
   // Display scale: maps font units to display units (base scale, without size)
   const fontToDisplay = EM_UNIT / fontHeight;
 
   // Keep refs in sync for native event listeners
-  sizeScaleRef.current = sizeScale;
   zoomRef.current = zoom;
 
   // Native mouse drag listeners (registered once, stable)
@@ -156,97 +151,112 @@ export default function GlyphPreview({ large = false }) {
   }, []);
 
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
-  const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * (80 / glyphSize); // max row width: inversely proportional to glyphSize
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
-  // Get glyph data for each character in previewText (with width-based row wrapping)
-  const glyphsToRender = useMemo(() => {
-    if (!previewText) return { glyphs: [], maxRowWidth: 0, totalRows: 1 };
+  // Per-layer glyph layout computation
+  const perLayerLayouts = useMemo(() => {
+    if (!previewText) return {};
 
     const rowHeight = EM_UNIT + ROW_GAP;
+    const layouts = {};
 
-    // Pass 1: collect rows
-    const rows = [[]];
-    const rowWidths = [0];
-    let rowIdx = 0;
+    for (const layer of layers) {
+      if (!layer.visible) continue;
+      const layerGlyphSize = layer.glyphSize ?? 100;
+      const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * (80 / layerGlyphSize);
 
-    for (const char of previewText) {
-      if (char === '\n') {
-        rowIdx++;
-        rows.push([]);
-        rowWidths.push(0);
-        continue;
-      }
-      if (char === ' ') {
-        const spaceWidth = (spaceAdvanceWidth ?? EM_UNIT / 2) * fontToDisplay;
-        if (rowWidths[rowIdx] + spaceWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
+      // Pass 1: collect rows
+      const rows = [[]];
+      const rowWidths = [0];
+      let rowIdx = 0;
+
+      for (const char of previewText) {
+        if (char === '\n') {
+          rowIdx++;
+          rows.push([]);
+          rowWidths.push(0);
+          continue;
+        }
+        if (char === ' ') {
+          const spaceWidth = (spaceAdvanceWidth ?? EM_UNIT / 2) * fontToDisplay;
+          if (rowWidths[rowIdx] + spaceWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
+            rowIdx++;
+            rows.push([]);
+            rowWidths.push(0);
+          }
+          rowWidths[rowIdx] += spaceWidth;
+          rows[rowIdx].push({ type: 'space', width: spaceWidth });
+          continue;
+        }
+
+        const glyphName = charToGlyph.get(char);
+        if (!glyphName) continue;
+
+        const centerline = centerlines[glyphName];
+        const glyphWidth = centerline
+          ? (centerline.advance_width || EM_UNIT) * fontToDisplay
+          : EM_UNIT * fontToDisplay;
+
+        if (rowWidths[rowIdx] + glyphWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
           rowIdx++;
           rows.push([]);
           rowWidths.push(0);
         }
-        rowWidths[rowIdx] += spaceWidth;
-        rows[rowIdx].push({ type: 'space', width: spaceWidth });
-        continue;
+
+        if (!centerline) {
+          rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline: null, width: glyphWidth });
+        } else {
+          const rasterScale = centerline.raster_scale || 1;
+          const advanceWidth = centerline.advance_width || EM_UNIT;
+          const K = fontToDisplay / rasterScale;
+          rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline, width: glyphWidth, K, rasterScale, advanceWidth });
+        }
+        rowWidths[rowIdx] += glyphWidth;
       }
 
-      const glyphName = charToGlyph.get(char);
-      if (!glyphName) continue;
+      const maxRowWidth = Math.max(...rowWidths, 0);
+      const totalRows = rows.length;
 
-      const centerline = centerlines[glyphName];
-      const glyphWidth = centerline
-        ? (centerline.advance_width || EM_UNIT) * fontToDisplay
-        : EM_UNIT * fontToDisplay;
+      // Pass 2: assign positions with per-row alignment
+      const result = [];
+      for (let r = 0; r < rows.length; r++) {
+        const rowWidth = rowWidths[r];
+        let xStart = 0;
+        if (textAlign === 'center') xStart = (maxRowWidth - rowWidth) / 2;
+        else if (textAlign === 'right') xStart = maxRowWidth - rowWidth;
 
-      if (rowWidths[rowIdx] + glyphWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
-        rowIdx++;
-        rows.push([]);
-        rowWidths.push(0);
+        const yOffset = r * rowHeight;
+        let x = xStart;
+        for (const item of rows[r]) {
+          if (item.type === 'space') { x += item.width; continue; }
+          result.push({
+            char: item.char,
+            glyphName: item.glyphName,
+            centerline: item.centerline,
+            xOffset: x,
+            yOffset,
+            ...(item.centerline ? { K: item.K, rasterScale: item.rasterScale, advanceWidth: item.advanceWidth } : {}),
+          });
+          x += item.width;
+        }
       }
 
-      if (!centerline) {
-        rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline: null, width: glyphWidth });
-      } else {
-        const rasterScale = centerline.raster_scale || 1;
-        const advanceWidth = centerline.advance_width || EM_UNIT;
-        const K = fontToDisplay / rasterScale;
-        rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline, width: glyphWidth, K, rasterScale, advanceWidth });
-      }
-      rowWidths[rowIdx] += glyphWidth;
+      layouts[layer.id] = { glyphs: result, maxRowWidth, totalRows };
     }
 
-    const maxRowWidth = Math.max(...rowWidths, 0);
-    const totalRows = rows.length;
+    return layouts;
+  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, ROW_GAP, textAlign, layers, spaceAdvanceWidth]);
 
-    // Pass 2: assign positions with per-row alignment
-    const result = [];
-    for (let r = 0; r < rows.length; r++) {
-      const rowWidth = rowWidths[r];
-      let xStart = 0;
-      if (textAlign === 'center') xStart = (maxRowWidth - rowWidth) / 2;
-      else if (textAlign === 'right') xStart = maxRowWidth - rowWidth;
+  // Aggregate viewBox dimensions from all layer layouts
+  const allLayouts = Object.values(perLayerLayouts);
+  const maxRowWidth = Math.max(...allLayouts.map(l => l.maxRowWidth), 0);
+  const totalRows = Math.max(...allLayouts.map(l => l.totalRows), 1);
 
-      const yOffset = r * rowHeight;
-      let x = xStart;
-      for (const item of rows[r]) {
-        if (item.type === 'space') { x += item.width; continue; }
-        result.push({
-          char: item.char,
-          glyphName: item.glyphName,
-          centerline: item.centerline,
-          xOffset: x,
-          yOffset,
-          ...(item.centerline ? { K: item.K, rasterScale: item.rasterScale, advanceWidth: item.advanceWidth } : {}),
-        });
-        x += item.width;
-      }
-    }
-
-    return { glyphs: result, maxRowWidth, totalRows };
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, MAX_ROW_WIDTH, ROW_GAP, textAlign]);
-
-  const { glyphs: glyphList, maxRowWidth, totalRows } = glyphsToRender;
-  const hasCenterlines = glyphList.some((g) => g.centerline);
-  const showSvg = previewText && glyphList.length > 0 && hasCenterlines;
+  // Active layer layout for placeholders and visibility checks
+  const activeLayout = perLayerLayouts[activeLayerId];
+  const activeGlyphList = activeLayout?.glyphs ?? [];
+  const hasCenterlines = activeGlyphList.some((g) => g.centerline);
+  const showSvg = previewText && activeGlyphList.length > 0 && hasCenterlines;
 
   // Entrance animation: fade + slide up whenever content appears
   const [introVisible, setIntroVisible] = useState(false);
@@ -277,7 +287,7 @@ export default function GlyphPreview({ large = false }) {
     placeholder = glyphs.length > 0 ? (
       <p className="text-[15px] text-gray-500">Enter text in the bottom bar</p>
     ) : null;
-  } else if (glyphList.length === 0) {
+  } else if (activeGlyphList.length === 0) {
     placeholder = (
       <div className="text-center text-gray-500">
         <p className="text-lg mb-2">"{previewText}"</p>
@@ -348,8 +358,8 @@ export default function GlyphPreview({ large = false }) {
             }}
             preserveAspectRatio="xMidYMid meet"
           >
-            {/* 센터라인 없는 글리프 — placeholder (레이어와 무관하게 한 번만 렌더링) */}
-            {glyphList.map((glyph, index) => {
+            {/* 센터라인 없는 글리프 — placeholder (활성 레이어 기준으로 렌더링) */}
+            {activeGlyphList.map((glyph, index) => {
               if (glyph.centerline) return null;
               const cellWidth = EM_UNIT * fontToDisplay;
               const midY = fontAscender * fontToDisplay / 2;
@@ -366,20 +376,24 @@ export default function GlyphPreview({ large = false }) {
             })}
 
             {/* 레이어별 렌더링 — 가시성 켜진 레이어를 순서대로 쌓음 */}
-            {layers.filter(l => l.visible).map(layer => (
-              <GlyphLayerRenderer
-                key={layer.id}
-                layer={layer}
-                glyphList={glyphList}
-                fontToDisplay={fontToDisplay}
-                fontAscender={fontAscender}
-                EM_UNIT={EM_UNIT}
-                theme={theme}
-                showFlesh={showFlesh}
-                maxRowWidth={maxRowWidth}
-                totalRows={totalRows}
-              />
-            ))}
+            {layers.filter(l => l.visible).map(layer => {
+              const layout = perLayerLayouts[layer.id];
+              if (!layout) return null;
+              return (
+                <GlyphLayerRenderer
+                  key={layer.id}
+                  layer={layer}
+                  glyphList={layout.glyphs}
+                  fontToDisplay={fontToDisplay}
+                  fontAscender={fontAscender}
+                  EM_UNIT={EM_UNIT}
+                  theme={theme}
+                  showFlesh={showFlesh}
+                  maxRowWidth={maxRowWidth}
+                  totalRows={totalRows}
+                />
+              );
+            })}
 
           </svg>
         </>

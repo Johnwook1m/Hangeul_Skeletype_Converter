@@ -71,6 +71,7 @@ const createLayer = (id, name, colorIndex = 0) => ({
   id,
   name,
   visible: true,
+  glyphSize: 100,
   strokeParams: defaultLayerStrokeParams(LAYER_COLORS[colorIndex % LAYER_COLORS.length]),
   connectionParams: defaultConnectionParams(),
   branchParams: defaultBranchParams(),
@@ -90,6 +91,7 @@ const updateEffectOrder = (order = [], effectKey, enabling) => {
 
 // 레이어의 params를 top-level state로 복사 (active layer 전환 시 사용)
 const syncLayerToTopLevel = (layer, currentStrokeParams) => ({
+  glyphSize: layer.glyphSize ?? 100,
   strokeParams: {
     ...currentStrokeParams,
     ...layer.strokeParams,           // 레이어별 모든 params 덮어쓰기 (scaleX/scaleY 포함)
@@ -180,7 +182,7 @@ const useFontStore = create((set) => ({
   setFont: (data) =>
     set((state) => {
       if (state.fontBlobUrl) URL.revokeObjectURL(state.fontBlobUrl);
-      const initialLayer = createLayer('layer-1', 'Layer 1', 0);
+      const initialLayer = { ...createLayer('layer-1', 'Layer 1', 0), glyphSize: 80 };
       return {
         fontId: data.font_id,
         fontName: data.family_name,
@@ -628,7 +630,13 @@ const useFontStore = create((set) => ({
     }),
 
   setShowFlesh: (show) => set({ showFlesh: show }),
-  setGlyphSize: (size) => set({ glyphSize: size }),
+  setGlyphSize: (size) =>
+    set((state) => ({
+      glyphSize: size,
+      layers: state.layers.map(l =>
+        l.id === state.activeLayerId ? { ...l, glyphSize: size } : l
+      ),
+    })),
   setPreviewFontSize: (size) => set({ previewFontSize: size }),
   setBgColor: (color) => set({ bgColor: color }),
   setFontBlobUrl: (url) => set({ fontBlobUrl: url }),
