@@ -155,13 +155,13 @@ export default function GlyphPreview({ large = false }) {
 
   // Per-layer glyph layout computation
   const perLayerLayouts = useMemo(() => {
-    if (!previewText) return {};
-
     const rowHeight = EM_UNIT + ROW_GAP;
     const layouts = {};
 
     for (const layer of layers) {
       if (!layer.visible) continue;
+      const layerText = layer.previewText ?? '';
+      if (!layerText) continue;
       const layerGlyphSize = layer.glyphSize ?? 100;
       const MAX_ROW_WIDTH = EM_UNIT * 12 * fontToDisplay * (80 / layerGlyphSize);
 
@@ -170,7 +170,7 @@ export default function GlyphPreview({ large = false }) {
       const rowWidths = [0];
       let rowIdx = 0;
 
-      for (const char of previewText) {
+      for (const char of layerText) {
         if (char === '\n') {
           rowIdx++;
           rows.push([]);
@@ -245,7 +245,7 @@ export default function GlyphPreview({ large = false }) {
     }
 
     return layouts;
-  }, [previewText, charToGlyph, centerlines, fontToDisplay, EM_UNIT, ROW_GAP, textAlign, layers, spaceAdvanceWidth]);
+  }, [charToGlyph, centerlines, fontToDisplay, EM_UNIT, ROW_GAP, textAlign, layers, spaceAdvanceWidth]);
 
   // Aggregate viewBox dimensions from all layer layouts
   const allLayouts = Object.values(perLayerLayouts);
@@ -256,7 +256,8 @@ export default function GlyphPreview({ large = false }) {
   const activeLayout = perLayerLayouts[activeLayerId];
   const activeGlyphList = activeLayout?.glyphs ?? [];
   const hasCenterlines = activeGlyphList.some((g) => g.centerline);
-  const showSvg = previewText && activeGlyphList.length > 0 && hasCenterlines;
+  const anyLayerHasText = layers.some(l => l.visible && (l.previewText ?? ''));
+  const showSvg = anyLayerHasText && activeGlyphList.length > 0 && hasCenterlines;
 
   // Entrance animation: fade + slide up whenever content appears
   const [introVisible, setIntroVisible] = useState(false);
@@ -283,7 +284,7 @@ export default function GlyphPreview({ large = false }) {
     placeholder = (
       <p className="text-[15px] text-gray-500">Loading font{loadingDots}</p>
     );
-  } else if (!previewText) {
+  } else if (!previewText && !anyLayerHasText) {
     placeholder = glyphs.length > 0 ? (
       <p className="text-[15px] text-gray-500">Enter text in the bottom bar</p>
     ) : null;

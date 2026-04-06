@@ -75,6 +75,7 @@ export default function BottomBar() {
     bgColor,
     setBgColor,
     fontLoading,
+    activeLayerId,
     setFont,
     setGlyphs,
     setFontBlobUrl,
@@ -140,6 +141,15 @@ export default function BottomBar() {
     setAnimating(false);
     setActiveTab('basic');
   }, [fontId]);
+
+  // Sync local text with active layer's previewText when switching layers
+  useEffect(() => {
+    const store = useFontStore.getState();
+    const activeLayer = store.layers.find(l => l.id === activeLayerId);
+    if (activeLayer) {
+      setText(activeLayer.previewText ?? '');
+    }
+  }, [activeLayerId]);
 
   // Start animation when centerlines first appear
   useEffect(() => {

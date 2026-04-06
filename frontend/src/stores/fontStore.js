@@ -72,6 +72,7 @@ const createLayer = (id, name, colorIndex = 0) => ({
   name,
   visible: true,
   glyphSize: 100,
+  previewText: '',
   strokeParams: defaultLayerStrokeParams(LAYER_COLORS[colorIndex % LAYER_COLORS.length]),
   connectionParams: defaultConnectionParams(),
   branchParams: defaultBranchParams(),
@@ -92,6 +93,7 @@ const updateEffectOrder = (order = [], effectKey, enabling) => {
 // 레이어의 params를 top-level state로 복사 (active layer 전환 시 사용)
 const syncLayerToTopLevel = (layer, currentStrokeParams) => ({
   glyphSize: layer.glyphSize ?? 100,
+  previewText: layer.previewText ?? '',
   strokeParams: {
     ...currentStrokeParams,
     ...layer.strokeParams,           // 레이어별 모든 params 덮어쓰기 (scaleX/scaleY 포함)
@@ -222,7 +224,13 @@ const useFontStore = create((set) => ({
   setGlyphs: (glyphs) => set({ glyphs, fontLoading: false }),
   setFontLoading: (v) => set({ fontLoading: v }),
   selectGlyph: (name) => set({ selectedGlyph: name }),
-  setPreviewText: (text) => set({ previewText: text }),
+  setPreviewText: (text) =>
+    set((state) => ({
+      previewText: text,
+      layers: state.layers.map(l =>
+        l.id === state.activeLayerId ? { ...l, previewText: text } : l
+      ),
+    })),
 
   toggleGlyphSelection: (name) =>
     set((state) => {
