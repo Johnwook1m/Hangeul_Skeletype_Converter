@@ -264,11 +264,26 @@ function samplePoints(segments, count, spacing) {
   const totalLength = segments.reduce((sum, s) => sum + s.length, 0);
   if (totalLength < 0.1) return [];
 
+  // Helper: tangent angle at a given segment + local t
+  function angleAt(seg, t) {
+    const dt = 0.001;
+    const t0 = Math.max(0, t - dt);
+    const t1 = Math.min(1, t + dt);
+    const a = seg.pointAt(t0);
+    const b = seg.pointAt(t1);
+    return Math.atan2(b.y - a.y, b.x - a.x);
+  }
+
   if (spacing === 'endpoints') {
     // Just start and end points
-    const first = segments[0].pointAt(0);
-    const last = segments[segments.length - 1].pointAt(1);
-    return [first, last];
+    const firstSeg = segments[0];
+    const lastSeg = segments[segments.length - 1];
+    const first = firstSeg.pointAt(0);
+    const last = lastSeg.pointAt(1);
+    return [
+      { x: first.x, y: first.y, angle: angleAt(firstSeg, 0) },
+      { x: last.x, y: last.y, angle: angleAt(lastSeg, 1) },
+    ];
   }
 
   // Build cumulative length table for parameterization
@@ -285,10 +300,13 @@ function samplePoints(segments, count, spacing) {
         const localT = segments[i].length > 0
           ? (targetLen - cumLengths[i]) / segments[i].length
           : 0;
-        return segments[i].pointAt(Math.min(1, Math.max(0, localT)));
+        const tt = Math.min(1, Math.max(0, localT));
+        const p = segments[i].pointAt(tt);
+        return { x: p.x, y: p.y, angle: angleAt(segments[i], tt) };
       }
     }
-    return segments[0].pointAt(0);
+    const p0 = segments[0].pointAt(0);
+    return { x: p0.x, y: p0.y, angle: angleAt(segments[0], 0) };
   }
 
   const points = [];
@@ -342,6 +360,7 @@ export function computeDecorators(glyphList, decoratorParams, fontToDisplay) {
     return (pt) => ({
       x: pt.x * K + clTranslateX,
       y: pt.y * K + clTranslateY,
+      angle: pt.angle ?? 0,
     });
   }
 
@@ -356,8 +375,96 @@ export function computeDecorators(glyphList, decoratorParams, fontToDisplay) {
         const subpaths = parsePathToSubpaths(pathD);
         for (const segments of subpaths) {
           if (segments.length === 0) continue;
-          points.push(toLocal(segments[0].pointAt(0)));
-          points.push(toLocal(segments[segments.length - 1].pointAt(1)));
+          const firstSeg = segments[0];
+          const lastSeg = segments[segments.length - 1];
+          const dt = 0.001;
+          const a0 = firstSeg.pointAt(0);
+          const a1 = firstSeg.pointAt(dt);
+          const b0 = lastSeg.pointAt(1 - dt);
+          const b1 = lastSeg.pointAt(1);
+          points.push(toLocal({ ...a0, angle: Math.atan2(a1.y - a0.y, a1.x - a0.x) }));
+          points.push(toLocal({ ...b1, angle: Math.atan2(b1.y - b0.y, b1.x - b0.x) }));
+        }
+      }
+      if (points.length > 0) result.push({ glyphIndex, points });
+    });
+    return result;
+  }
+
+  if (spacing === 'tips') {
+    // Tips: only "free" stroke endpoints (not connected to another stroke).
+    // For each candidate endpoint, scan all other subpaths' sampled points
+    // and skip if any are within a small distance (junction).
+    const result = [];
+    glyphList.forEach((glyph, glyphIndex) => {
+      if (!glyph.centerline || !glyph.centerline.paths) return;
+      const toLocal = makeToLocal(glyph);
+
+      // Collect all subpaths in this glyph (raster space)
+      const allSubpaths = [];
+      for (const pathD of glyph.centerline.paths) {
+        for (const segs of parsePathToSubpaths(pathD)) {
+          if (segs.length === 0) continue;
+          allSubpaths.push(segs);
+        }
+      }
+      if (allSubpaths.length === 0) return;
+
+      // Glyph size estimate from bounds for threshold
+      const bounds = glyph.centerline.bounds || {};
+      const w = (bounds.xMax ?? 1000) - (bounds.xMin ?? 0);
+      const h = (bounds.yMax ?? 1000) - (bounds.yMin ?? 0);
+      const rasterScale = glyph.rasterScale || 1;
+      // bounds are in font units; convert to raster pixels via raster_scale.
+      // Threshold: 6% of max glyph dimension in raster space.
+      const threshold = Math.max(w, h) * rasterScale * 0.06;
+      const thr2 = threshold * threshold;
+
+      // Pre-sample all subpaths for junction lookup
+      const sampled = allSubpaths.map((segs) => {
+        const pts = [];
+        const N = 24;
+        const totalLen = segs.reduce((s, x) => s + x.length, 0);
+        if (totalLen < 0.1) return pts;
+        // walk segments by even t per segment (cheap, good enough)
+        for (const seg of segs) {
+          for (let k = 1; k < N; k++) {
+            pts.push(seg.pointAt(k / N));
+          }
+        }
+        return pts;
+      });
+
+      const points = [];
+      for (let si = 0; si < allSubpaths.length; si++) {
+        const segs = allSubpaths[si];
+        const firstSeg = segs[0];
+        const lastSeg = segs[segs.length - 1];
+        const dt = 0.001;
+        const a0 = firstSeg.pointAt(0);
+        const a1 = firstSeg.pointAt(dt);
+        const b0 = lastSeg.pointAt(1 - dt);
+        const b1 = lastSeg.pointAt(1);
+
+        // Start endpoint: forward tangent points INTO the stroke, so flip by 180°
+        // to make the decorator face outward regardless of trace direction.
+        for (const ep of [
+          { pt: a0, angle: Math.atan2(a1.y - a0.y, a1.x - a0.x) + Math.PI },
+          { pt: b1, angle: Math.atan2(b1.y - b0.y, b1.x - b0.x) },
+        ]) {
+          let isJunction = false;
+          for (let sj = 0; sj < sampled.length; sj++) {
+            if (sj === si) continue;
+            for (const q of sampled[sj]) {
+              const dx = q.x - ep.pt.x;
+              const dy = q.y - ep.pt.y;
+              if (dx * dx + dy * dy < thr2) { isJunction = true; break; }
+            }
+            if (isJunction) break;
+          }
+          if (!isJunction) {
+            points.push(toLocal({ x: ep.pt.x, y: ep.pt.y, angle: ep.angle }));
+          }
         }
       }
       if (points.length > 0) result.push({ glyphIndex, points });

@@ -48,6 +48,7 @@ const defaultDecoratorParams = () => ({
   spacing: 'endpoints',
   filled: true,
   color: '#000000',
+  rotation: 0,
 });
 
 const defaultOffsetPathParams = () => ({

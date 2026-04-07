@@ -197,6 +197,7 @@ export default function GlyphLayerRenderer({
                   const fill = decoratorParams.filled ? decoratorParams.color : 'none';
                   const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
                   const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
+                  const baseDeg = (pt.angle ?? 0) * 180 / Math.PI + (decoratorParams.rotation ?? 0);
                   switch (decoratorParams.shape) {
                     case 'circle':
                       return (
@@ -206,19 +207,22 @@ export default function GlyphLayerRenderer({
                     case 'square':
                       return (
                         <rect key={`dec-${i}`} x={tx - s / 2} y={ty - s / 2}
-                          width={s} height={s} fill={fill} stroke={stroke} strokeWidth={sw} />
+                          width={s} height={s} fill={fill} stroke={stroke} strokeWidth={sw}
+                          transform={`rotate(${baseDeg} ${tx} ${ty})`} />
                       );
                     case 'diamond':
                       return (
                         <polygon key={`dec-${i}`}
                           points={`${tx},${ty - s / 2} ${tx + s / 2},${ty} ${tx},${ty + s / 2} ${tx - s / 2},${ty}`}
-                          fill={fill} stroke={stroke} strokeWidth={sw} />
+                          fill={fill} stroke={stroke} strokeWidth={sw}
+                          transform={`rotate(${baseDeg} ${tx} ${ty})`} />
                       );
                     case 'triangle':
                       return (
                         <polygon key={`dec-${i}`}
                           points={`${tx},${ty - s * 0.577} ${tx + s / 2},${ty + s * 0.289} ${tx - s / 2},${ty + s * 0.289}`}
-                          fill={fill} stroke={stroke} strokeWidth={sw} />
+                          fill={fill} stroke={stroke} strokeWidth={sw}
+                          transform={`rotate(${baseDeg + 90} ${tx} ${ty})`} />
                       );
                     default:
                       return null;

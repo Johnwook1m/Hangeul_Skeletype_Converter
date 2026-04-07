@@ -9,8 +9,8 @@ const SHAPES = [
 
 const SPACINGS = [
   { value: 'endpoints', label: 'Ends' },
+  { value: 'tips', label: 'Tips' },
   { value: 'even', label: 'Even' },
-  { value: 'random', label: 'Random' },
 ];
 
 export default function DecoratorControls() {
@@ -85,8 +85,17 @@ export default function DecoratorControls() {
         <span className="text-xs text-gray-500 w-8 text-right">{decoratorParams.size}</span>
       </div>
 
-      {/* Count (hidden for endpoints mode) */}
-      {decoratorParams.spacing !== 'endpoints' && (
+      {/* Rotation */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400 w-12">Rotate</span>
+        <input type="range" min={-180} max={180} step={1} value={decoratorParams.rotation ?? 0}
+          onChange={(e) => set({ rotation: +e.target.value })}
+          className="flex-1 h-1 slider-dark appearance-none bg-transparent" />
+        <span className="text-xs text-gray-500 w-8 text-right">{decoratorParams.rotation ?? 0}°</span>
+      </div>
+
+      {/* Count (hidden for endpoint-based modes) */}
+      {decoratorParams.spacing !== 'endpoints' && decoratorParams.spacing !== 'tips' && (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400 w-12">Count</span>
           <input type="range" min={1} max={30} step={1} value={decoratorParams.count}
