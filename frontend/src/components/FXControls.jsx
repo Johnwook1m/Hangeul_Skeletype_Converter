@@ -1,4 +1,39 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+
+// 편집 가능한 퍼센트 수치 입력 (20~180%, blur/Enter 시 커밋)
+function ScaleNumberInput({ value, onCommit }) {
+  const [draft, setDraft] = useState(String(Math.round(value * 100)));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(String(Math.round(value * 100)));
+  }, [value, focused]);
+  function commit() {
+    const n = parseInt(draft, 10);
+    if (Number.isFinite(n)) {
+      const clamped = Math.max(20, Math.min(180, n));
+      onCommit(clamped / 100);
+      setDraft(String(clamped));
+    } else {
+      setDraft(String(Math.round(value * 100)));
+    }
+  }
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+      onFocus={(e) => { setFocused(true); e.target.select(); }}
+      onBlur={() => { setFocused(false); commit(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.target.blur();
+        if (e.key === 'Escape') { setDraft(String(Math.round(value * 100))); e.target.blur(); }
+      }}
+      style={{ fieldSizing: 'content' }}
+      className="text-xs text-gray-500 bg-transparent outline-none text-center tabular-nums p-0 cursor-text border-0 border-b border-gray-500"
+    />
+  );
+}
 import useFontStore from '../stores/fontStore';
 import EffectPopover from './effects/EffectPopover';
 import ConnectionControls from './effects/ConnectionControls';
@@ -126,8 +161,17 @@ export default function FXControls() {
   return (
     <div className="relative flex items-center gap-[10px] justify-start">
       {/* X-Scale */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-gray-500">Width</span>
+      <div className="flex items-center shrink-0 gap-2">
+        <div className="flex flex-col items-center leading-tight">
+          <span className="text-xs text-gray-500">Width</span>
+          <div className="flex items-center">
+            <ScaleNumberInput
+              value={strokeParams.scaleX}
+              onCommit={(v) => setStrokeParams({ scaleX: v })}
+            />
+            <span className="text-xs text-gray-500">%</span>
+          </div>
+        </div>
         <input
           type="range"
           min={0.2}
@@ -140,8 +184,17 @@ export default function FXControls() {
       </div>
 
       {/* Y-Scale */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-gray-500">Height</span>
+      <div className="flex items-center shrink-0 gap-2 ml-0.5">
+        <div className="flex flex-col items-center leading-tight">
+          <span className="text-xs text-gray-500">Height</span>
+          <div className="flex items-center">
+            <ScaleNumberInput
+              value={strokeParams.scaleY}
+              onCommit={(v) => setStrokeParams({ scaleY: v })}
+            />
+            <span className="text-xs text-gray-500">%</span>
+          </div>
+        </div>
         <input
           type="range"
           min={0.2}
@@ -154,7 +207,7 @@ export default function FXControls() {
       </div>
 
       {/* Decorator */}
-      <div className="relative shrink-0">
+      <div className="relative shrink-0 ml-0.5">
         <button
           onClick={handleDecoratorClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${

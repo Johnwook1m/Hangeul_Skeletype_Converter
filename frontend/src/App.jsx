@@ -3,6 +3,7 @@ import GlyphPreview from './components/GlyphPreview';
 import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';
 import LayerPanel from './components/LayerPanel';
+import MixPanel from './components/MixPanel';
 import useFontStore from './stores/fontStore';
 import './index.css';
 
@@ -107,7 +108,7 @@ function AboutPanel({ onClose }) {
       {/* Content layer above background */}
       <div
         className="relative z-10 h-full overflow-y-auto flex flex-col justify-center"
-        style={{ padding: '80px clamp(48px, 12vw, 200px)' }}
+        style={{ padding: '60px clamp(48px, 12vw, 200px) 120px' }}
       >
         <table className="border-collapse mx-auto" style={{ width: '100%', maxWidth: 1000, fontSize: '1.45rem' }} onClick={(e) => e.stopPropagation()}>
           <colgroup>
@@ -145,9 +146,36 @@ function AboutPanel({ onClose }) {
             </tr>
           </tbody>
         </table>
-        <p className="text-white text-sm opacity-70 absolute bottom-8 left-0 right-0 text-center">© 2026 skeletype by Jongwook Kim. All Rights Reserved.</p>
+        <div className="text-white text-sm opacity-70 absolute bottom-8 left-0 right-0 text-center px-8" style={{ lineHeight: 1.3 }}>
+          <p style={{ margin: '0 auto 0.2em' }}>
+            사용자가 본 툴을 이용해 저작권이 있는 서체를 무단으로 변환·배포함으로써 발생하는 모든 책임은 사용자 본인에게 있으며, 제작자는 이에 대해 어떠한 책임도 지지 않습니다.
+          </p>
+          <p style={{ margin: '0 auto 0.4em' }}>
+            The user is solely responsible for any unauthorized conversion or distribution of copyrighted typefaces using this tool; the creators assume no liability.
+          </p>
+          <p>© 2026 skeletype by Jongwook Kim. All Rights Reserved.</p>
+        </div>
       </div>
     </div>
+  );
+}
+
+function MixToggleButton() {
+  const mixMode = useFontStore((s) => s.mixMode);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`px-2.5 h-6 flex items-center text-[12px] font-medium rounded-full transition-colors cursor-pointer ${
+          mixMode ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-gray-500 hover:bg-[#d5d7db]'
+        }`}
+        title="Mix multiple fonts (beta)"
+      >
+        Mix β
+      </button>
+      {open && <MixPanel onClose={() => setOpen(false)} />}
+    </>
   );
 }
 
@@ -183,37 +211,41 @@ function App() {
       </div>
 
       {/* Theme toggle switch - top left (폰트 로드 후에만 표시) */}
-      {fontId && <button
-        onClick={toggleTheme}
-        className="fixed top-4 left-4 z-50 cursor-pointer"
-      >
-        <div
-          className="relative w-10 h-5 rounded-full transition-colors"
-          style={{ background: isDark ? '#444' : '#ddd' }}
-        >
-          <div
-            className="absolute top-0.5 w-4 h-4 rounded-full transition-all shadow-sm"
-            style={{
-              background: isDark ? '#fff' : '#444',
-              left: isDark ? '22px' : '2px',
-            }}
-          />
+      {fontId && (
+        <div className="fixed top-4 left-4 z-50 flex items-center">
+          <button onClick={toggleTheme} className="cursor-pointer">
+            <div
+              className="relative w-11 h-6 rounded-full transition-colors"
+              style={{ background: isDark ? '#444' : '#e5e7eb' }}
+            >
+              <div
+                className="absolute top-1 w-4 h-4 rounded-full transition-all shadow-sm"
+                style={{
+                  background: isDark ? '#fff' : '#444',
+                  left: isDark ? '24px' : '4px',
+                }}
+              />
+            </div>
+          </button>
         </div>
-      </button>}
+      )}
 
-      {/* About button — top right */}
-      <button
-        onClick={() => setShowAbout(true)}
-        className="fixed top-4 right-4 z-50 cursor-pointer"
-      >
-        <div className="w-10 h-6 rounded-full flex items-center justify-center gap-0.5"
-          style={{ background: isDark ? '#444' : '#ddd' }}>
-          {[0,1,2].map(i => (
-            <div key={i} className="w-1 h-1 rounded-full"
-              style={{ background: isDark ? '#fff' : '#333' }} />
-          ))}
-        </div>
-      </button>
+      {/* Mix β + About button — top right */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-8">
+        {fontId && <MixToggleButton />}
+        <button
+          onClick={() => setShowAbout(true)}
+          className="cursor-pointer"
+        >
+          <div className="w-10 h-6 rounded-full flex items-center justify-center gap-0.5"
+            style={{ background: isDark ? '#444' : '#e5e7eb' }}>
+            {[0,1,2].map(i => (
+              <div key={i} className="w-1 h-1 rounded-full"
+                style={{ background: isDark ? '#fff' : '#333' }} />
+            ))}
+          </div>
+        </button>
+      </div>
 
       {/* About panel */}
       {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}

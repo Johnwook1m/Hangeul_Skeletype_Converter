@@ -247,7 +247,7 @@ export default function BottomBar() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('basic')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                 activeTab === 'basic' ? 'bg-[#FF5714] text-white' : chipInactive
               }`}
             >
@@ -255,7 +255,7 @@ export default function BottomBar() {
             </button>
             <button
               onClick={() => setActiveTab('fx')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                 activeTab === 'fx' ? 'bg-[#FF5714] text-white' : chipInactive
               }`}
             >
@@ -381,7 +381,7 @@ export default function BottomBar() {
               </div>
 
               {/* Color pickers */}
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-[9px] shrink-0">
                 {/* Centerline Color */}
                 <div className="flex items-center gap-1">
                   <span className={labelCls}>C</span>

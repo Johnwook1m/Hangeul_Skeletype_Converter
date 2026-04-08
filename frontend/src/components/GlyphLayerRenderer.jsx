@@ -89,22 +89,24 @@ export default function GlyphLayerRenderer({
         if (!glyph.centerline) return null; // 센터라인 없는 글리프는 GlyphPreview의 placeholder가 처리
 
         const { K, rasterScale } = glyph;
+        // Per-glyph font scale (Mix mode: each glyph may come from a different slot)
+        const f2d = glyph.srcFontToDisplay ?? fontToDisplay;
         const glyphOutline = glyph.centerline.outline;
         const bounds = glyph.centerline.bounds || {};
         const xMin = bounds.xMin || 0;
         const glyphAscender = glyph.centerline.ascender ?? fontAscender;
 
         // Centerline transform: pixel coords → display coords
-        const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
+        const clTranslateX = xMin * f2d - RASTER_PADDING * K;
         const clTranslateY = -RASTER_PADDING * K;
 
         // Outline transform: font coords → display coords
         const outlineTransform = glyphOutline
-          ? `scale(${fontToDisplay}, ${-fontToDisplay}) translate(0, ${-glyphAscender})`
+          ? `scale(${f2d}, ${-f2d}) translate(0, ${-glyphAscender})`
           : '';
 
         // Baseline position in display coords
-        const baselineY = glyphAscender * fontToDisplay;
+        const baselineY = glyphAscender * f2d;
         const needsTransform = scaleX !== 1 || scaleY !== 1 || slantAngle !== 0;
         const scaleTransform = needsTransform
           ? `translate(0, ${baselineY * (1 - scaleY)}) scale(${scaleX}, ${scaleY}) translate(0, ${baselineY}) skewX(${-slantAngle}) translate(0, ${-baselineY})`
@@ -128,7 +130,7 @@ export default function GlyphLayerRenderer({
         const transformedPaths = glyph.centerline.paths.map(d => applyTransformToPath(d, pointTransform));
 
         // 디스플레이 공간 기준 stroke 두께 (균일)
-        const displayStrokeWidth = strokeParams.width * fontToDisplay;
+        const displayStrokeWidth = strokeParams.width * f2d;
 
         return (
           <g key={index} transform={`translate(${adjustedXOffset}, ${adjustedYOffset})`}>
@@ -196,7 +198,7 @@ export default function GlyphLayerRenderer({
                   const s = decoratorParams.size;
                   const fill = decoratorParams.filled ? decoratorParams.color : 'none';
                   const stroke = decoratorParams.filled ? 'none' : decoratorParams.color;
-                  const sw = decoratorParams.filled ? 0 : strokeParams.width * fontToDisplay * 0.3;
+                  const sw = decoratorParams.filled ? 0 : strokeParams.width * f2d * 0.3;
                   const baseDeg = (pt.angle ?? 0) * 180 / Math.PI + (decoratorParams.rotation ?? 0);
                   switch (decoratorParams.shape) {
                     case 'circle':

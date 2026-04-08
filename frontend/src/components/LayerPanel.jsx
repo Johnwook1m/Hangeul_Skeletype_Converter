@@ -118,7 +118,7 @@ export default function LayerPanel() {
         pointerEvents: 'auto',
         width: open ? openW : closedW,
         borderRadius: open ? 20 : 12,
-        background: '#e5e5e5',
+        background: '#e5e7eb',
         boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
         overflow: 'hidden',
         transition: 'width 0.35s cubic-bezier(0.34,1.3,0.64,1), border-radius 0.3s ease',
@@ -157,18 +157,21 @@ export default function LayerPanel() {
       >
         {/* Header — 클릭하면 패널 접힘 */}
         <div
-          className="flex items-center justify-between px-3 pt-2.5 pb-1.5 cursor-pointer"
+          className="flex items-center justify-between px-3 py-2 cursor-pointer"
           onClick={() => setOpen(false)}
         >
-          <span className="text-[12px] text-gray-500 tracking-wide font-medium">
+          <span className="text-[12px] text-gray-500 tracking-wide font-medium leading-none pl-1">
             Layers
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); addLayer(); }}
-            className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] text-base leading-none transition-colors cursor-pointer"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] transition-colors cursor-pointer"
             title="Add layer"
           >
-            +
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="5" y1="1" x2="5" y2="9" />
+              <line x1="1" y1="5" x2="9" y2="5" />
+            </svg>
           </button>
         </div>
 

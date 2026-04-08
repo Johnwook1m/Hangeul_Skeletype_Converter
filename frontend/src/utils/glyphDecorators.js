@@ -353,9 +353,10 @@ export function computeDecorators(glyphList, decoratorParams, fontToDisplay) {
   // Helper: convert raster point to glyph-local display coords (no xOffset/yOffset)
   function makeToLocal(glyph) {
     const { K } = glyph;
+    const f2d = glyph.srcFontToDisplay ?? fontToDisplay;
     const bounds = glyph.centerline.bounds || {};
     const xMin = bounds.xMin || 0;
-    const clTranslateX = xMin * fontToDisplay - RASTER_PADDING * K;
+    const clTranslateX = xMin * f2d - RASTER_PADDING * K;
     const clTranslateY = -RASTER_PADDING * K;
     return (pt) => ({
       x: pt.x * K + clTranslateX,

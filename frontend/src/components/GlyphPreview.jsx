@@ -20,6 +20,9 @@ export default function GlyphPreview({ large = false }) {
     bgColor,
     fontLoading,
     isDemo,
+    fontSlots,
+    mixMode,
+    mixSeed,
   } = useFontStore();
 
   // Pan state for trackpad/mouse navigation
@@ -153,10 +156,57 @@ export default function GlyphPreview({ large = false }) {
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
+  // Mix mode: per-slot char→glyph maps and per-slot fontToDisplay
+  const slotMaps = useMemo(() => {
+    if (!mixMode) return null;
+    return fontSlots.map((slot) => {
+      const map = new Map();
+      for (const g of slot.glyphs || []) {
+        if (g.character) map.set(g.character, g.name);
+      }
+      const slotEm = slot.unitsPerEm || 1000;
+      const slotAsc = slot.ascender ?? slotEm * 0.8;
+      const slotDesc = slot.descender ?? -(slotEm * 0.2);
+      const slotFontHeight = slotAsc - slotDesc;
+      // Normalize each slot to canonical EM_UNIT (slot 0 / current font), keeping baselines aligned
+      const slotFontToDisplay = (EM_UNIT / slotFontHeight) * (EM_UNIT / slotEm);
+      return { slot, map, slotEm, slotFontToDisplay };
+    });
+  }, [mixMode, fontSlots, EM_UNIT]);
+
+  // Seeded RNG: stable pick per (mixSeed, layerId, char index)
+  function pickSlotIdx(seed, layerId, idx, n) {
+    let h = seed >>> 0;
+    for (let i = 0; i < layerId.length; i++) h = (h * 31 + layerId.charCodeAt(i)) >>> 0;
+    h = (h * 31 + idx) >>> 0;
+    h ^= h << 13; h ^= h >>> 17; h ^= h << 5;
+    return (h >>> 0) % n;
+  }
+
   // Per-layer glyph layout computation
   const perLayerLayouts = useMemo(() => {
     const rowHeight = EM_UNIT + ROW_GAP;
     const layouts = {};
+
+    // Lookup helper: returns { glyphName, centerline, srcFontToDisplay } for a char
+    const useMix = mixMode && slotMaps && slotMaps.length > 0;
+    function lookupChar(char, layerId, charIdx) {
+      if (useMix) {
+        // Try the randomly-picked slot first; fall back to any slot that has the glyph
+        const startIdx = pickSlotIdx(mixSeed, layerId, charIdx, slotMaps.length);
+        for (let off = 0; off < slotMaps.length; off++) {
+          const sm = slotMaps[(startIdx + off) % slotMaps.length];
+          const name = sm.map.get(char);
+          if (!name) continue;
+          const cl = sm.slot.centerlines[name];
+          return { glyphName: name, centerline: cl ?? null, srcFontToDisplay: sm.slotFontToDisplay };
+        }
+        return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
+      }
+      const name = charToGlyph.get(char);
+      if (!name) return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
+      return { glyphName: name, centerline: centerlines[name] ?? null, srcFontToDisplay: fontToDisplay };
+    }
 
     for (const layer of layers) {
       if (!layer.visible) continue;
@@ -170,7 +220,9 @@ export default function GlyphPreview({ large = false }) {
       const rowWidths = [0];
       let rowIdx = 0;
 
+      let charIdx = 0;
       for (const char of layerText) {
+        const myIdx = charIdx++;
         if (char === '\n') {
           rowIdx++;
           rows.push([]);
@@ -189,13 +241,12 @@ export default function GlyphPreview({ large = false }) {
           continue;
         }
 
-        const glyphName = charToGlyph.get(char);
+        const { glyphName, centerline, srcFontToDisplay } = lookupChar(char, layer.id, myIdx);
         if (!glyphName) continue;
 
-        const centerline = centerlines[glyphName];
         const glyphWidth = centerline
-          ? (centerline.advance_width || EM_UNIT) * fontToDisplay
-          : EM_UNIT * fontToDisplay;
+          ? (centerline.advance_width || EM_UNIT) * srcFontToDisplay
+          : EM_UNIT * srcFontToDisplay;
 
         if (rowWidths[rowIdx] + glyphWidth > MAX_ROW_WIDTH && rowWidths[rowIdx] > 0) {
           rowIdx++;
@@ -208,8 +259,8 @@ export default function GlyphPreview({ large = false }) {
         } else {
           const rasterScale = centerline.raster_scale || 1;
           const advanceWidth = centerline.advance_width || EM_UNIT;
-          const K = fontToDisplay / rasterScale;
-          rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline, width: glyphWidth, K, rasterScale, advanceWidth });
+          const K = srcFontToDisplay / rasterScale;
+          rows[rowIdx].push({ type: 'glyph', char, glyphName, centerline, width: glyphWidth, K, rasterScale, advanceWidth, srcFontToDisplay });
         }
         rowWidths[rowIdx] += glyphWidth;
       }
@@ -235,7 +286,7 @@ export default function GlyphPreview({ large = false }) {
             centerline: item.centerline,
             xOffset: x,
             yOffset,
-            ...(item.centerline ? { K: item.K, rasterScale: item.rasterScale, advanceWidth: item.advanceWidth } : {}),
+            ...(item.centerline ? { K: item.K, rasterScale: item.rasterScale, advanceWidth: item.advanceWidth, srcFontToDisplay: item.srcFontToDisplay } : {}),
           });
           x += item.width;
         }
@@ -245,7 +296,7 @@ export default function GlyphPreview({ large = false }) {
     }
 
     return layouts;
-  }, [charToGlyph, centerlines, fontToDisplay, EM_UNIT, ROW_GAP, textAlign, layers, spaceAdvanceWidth]);
+  }, [charToGlyph, centerlines, fontToDisplay, EM_UNIT, ROW_GAP, textAlign, layers, spaceAdvanceWidth, mixMode, slotMaps, mixSeed]);
 
   // Aggregate viewBox dimensions from all layer layouts
   const allLayouts = Object.values(perLayerLayouts);

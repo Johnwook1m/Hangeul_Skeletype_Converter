@@ -161,6 +161,13 @@ const useFontStore = create((set) => ({
   layers: [createLayer('layer-1', 'Layer 1', 0)],
   activeLayerId: 'layer-1',
 
+  // ─── Mix Mode (β) — 다중 폰트 글리프 랜덤 조합 ──────────────────────────────
+  // 기존 단일 폰트 경로와 분리된 별도 슬롯들. mixMode가 true일 때만 사용.
+  fontSlots: [],     // [{ slotId, fontId, fontName, glyphs, centerlines, unitsPerEm, ascender, descender, spaceAdvanceWidth, loading, error }]
+  mixMode: false,
+  mixSeed: 1,
+  mainSlotId: null,  // 어떤 슬롯이 메인 폰트로 "채택"됐는지 (Mix 단독 사용 시)
+
   // Display options
   theme: 'light',
   bgColor: '#ffffff',
@@ -220,6 +227,21 @@ const useFontStore = create((set) => ({
         fontBlobUrl: null,
       };
     }),
+
+  // Mix 슬롯을 메인 폰트로 채택 (레이어/프리뷰/FX는 보존)
+  adoptFontAsMain: (data) =>
+    set(() => ({
+      fontId: data.font_id,
+      fontName: data.family_name,
+      unitsPerEm: data.units_per_em,
+      ascender: data.ascender ?? null,
+      descender: data.descender ?? null,
+      spaceAdvanceWidth: data.space_advance_width ?? null,
+      glyphs: data.glyphs,
+      centerlines: {},
+      isDemo: false,
+      fontLoading: false,
+    })),
 
   setIsDemo: (v) => set({ isDemo: v }),
   setGlyphs: (glyphs) => set({ glyphs, fontLoading: false }),
@@ -696,6 +718,39 @@ const useFontStore = create((set) => ({
         previewFontSize: 1.0,
         spaceAdvanceWidth: null,
         fontBlobUrl: null,
+        fontSlots: [],
+        mainSlotId: null,
+        mixMode: false,
+      };
+    }),
+
+  // ─── Mix Mode actions ───────────────────────────────────────────────────────
+  setMixMode: (v) => set({ mixMode: v }),
+  rerollMix: () => set((state) => ({ mixSeed: (state.mixSeed * 1103515245 + 12345) & 0x7fffffff })),
+  addFontSlot: (slot) =>
+    set((state) => {
+      if (state.fontSlots.length >= 3) return {};
+      return { fontSlots: [...state.fontSlots, slot] };
+    }),
+  updateFontSlot: (slotId, patch) =>
+    set((state) => ({
+      fontSlots: state.fontSlots.map((s) => (s.slotId === slotId ? { ...s, ...patch } : s)),
+    })),
+  removeFontSlot: (slotId) =>
+    set((state) => ({
+      fontSlots: state.fontSlots.filter((s) => s.slotId !== slotId),
+      mainSlotId: state.mainSlotId === slotId ? null : state.mainSlotId,
+    })),
+  setSlotCenterline: (slotId, glyphName, data) =>
+    set((state) => {
+      const newSlots = state.fontSlots.map((s) =>
+        s.slotId === slotId ? { ...s, centerlines: { ...s.centerlines, [glyphName]: data } } : s
+      );
+      // 메인으로 채택된 슬롯이면 메인 centerlines에도 미러링
+      const isMainSlot = state.mainSlotId === slotId;
+      return {
+        fontSlots: newSlots,
+        ...(isMainSlot ? { centerlines: { ...state.centerlines, [glyphName]: data } } : {}),
       };
     }),
 }));
