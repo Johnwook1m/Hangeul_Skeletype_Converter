@@ -73,6 +73,21 @@ export default function MixPanel({ onClose }) {
 
   async function handleTestSlot(slot) {
     if (!slot.fontId || slot.testing) return;
+
+    // If this slot uses the main font, seed its centerlines from the main store first
+    const store = useFontStore.getState();
+    if (slot.fontId === store.fontId) {
+      const mainCls = store.centerlines;
+      const missing = Object.keys(mainCls).filter((n) => !slot.centerlines[n]);
+      if (missing.length > 0) {
+        const patch = {};
+        for (const n of missing) patch[n] = mainCls[n];
+        updateFontSlot(slot.slotId, { centerlines: { ...slot.centerlines, ...patch } });
+        // Re-read updated slot from store
+        slot = useFontStore.getState().fontSlots.find((s) => s.slotId === slot.slotId) ?? slot;
+      }
+    }
+
     // Extract centerlines for all chars in current preview text that exist in this slot
     const charSet = new Set([...(previewText || '')].filter((c) => c !== ' ' && c !== '\n'));
     const namesToExtract = [];

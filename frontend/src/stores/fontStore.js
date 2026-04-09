@@ -733,7 +733,7 @@ const useFontStore = create((set) => ({
         fontId: state.fontId,
         fontName: state.fontName,
         glyphs: state.glyphs,
-        centerlines: { ...state.centerlines },
+        centerlines: {},
         unitsPerEm: state.unitsPerEm,
         ascender: state.ascender,
         descender: state.descender,
