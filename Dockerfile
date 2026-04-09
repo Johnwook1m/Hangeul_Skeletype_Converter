@@ -38,7 +38,7 @@ RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/instal
 
 # Install autotrace + imagemagick (same Homebrew formula as macOS)
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-RUN brew install autotrace imagemagick
+RUN brew install autotrace imagemagick || true
 
 # Return to root for the rest of the setup
 USER root
