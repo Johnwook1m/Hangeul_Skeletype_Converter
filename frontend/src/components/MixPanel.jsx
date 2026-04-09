@@ -74,8 +74,10 @@ export default function MixPanel({ onClose }) {
   async function handleTestSlot(slot) {
     if (!slot.fontId || slot.testing) return;
 
+    // Always read the latest store state inside the async function
+    let store = useFontStore.getState();
+
     // If this slot uses the main font, seed its centerlines from the main store first
-    const store = useFontStore.getState();
     if (slot.fontId === store.fontId) {
       const mainCls = store.centerlines;
       const missing = Object.keys(mainCls).filter((n) => !slot.centerlines[n]);
@@ -83,13 +85,16 @@ export default function MixPanel({ onClose }) {
         const patch = {};
         for (const n of missing) patch[n] = mainCls[n];
         updateFontSlot(slot.slotId, { centerlines: { ...slot.centerlines, ...patch } });
-        // Re-read updated slot from store
         slot = useFontStore.getState().fontSlots.find((s) => s.slotId === slot.slotId) ?? slot;
       }
     }
 
-    // Extract centerlines for all chars in current preview text that exist in this slot
-    const charSet = new Set([...(previewText || '')].filter((c) => c !== ' ' && c !== '\n'));
+    // Build charSet from ALL layer texts (not just root previewText)
+    store = useFontStore.getState();
+    const allText = store.layers.map((l) => l.previewText ?? '').join('') || store.previewText || '';
+    const charSet = new Set([...allText].filter((c) => c !== ' ' && c !== '\n'));
+    if (charSet.size === 0) return;
+
     const namesToExtract = [];
     for (const g of slot.glyphs) {
       if (g.character && g.has_outline && charSet.has(g.character) && !slot.centerlines[g.name]) {
@@ -97,11 +102,16 @@ export default function MixPanel({ onClose }) {
       }
     }
     if (namesToExtract.length === 0) return;
-    updateFontSlot(slot.slotId, { testing: true });
+    updateFontSlot(slot.slotId, { testing: true, error: null });
     try {
-      await runExtraction(slot.fontId, namesToExtract, (glyphName, data) => {
+      const result = await runExtraction(slot.fontId, namesToExtract, (glyphName, data) => {
         setSlotCenterline(slot.slotId, glyphName, data);
       });
+      if (result.success === 0 && namesToExtract.length > 0) {
+        updateFontSlot(slot.slotId, { error: 'Extraction failed — try re-uploading' });
+      }
+    } catch {
+      updateFontSlot(slot.slotId, { error: 'Extraction error — try re-uploading' });
     } finally {
       updateFontSlot(slot.slotId, { testing: false });
     }
