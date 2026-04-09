@@ -129,8 +129,8 @@ export default function GlyphLayerRenderer({
         };
         const transformedPaths = glyph.centerline.paths.map(d => applyTransformToPath(d, pointTransform));
 
-        // 디스플레이 공간 기준 stroke 두께 (균일)
-        const displayStrokeWidth = strokeParams.width * f2d;
+        // 디스플레이 공간 기준 stroke 두께 — Mix mode에서도 메인 fontToDisplay 기준으로 균일하게 유지
+        const displayStrokeWidth = strokeParams.width * fontToDisplay;
 
         return (
           <g key={index} transform={`translate(${adjustedXOffset}, ${adjustedYOffset})`}>
