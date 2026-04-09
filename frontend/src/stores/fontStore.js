@@ -725,7 +725,27 @@ const useFontStore = create((set) => ({
     }),
 
   // ─── Mix Mode actions ───────────────────────────────────────────────────────
-  setMixMode: (v) => set({ mixMode: v }),
+  setMixMode: (v) => set((state) => {
+    if (v && state.fontSlots.length === 0 && state.fontId) {
+      const slotId = `slot-main-${Date.now()}`;
+      const mainSlot = {
+        slotId,
+        fontId: state.fontId,
+        fontName: state.fontName,
+        glyphs: state.glyphs,
+        centerlines: { ...state.centerlines },
+        unitsPerEm: state.unitsPerEm,
+        ascender: state.ascender,
+        descender: state.descender,
+        spaceAdvanceWidth: state.spaceAdvanceWidth,
+        loading: false,
+        testing: false,
+        error: null,
+      };
+      return { mixMode: v, fontSlots: [mainSlot] };
+    }
+    return { mixMode: v };
+  }),
   rerollMix: () => set((state) => ({ mixSeed: (state.mixSeed * 1103515245 + 12345) & 0x7fffffff })),
   addFontSlot: (slot) =>
     set((state) => {
