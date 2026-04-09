@@ -192,16 +192,19 @@ export default function GlyphPreview({ large = false }) {
     const useMix = mixMode && slotMaps && slotMaps.length > 0;
     function lookupChar(char, layerId, charIdx) {
       if (useMix) {
-        // Try the randomly-picked slot first; fall back to any slot that has the glyph
+        // Try the randomly-picked slot first; fall back to any slot that has a centerline
         const startIdx = pickSlotIdx(mixSeed, layerId, charIdx, slotMaps.length);
+        let fallback = null;
         for (let off = 0; off < slotMaps.length; off++) {
           const sm = slotMaps[(startIdx + off) % slotMaps.length];
           const name = sm.map.get(char);
           if (!name) continue;
           const cl = sm.slot.centerlines[name];
-          return { glyphName: name, centerline: cl ?? null, srcFontToDisplay: sm.slotFontToDisplay };
+          if (cl) return { glyphName: name, centerline: cl, srcFontToDisplay: sm.slotFontToDisplay };
+          // Has glyph but no centerline yet — keep as fallback (shows placeholder)
+          if (!fallback) fallback = { glyphName: name, centerline: null, srcFontToDisplay: sm.slotFontToDisplay };
         }
-        return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
+        return fallback ?? { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
       }
       const name = charToGlyph.get(char);
       if (!name) return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
