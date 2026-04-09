@@ -43,7 +43,7 @@ export default function MixPanel({ onClose }) {
       const glyphData = await getGlyphs(data.font_id);
       updateFontSlot(slotId, {
         fontId: data.font_id,
-        fontName: data.family_name,
+        fontName: (data.family_name && data.family_name.trim() && data.family_name !== '.') ? data.family_name : file.name,
         glyphs: glyphData.glyphs,
         unitsPerEm: data.units_per_em,
         ascender: data.ascender ?? null,
