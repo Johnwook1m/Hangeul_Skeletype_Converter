@@ -64,7 +64,7 @@ const defaultOffsetPathParams = () => ({
 const defaultSlantParams = () => ({
   enabled: false,
   visible: true,
-  angle: -15,
+  angle: 10,
 });
 
 // 레이어 객체 생성
@@ -146,16 +146,8 @@ const useFontStore = create((set) => ({
   offsetPathParams: defaultOffsetPathParams(),
   slantParams: defaultSlantParams(),
 
-  // Background image (세션 공유, 레이어와 무관)
-  backgroundImageParams: {
-    enabled: false,
-    imageUrl: null,
-    imageName: null,
-    opacity: 1.0,
-    scale: 1.0,
-    fit: 'contain',
-    blendMode: 'normal',
-  },
+  // Background images (세션 공유, 레이어와 무관) — 여러 이미지 스택
+  backgroundImages: [],
 
   // ─── 레이어 상태 ────────────────────────────────────────────────────────────
   layers: [createLayer('layer-1', 'Layer 1', 0)],
@@ -215,7 +207,7 @@ const useFontStore = create((set) => ({
         decoratorParams: defaultDecoratorParams(),
         offsetPathParams: defaultOffsetPathParams(),
         slantParams: defaultSlantParams(),
-        backgroundImageParams: { enabled: false, imageUrl: null, imageName: null, opacity: 1.0, scale: 1.0, fit: 'contain', blendMode: 'normal' },
+        backgroundImages: [],
         layers: [initialLayer],
         activeLayerId: 'layer-1',
         theme: 'light',
@@ -495,21 +487,42 @@ const useFontStore = create((set) => ({
       };
     }),
 
-  // ─── Background image (세션 공유) ────────────────────────────────────────────
-  setBackgroundImageParams: (params) =>
-    set((state) => ({
-      backgroundImageParams: { ...state.backgroundImageParams, ...params },
-    })),
-
-  toggleBackgroundImage: () =>
-    set((state) => ({
-      backgroundImageParams: { ...state.backgroundImageParams, enabled: !state.backgroundImageParams.enabled },
-    })),
-
-  resetBackgroundImage: () =>
-    set({
-      backgroundImageParams: { enabled: false, imageUrl: null, imageName: null, opacity: 1.0, fit: 'contain', blendMode: 'normal' },
+  // ─── Background images (세션 공유) ──────────────────────────────────────────
+  addBackgroundImage: (imageUrl, imageName) =>
+    set((state) => {
+      const id = `img-${Date.now()}`;
+      const item = {
+        id, enabled: true, imageUrl, imageName,
+        opacity: 1.0, scale: 1.0, x: 0, y: 0, rotation: 0,
+        fit: 'contain', blendMode: 'normal',
+        hue: 0, saturation: 100, brightness: 100, contrast: 100, grayscale: 0,
+        duotoneEnabled: false, duotoneShadow: '#000000', duotoneHighlight: '#ffffff',
+      };
+      return { backgroundImages: [...state.backgroundImages, item] };
     }),
+
+  removeBackgroundImage: (id) =>
+    set((state) => ({
+      backgroundImages: state.backgroundImages.filter(i => i.id !== id),
+    })),
+
+  updateBackgroundImage: (id, params) =>
+    set((state) => ({
+      backgroundImages: state.backgroundImages.map(i =>
+        i.id === id ? { ...i, ...params } : i
+      ),
+    })),
+
+  reorderBackgroundImages: (fromIdx, toIdx) =>
+    set((state) => {
+      const arr = [...state.backgroundImages];
+      const [moved] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, moved);
+      return { backgroundImages: arr };
+    }),
+
+  resetBackgroundImages: () =>
+    set({ backgroundImages: [] }),
 
   // ─── 레이어 관리 ────────────────────────────────────────────────────────────
   addLayer: () =>
@@ -706,7 +719,7 @@ const useFontStore = create((set) => ({
         decoratorParams: { ...defaultDecoratorParams(), size: 30 }, // reset은 size 30
         offsetPathParams: defaultOffsetPathParams(),
         slantParams: defaultSlantParams(),
-        backgroundImageParams: { enabled: false, imageUrl: null, imageName: null, opacity: 1.0, scale: 1.0, fit: 'contain', blendMode: 'normal' },
+        backgroundImages: [],
         layers: [initialLayer],
         activeLayerId: 'layer-1',
         extraction: { status: 'idle', current: 0, total: 0, currentGlyph: '', errors: [] },

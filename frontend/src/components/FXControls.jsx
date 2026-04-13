@@ -51,7 +51,7 @@ export default function FXControls() {
     decoratorParams, toggleDecorator, resetDecorator,
     offsetPathParams, toggleOffsetPath, resetOffsetPath,
     slantParams, toggleSlant, resetSlant,
-    backgroundImageParams, toggleBackgroundImage, resetBackgroundImage,
+    backgroundImages, resetBackgroundImages,
   } = useFontStore();
 
   const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
@@ -131,15 +131,7 @@ export default function FXControls() {
   }
 
   function handleBgClick() {
-    if (!backgroundImageParams.enabled) {
-      toggleBackgroundImage();
-      setShowBgPopover(true);
-    } else if (showBgPopover) {
-      toggleBackgroundImage();
-      setShowBgPopover(false);
-    } else {
-      setShowBgPopover(true);
-    }
+    setShowBgPopover(v => !v);
   }
 
   function handleReset() {
@@ -149,7 +141,7 @@ export default function FXControls() {
     resetDecorator();
     resetOffsetPath();
     resetSlant();
-    resetBackgroundImage();
+    resetBackgroundImages();
     setShowConnPopover(false);
     setShowBranchPopover(false);
     setShowDecoratorPopover(false);
@@ -311,7 +303,7 @@ export default function FXControls() {
         <button
           onClick={handleBgClick}
           className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-            backgroundImageParams.enabled
+            backgroundImages.length > 0
               ? 'bg-[#FF5714] text-white'
               : chipInactive
           }`}
@@ -319,7 +311,7 @@ export default function FXControls() {
           Image
         </button>
 
-        {showBgPopover && backgroundImageParams.enabled && (
+        {showBgPopover && (
           <EffectPopover onClose={closeBgPopover}>
             <BackgroundImageControls />
           </EffectPopover>

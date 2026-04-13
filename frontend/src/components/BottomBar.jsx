@@ -69,7 +69,7 @@ export default function BottomBar() {
     setPreviewText,
     glyphs,
     centerlines,
-    backgroundImageParams,
+    backgroundImages,
     glyphSize,
     setGlyphSize,
     bgColor,
@@ -111,7 +111,7 @@ export default function BottomBar() {
     }
   }
 
-  const bgImageActive = backgroundImageParams.enabled && !!backgroundImageParams.imageUrl;
+  const bgImageActive = backgroundImages.some(i => i.enabled && i.imageUrl);
   const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
   const labelCls = 'text-xs text-gray-500';
 
@@ -307,9 +307,9 @@ export default function BottomBar() {
               {/* Text Alignment */}
               <button
                 onClick={cycleTextAlign}
-                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${chipInactive}`}
+                className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-full transition-colors ${chipInactive}`}
               >
-                <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+                <svg width="14" height="11" viewBox="0 0 16 12" fill="none">
                   {textAlign === 'left' ? (
                     <>
                       <rect x="0" y="0" width="14" height="2" rx="1" fill="#374151" />

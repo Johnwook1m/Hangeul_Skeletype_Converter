@@ -251,7 +251,7 @@ export default function LayerPanel() {
                     />
                   ) : (
                     <span
-                      className="text-[11px] font-bold flex-1 truncate min-w-0"
+                      className="text-[11px] flex-1 truncate min-w-0"
                       style={{ color: isActive ? 'white' : '#4b5563' }}
                       onDoubleClick={(e) => { e.stopPropagation(); startRename(layer); }}
                     >

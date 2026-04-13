@@ -7,7 +7,7 @@ export default function GlyphPreview({ large = false }) {
     glyphs,
     previewText,
     centerlines,
-    backgroundImageParams,
+    backgroundImages,
     layers,
     activeLayerId,
     unitsPerEm,
@@ -370,30 +370,68 @@ export default function GlyphPreview({ large = false }) {
       onWheel={undefined}
       onDoubleClick={showSvg ? () => { setPan({ x: 0, y: 0 }); setZoom(1); } : undefined}
     >
-      {/* Background image layer — lowest z-index, sits behind SVG */}
-      {backgroundImageParams.enabled && backgroundImageParams.imageUrl && (
-        <div
-          className="absolute inset-0 pointer-events-none overflow-hidden"
-          style={{
-            opacity: backgroundImageParams.opacity,
-            mixBlendMode: backgroundImageParams.blendMode,
-          }}
-        >
-          <img
-            src={backgroundImageParams.imageUrl}
-            alt=""
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: `${(backgroundImageParams.scale ?? 1.0) * 100}%`,
-              height: `${(backgroundImageParams.scale ?? 1.0) * 100}%`,
-              objectFit: backgroundImageParams.fit === 'fill' ? 'fill' : backgroundImageParams.fit,
-            }}
-          />
-        </div>
-      )}
+      {/* Background image layers — lowest z-index, sit behind SVG */}
+      {backgroundImages.filter(img => img.enabled && img.imageUrl).map(img => {
+        const filterParts = [
+          img.hue !== 0        ? `hue-rotate(${img.hue}deg)` : '',
+          img.saturation !== 100 ? `saturate(${img.saturation}%)` : '',
+          img.brightness !== 100 ? `brightness(${img.brightness}%)` : '',
+          img.contrast !== 100   ? `contrast(${img.contrast}%)` : '',
+          img.grayscale > 0    ? `grayscale(${img.grayscale}%)` : '',
+        ].filter(Boolean);
+
+        // Duotone: build SVG filter via hex→normalized rgb
+        const hexToRgb = (hex) => {
+          const r = parseInt(hex.slice(1, 3), 16) / 255;
+          const g = parseInt(hex.slice(3, 5), 16) / 255;
+          const b = parseInt(hex.slice(5, 7), 16) / 255;
+          return { r, g, b };
+        };
+        const duotoneFilterId = `duotone-${img.id}`;
+        let cssFilter = filterParts.join(' ') || 'none';
+        if (img.duotoneEnabled) {
+          cssFilter = (filterParts.join(' ') + ` url(#${duotoneFilterId})`).trim();
+        }
+        const sh = hexToRgb(img.duotoneShadow || '#000000');
+        const hi = hexToRgb(img.duotoneHighlight || '#ffffff');
+
+        return (
+          <div
+            key={img.id}
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+            style={{ mixBlendMode: img.blendMode, opacity: img.opacity }}
+          >
+            {img.duotoneEnabled && (
+              <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+                <defs>
+                  <filter id={duotoneFilterId} colorInterpolationFilters="sRGB">
+                    <feColorMatrix type="saturate" values="0" />
+                    <feComponentTransfer>
+                      <feFuncR type="table" tableValues={`${sh.r} ${hi.r}`} />
+                      <feFuncG type="table" tableValues={`${sh.g} ${hi.g}`} />
+                      <feFuncB type="table" tableValues={`${sh.b} ${hi.b}`} />
+                    </feComponentTransfer>
+                  </filter>
+                </defs>
+              </svg>
+            )}
+            <img
+              src={img.imageUrl}
+              alt=""
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: `translate(calc(-50% + ${img.x}%), calc(-50% + ${img.y}%)) rotate(${img.rotation}deg) scale(${img.scale})`,
+                width: '100%',
+                height: '100%',
+                objectFit: img.fit,
+                filter: cssFilter,
+              }}
+            />
+          </div>
+        );
+      })}
 
       {placeholder ? (
         <div className="text-center">{placeholder}</div>
