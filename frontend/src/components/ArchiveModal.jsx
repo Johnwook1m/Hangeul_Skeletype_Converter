@@ -6,7 +6,7 @@ import { capturePreviewBlob } from '../utils/capturePreview';
 
 export default function ArchiveModal({ onClose, onSuccess }) {
   const fontName = useFontStore((s) => s.fontName);
-  const [authorName, setAuthorName] = useState(() => localStorage.getItem('archive_author_name') || '');
+  const [authorName, setAuthorName] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'error' | 'flying' | 'done'
   const [errorMsg, setErrorMsg] = useState('');
   const [flyTransform, setFlyTransform] = useState(null); // { tx, ty } when flying
@@ -29,8 +29,6 @@ export default function ArchiveModal({ onClose, onSuccess }) {
         settingsSnapshot: snapshot,
         previewBlob,
       });
-      localStorage.setItem('archive_author_name', authorName.trim());
-
       // Calculate translation from modal center → Archives button center
       const cardRect = cardRef.current?.getBoundingClientRect();
       const archivesEl = document.getElementById('archives-btn');

@@ -357,6 +357,9 @@ function App() {
       {/* About panel */}
       {showAbout && <AboutPanel onClose={() => setShowAbout(false)} onClosingStart={() => setAboutButtonActive(false)} />}
 
+      {/* Full-screen dropzone overlay — rendered before gallery so gallery panels appear on top */}
+      <FontUpload />
+
       {/* Gallery panel + click-outside overlay */}
       {showGallery && (
         <>
@@ -367,9 +370,6 @@ function App() {
 
       {/* Layer panel — left fixed, shown after font loaded */}
       {fontId && <LayerPanel />}
-
-      {/* Full-screen dropzone overlay */}
-      <FontUpload />
 
       {/* Bottom menu bar */}
       <BottomBar />
