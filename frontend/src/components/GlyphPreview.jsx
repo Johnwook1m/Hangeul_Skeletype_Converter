@@ -16,7 +16,6 @@ export default function GlyphPreview({ large = false }) {
     spaceAdvanceWidth,
     textAlign,
     theme,
-    bgColor,
     fontLoading,
     isDemo,
     fontSlots,
@@ -365,7 +364,6 @@ export default function GlyphPreview({ large = false }) {
       className={`flex items-center justify-center h-full w-full relative select-none ${
         showSvg ? 'cursor-grab active:cursor-grabbing' : ''
       }`}
-      style={{ background: bgColor }}
       onWheel={undefined}
       onDoubleClick={showSvg ? () => { setPan({ x: 0, y: 0 }); setZoom(1); } : undefined}
     >
