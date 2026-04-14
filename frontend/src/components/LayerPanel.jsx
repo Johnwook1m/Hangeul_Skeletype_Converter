@@ -136,7 +136,7 @@ export default function LayerPanel() {
           writingMode: 'vertical-lr',
           fontSize: 12,
           fontWeight: 500,
-          color: '#6b7280',
+          color: '#333333',
           letterSpacing: '0.05em',
           opacity: open ? 0 : 1,
           transition: 'opacity 0.15s ease',
@@ -160,7 +160,7 @@ export default function LayerPanel() {
           className="flex items-center justify-between px-3 py-2 cursor-pointer"
           onClick={() => setOpen(false)}
         >
-          <span className="text-[12px] text-gray-500 tracking-wide font-medium leading-none pl-1">
+          <span className="text-[12px] text-[#333333] tracking-wide font-medium leading-none pl-1">
             Layers
           </span>
           <button

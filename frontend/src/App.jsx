@@ -177,7 +177,7 @@ function MixToggleButton() {
       <button
         onClick={handleClick}
         className={`px-2.5 h-6 flex items-center text-[12px] font-medium rounded-full transition-all active:scale-95 cursor-pointer ${
-          mixMode ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-gray-500 hover:bg-[#d5d7db]'
+          mixMode ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-[#333333] hover:bg-[#d5d7db]'
         }`}
       >
         Mix
@@ -311,7 +311,7 @@ function App() {
               <div
                 className="absolute top-1 w-4 h-4 rounded-full transition-all shadow-sm"
                 style={{
-                  background: '#444',
+                  background: '#333333',
                   left: isDark ? '24px' : '4px',
                 }}
               />
@@ -326,7 +326,7 @@ function App() {
           id="archives-btn"
           onClick={() => setShowGallery((v) => !v)}
           className={`px-2.5 h-6 flex items-center text-[12px] font-medium rounded-full transition-all active:scale-95 cursor-pointer ${
-            showGallery ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-gray-500 hover:bg-[#d5d7db]'
+            showGallery ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-[#333333] hover:bg-[#d5d7db]'
           }`}
           style={{
             transform: archivePulse ? 'scale(1.15)' : 'scale(1)',
