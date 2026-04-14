@@ -28,3 +28,6 @@ dist/
 *.tmp
 *.log
 temp/
+
+# Archive runtime data (user-generated images + DB)
+backend/data/
