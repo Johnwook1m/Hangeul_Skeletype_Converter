@@ -20,7 +20,7 @@ export default function ArchiveModal({ onClose, onSuccess }) {
     setStatus('loading');
     setErrorMsg('');
     try {
-      const previewBlob = await capturePreviewBlob();
+      const previewBlob = await capturePreviewBlob(0.95);
       const snapshot = buildSettingsSnapshot(storeState);
       const result = await submitArchive({
         authorName: authorName.trim(),
