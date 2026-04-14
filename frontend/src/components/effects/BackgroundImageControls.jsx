@@ -118,7 +118,7 @@ function ImageItem({ img, onRemove, onUpdate }) {
                 onChange={v => up({ opacity: v })}
                 display={`${Math.round(img.opacity * 100)}%`} />
 
-              <Slider label="Scale" min={0.1} max={5} step={0.01} value={img.scale}
+              <Slider label="Scale" min={0.1} max={2} step={0.01} value={img.scale}
                 onChange={v => up({ scale: v })}
                 display={`${Math.round(img.scale * 100)}%`} />
 

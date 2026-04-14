@@ -493,7 +493,7 @@ const useFontStore = create((set) => ({
       const id = `img-${Date.now()}`;
       const item = {
         id, enabled: true, imageUrl, imageName,
-        opacity: 1.0, scale: 1.0, x: 0, y: 0, rotation: 0,
+        opacity: 1.0, scale: 0.5, x: 0, y: 0, rotation: 0,
         fit: 'contain', blendMode: 'normal',
         hue: 0, saturation: 100, brightness: 100, contrast: 100, grayscale: 0,
         duotoneEnabled: false, duotoneShadow: '#000000', duotoneHighlight: '#ffffff',

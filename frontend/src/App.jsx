@@ -70,7 +70,6 @@ function SkeletypeLogo({ onClick, isDark }) {
 
 function AboutPanel({ onClose, onClosingStart }) {
   const [active, setActive] = useState(false);
-  const strokeColor = useFontStore((s) => s.strokeParams.strokeColor);
 
   useEffect(() => {
     requestAnimationFrame(() => setActive(true));
@@ -100,7 +99,7 @@ function AboutPanel({ onClose, onClosingStart }) {
           style={{
             position: 'absolute',
             inset: 0,
-            background: strokeColor,
+            background: '#FF5714',
             borderRadius: '80px',
             filter: 'blur(50px)',
           }}
