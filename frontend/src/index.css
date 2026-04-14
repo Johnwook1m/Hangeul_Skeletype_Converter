@@ -59,9 +59,10 @@ input.no-spin {
 }
 .font-chip .marching-rect {
   stroke-dasharray: 6 4;
+  animation: march 0.5s linear infinite;
 }
 .font-chip:hover .marching-rect {
-  animation: march 0.5s linear infinite;
+  stroke: #374151;
 }
 
 /* Circular color input swatch */
