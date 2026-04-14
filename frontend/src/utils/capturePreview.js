@@ -15,8 +15,6 @@ export async function capturePreviewBlob(quality = 0.85) {
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const containerRect = containerEl.getBoundingClientRect();
-  const w = containerRect.width;    // container / viewport width
-  const svgH = containerRect.height; // container height (viewport - header - footer)
 
   // Use the full viewport so zoom overflow (into header/footer) is captured
   const W = window.innerWidth;
@@ -34,12 +32,9 @@ export async function capturePreviewBlob(quality = 0.85) {
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, W, H);
 
-  // Background images are positioned within the container area
+  // Background images are now full-viewport
   if (backgroundImages.length > 0) {
-    ctx.save();
-    ctx.translate(containerRect.left, containerRect.top);
-    await drawBackgroundImages(ctx, backgroundImages, w, svgH);
-    ctx.restore();
+    await drawBackgroundImages(ctx, backgroundImages, W, H);
   }
 
   if (svgEl) {

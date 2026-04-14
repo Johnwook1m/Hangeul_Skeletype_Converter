@@ -193,11 +193,71 @@ function MixToggleButton() {
   );
 }
 
+function BackgroundImageLayer({ img }) {
+  const filterParts = [
+    img.hue !== 0          ? `hue-rotate(${img.hue}deg)` : '',
+    img.saturation !== 100 ? `saturate(${img.saturation}%)` : '',
+    img.brightness !== 100 ? `brightness(${img.brightness}%)` : '',
+    img.contrast !== 100   ? `contrast(${img.contrast}%)` : '',
+    img.grayscale > 0      ? `grayscale(${img.grayscale}%)` : '',
+  ].filter(Boolean);
+
+  const hexToRgb = (hex) => ({
+    r: parseInt(hex.slice(1, 3), 16) / 255,
+    g: parseInt(hex.slice(3, 5), 16) / 255,
+    b: parseInt(hex.slice(5, 7), 16) / 255,
+  });
+  const duotoneFilterId = `duotone-${img.id}`;
+  let cssFilter = filterParts.join(' ') || 'none';
+  if (img.duotoneEnabled) {
+    cssFilter = (filterParts.join(' ') + ` url(#${duotoneFilterId})`).trim();
+  }
+  const sh = hexToRgb(img.duotoneShadow || '#000000');
+  const hi = hexToRgb(img.duotoneHighlight || '#ffffff');
+
+  return (
+    <div
+      className="fixed inset-0 z-0 pointer-events-none overflow-hidden"
+      style={{ mixBlendMode: img.blendMode, opacity: img.opacity }}
+    >
+      {img.duotoneEnabled && (
+        <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+          <defs>
+            <filter id={duotoneFilterId} colorInterpolationFilters="sRGB">
+              <feColorMatrix type="saturate" values="0" />
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues={`${sh.r} ${hi.r}`} />
+                <feFuncG type="table" tableValues={`${sh.g} ${hi.g}`} />
+                <feFuncB type="table" tableValues={`${sh.b} ${hi.b}`} />
+              </feComponentTransfer>
+            </filter>
+          </defs>
+        </svg>
+      )}
+      <img
+        src={img.imageUrl}
+        alt=""
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: `translate(calc(-50% + ${img.x}%), calc(-50% + ${img.y}%)) rotate(${img.rotation}deg) scale(${img.scale})`,
+          width: '100%',
+          height: '100%',
+          objectFit: img.fit,
+          filter: cssFilter,
+        }}
+      />
+    </div>
+  );
+}
+
 function App() {
   const theme = useFontStore((s) => s.theme);
   const toggleTheme = useFontStore((s) => s.toggleTheme);
   const fontId = useFontStore((s) => s.fontId);
   const bgColor = useFontStore((s) => s.bgColor);
+  const backgroundImages = useFontStore((s) => s.backgroundImages);
   const isDark = theme === 'dark';
   const initDone = useRef(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -228,6 +288,11 @@ function App() {
   return (
     <div className="w-screen h-screen overflow-hidden relative"
       style={{ background: bgColor }}>
+      {/* Full-viewport background image layers — behind all UI */}
+      {backgroundImages.filter(img => img.enabled && img.imageUrl).map(img => (
+        <BackgroundImageLayer key={img.id} img={img} />
+      ))}
+
       {/* Logo — top center, resets to home */}
       <SkeletypeLogo onClick={handleLogoClick} isDark={isDark} />
 
