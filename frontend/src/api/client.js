@@ -97,3 +97,24 @@ export async function healthCheck() {
   const res = await api.get('/health');
   return res.data;
 }
+
+export async function submitArchive({ authorName, fontName, featuresUsed, settingsSnapshot, previewBlob }) {
+  const form = new FormData();
+  form.append('author_name', authorName);
+  form.append('font_name', fontName);
+  form.append('features_used', JSON.stringify(featuresUsed));
+  form.append('settings_snapshot', JSON.stringify(settingsSnapshot));
+  form.append('preview_image', previewBlob, 'preview.jpg');
+  const res = await api.post('/archive', form);
+  return res.data;
+}
+
+export async function getArchives(page = 1, pageSize = 20) {
+  const res = await api.get('/archives', { params: { page, page_size: pageSize } });
+  return res.data;
+}
+
+export async function getArchiveDetail(id) {
+  const res = await api.get(`/archives/${id}`);
+  return res.data;
+}

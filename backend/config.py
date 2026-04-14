@@ -17,6 +17,10 @@ SESSION_EXPIRY = 3600  # 1 hour
 # Debug: keep intermediate temp files (PNG, SVG) after extraction
 DEBUG_KEEP_TEMP = os.environ.get("DEBUG_KEEP_TEMP", "false").lower() == "true"
 
+# Persistent archive storage (images + SQLite DB live here)
+ARCHIVE_DIR = Path(__file__).parent / "data" / "archives"
+ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def find_tool(name: str, extra_paths: list[str] | None = None) -> str | None:
     """Find a CLI tool by checking common paths and PATH."""

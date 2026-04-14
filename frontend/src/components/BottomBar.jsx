@@ -3,6 +3,7 @@ import useFontStore from '../stores/fontStore';
 import ExtractButton from './ExtractButton';
 import ExportMenu from './ExportMenu';
 import FXControls from './FXControls';
+import ArchiveModal from './ArchiveModal';
 import { uploadFont, getGlyphs } from '../api/client';
 
 
@@ -86,6 +87,7 @@ export default function BottomBar() {
   const extractRef = useRef(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [showArchive, setShowArchive] = useState(false);
 
   async function handleUploadFile(file) {
     if (!file) return;
@@ -204,6 +206,7 @@ export default function BottomBar() {
   }
 
   return (
+    <>
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-[35px] px-3 pointer-events-none">
       <div className={`pointer-events-auto rounded-[28px] px-5 py-2 h-[65px] flex items-center gap-0 shadow-lg w-[80%] ${
         bgImageActive ? 'bg-gray-200' : 'bg-gray-200'
@@ -266,34 +269,38 @@ export default function BottomBar() {
 
         {/* ── Center section: always visible, disabled without font ── */}
         <Divider />
+
+        {/* Text Input: fixed, not scrollable */}
+        {activeTab === 'basic' && (
+          <>
+            <textarea
+              rows={2}
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+                  e.stopPropagation();
+                  e.target.select();
+                  return;
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  extractRef.current?.();
+                }
+              }}
+              placeholder={!fontId ? 'Upload a font first' : 'Type text'}
+              disabled={!hasGlyphs || isDemo}
+              className={`w-[180px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed ${!fontId ? 'pointer-events-none' : ''}`}
+            />
+            <Divider className="mx-2" />
+          </>
+        )}
+
         <div className={`flex items-center gap-[10px] flex-1 min-w-0 justify-start overflow-x-auto scrollbar-hide ${!fontId ? 'pointer-events-none' : ''}`}>
 
           {/* Basic Tab Controls */}
           {activeTab === 'basic' && (
             <>
-              {/* Text Input */}
-              <textarea
-                rows={2}
-                value={text}
-                onChange={(e) => handleTextChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-                    e.stopPropagation();
-                    e.target.select();
-                    return;
-                  }
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    extractRef.current?.();
-                  }
-                }}
-                placeholder={!fontId ? 'Upload a font first' : 'Type text'}
-                disabled={!hasGlyphs || isDemo}
-                className="w-[180px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed"
-              />
-
-              <Divider className="mx-0" />
-
               {/* Show Flesh */}
               <button
                 onClick={() => setShowFlesh(!showFlesh)}
@@ -426,12 +433,27 @@ export default function BottomBar() {
         </div>
         <Divider />
 
-        {/* ── Right section: Extract + Export ── */}
+        {/* ── Right section: Extract + Archive + Export ── */}
         <div className={`flex items-center gap-2 shrink-0 ${!fontId ? 'pointer-events-none' : ''}`}>
           <ExtractButton inline extractRef={extractRef} />
+          {fontId && !isDemo && (
+            <button
+              onClick={() => setShowArchive(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded-full bg-gray-800 text-white hover:bg-gray-700 transition-colors"
+            >
+              Archive
+            </button>
+          )}
           <ExportMenu />
         </div>
+        {showArchive && (
+          <ArchiveModal
+            onClose={() => setShowArchive(false)}
+            onSuccess={() => {}}
+          />
+        )}
       </div>
     </div>
+    </>
   );
 }

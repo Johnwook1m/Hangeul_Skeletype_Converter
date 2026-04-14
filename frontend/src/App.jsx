@@ -4,6 +4,7 @@ import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';
 import LayerPanel from './components/LayerPanel';
 import MixPanel from './components/MixPanel';
+import GalleryPanel from './components/GalleryPanel';
 import useFontStore from './stores/fontStore';
 import './index.css';
 
@@ -51,7 +52,7 @@ function SkeletypeLogo({ onClick, isDark }) {
   return (
     <button
       onClick={onClick}
-      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 opacity-100 hover:opacity-60 transition-opacity cursor-pointer"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 opacity-100 hover:opacity-60 transition-all active:scale-90 cursor-pointer"
     >
       <img
         src="/logo.png"
@@ -67,7 +68,7 @@ function SkeletypeLogo({ onClick, isDark }) {
   );
 }
 
-function AboutPanel({ onClose }) {
+function AboutPanel({ onClose, onClosingStart }) {
   const [active, setActive] = useState(false);
   const strokeColor = useFontStore((s) => s.strokeParams.strokeColor);
 
@@ -80,6 +81,7 @@ function AboutPanel({ onClose }) {
 
   function handleClose() {
     setActive(false);
+    onClosingStart?.();
     setTimeout(onClose, 400);
   }
 
@@ -162,19 +164,31 @@ function AboutPanel({ onClose }) {
 
 function MixToggleButton() {
   const mixMode = useFontStore((s) => s.mixMode);
+  const setMixMode = useFontStore((s) => s.setMixMode);
   const [open, setOpen] = useState(false);
+
+  function handleClick() {
+    const next = !open;
+    setOpen(next);
+    if (next) setMixMode(true);
+  }
+
   return (
     <>
       <button
-        onClick={() => setOpen((v) => !v)}
-        className={`px-2.5 h-6 flex items-center text-[12px] font-medium rounded-full transition-colors cursor-pointer ${
+        onClick={handleClick}
+        className={`px-2.5 h-6 flex items-center text-[12px] font-medium rounded-full transition-all active:scale-95 cursor-pointer ${
           mixMode ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-gray-500 hover:bg-[#d5d7db]'
         }`}
-        title="Mix multiple fonts (beta)"
       >
-        Mix β
+        Mix
       </button>
-      {open && <MixPanel onClose={() => setOpen(false)} />}
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <MixPanel onClose={() => setOpen(false)} />
+        </>
+      )}
     </>
   );
 }
@@ -187,6 +201,18 @@ function App() {
   const isDark = theme === 'dark';
   const initDone = useRef(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [aboutButtonActive, setAboutButtonActive] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [archivePulse, setArchivePulse] = useState(false);
+
+  useEffect(() => {
+    function onPulse() {
+      setArchivePulse(true);
+      setTimeout(() => setArchivePulse(false), 500);
+    }
+    window.addEventListener('archive-pulse', onPulse);
+    return () => window.removeEventListener('archive-pulse', onPulse);
+  }, []);
 
   useEffect(() => {
     if (initDone.current) return;
@@ -213,15 +239,15 @@ function App() {
       {/* Theme toggle switch - top left (폰트 로드 후에만 표시) */}
       {fontId && (
         <div className="fixed top-4 left-4 z-50 flex items-center">
-          <button onClick={toggleTheme} className="cursor-pointer">
+          <button onClick={toggleTheme} className="cursor-pointer active:scale-95 transition-transform">
             <div
               className="relative w-11 h-6 rounded-full transition-colors"
-              style={{ background: isDark ? '#444' : '#e5e7eb' }}
+              style={{ background: '#e5e7eb' }}
             >
               <div
                 className="absolute top-1 w-4 h-4 rounded-full transition-all shadow-sm"
                 style={{
-                  background: isDark ? '#fff' : '#444',
+                  background: '#444',
                   left: isDark ? '24px' : '4px',
                 }}
               />
@@ -230,25 +256,50 @@ function App() {
         </div>
       )}
 
-      {/* Mix β + About button — top right */}
+      {/* Mix + Gallery + About button — top right */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-8">
+        <button
+          id="archives-btn"
+          onClick={() => setShowGallery((v) => !v)}
+          className={`px-2.5 h-6 flex items-center text-[12px] font-medium rounded-full transition-all active:scale-95 cursor-pointer ${
+            showGallery ? 'bg-[#FF5714] text-white' : 'bg-[#e5e7eb] text-gray-500 hover:bg-[#d5d7db]'
+          }`}
+          style={{
+            transform: archivePulse ? 'scale(1.15)' : 'scale(1)',
+            transition: archivePulse
+              ? 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              : 'transform 0.3s ease, background-color 0.15s ease',
+          }}
+        >
+          Archives
+        </button>
         {fontId && <MixToggleButton />}
         <button
-          onClick={() => setShowAbout(true)}
-          className="cursor-pointer"
+          onClick={() => { setShowAbout(true); setAboutButtonActive(true); }}
+          className="cursor-pointer active:scale-95 transition-all"
         >
-          <div className="w-10 h-6 rounded-full flex items-center justify-center gap-0.5"
-            style={{ background: isDark ? '#444' : '#e5e7eb' }}>
+          <div
+            className="w-10 h-6 rounded-full flex items-center justify-center gap-0.5 transition-colors"
+            style={{ background: aboutButtonActive ? '#FF5714' : '#e5e7eb' }}
+          >
             {[0,1,2].map(i => (
               <div key={i} className="w-1 h-1 rounded-full"
-                style={{ background: isDark ? '#fff' : '#333' }} />
+                style={{ background: aboutButtonActive ? '#fff' : '#333' }} />
             ))}
           </div>
         </button>
       </div>
 
       {/* About panel */}
-      {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
+      {showAbout && <AboutPanel onClose={() => setShowAbout(false)} onClosingStart={() => setAboutButtonActive(false)} />}
+
+      {/* Gallery panel + click-outside overlay */}
+      {showGallery && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowGallery(false)} />
+          <GalleryPanel onClose={() => setShowGallery(false)} />
+        </>
+      )}
 
       {/* Layer panel — left fixed, shown after font loaded */}
       {fontId && <LayerPanel />}

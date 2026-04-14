@@ -40,7 +40,7 @@ function Slider({ label, min, max, step, value, onChange, display }) {
 }
 
 function ImageItem({ img, onRemove, onUpdate }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState('transform'); // 'transform' | 'color'
   const up = (p) => onUpdate(img.id, p);
 
@@ -211,7 +211,7 @@ function ImageItem({ img, onRemove, onUpdate }) {
                         type="color"
                         value={img.duotoneShadow}
                         onChange={(e) => up({ duotoneShadow: e.target.value })}
-                        className="w-8 h-6 rounded cursor-pointer border-0 bg-transparent"
+                        className="w-6 h-6 rounded-full cursor-pointer border-0 bg-transparent"
                       />
                       <span className="text-xs text-gray-500">{img.duotoneShadow}</span>
                     </div>
@@ -221,7 +221,7 @@ function ImageItem({ img, onRemove, onUpdate }) {
                         type="color"
                         value={img.duotoneHighlight}
                         onChange={(e) => up({ duotoneHighlight: e.target.value })}
-                        className="w-8 h-6 rounded cursor-pointer border-0 bg-transparent"
+                        className="w-6 h-6 rounded-full cursor-pointer border-0 bg-transparent"
                       />
                       <span className="text-xs text-gray-500">{img.duotoneHighlight}</span>
                     </div>
