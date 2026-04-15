@@ -29,7 +29,7 @@ function ScaleNumberInput({ value, onCommit }) {
         if (e.key === 'Enter') e.target.blur();
         if (e.key === 'Escape') { setDraft(String(Math.round(value * 100))); e.target.blur(); }
       }}
-      style={{ fieldSizing: 'content' }}
+      style={{ width: `${Math.max(2, draft.length)}ch` }}
       className="text-xs text-gray-500 bg-transparent outline-none text-center tabular-nums p-0 cursor-text border-0 border-b border-gray-500"
     />
   );

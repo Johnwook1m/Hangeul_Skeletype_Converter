@@ -72,8 +72,8 @@ export default function LayerPanel() {
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [dragOverId, setDragOverId] = useState(null);
-  const [expandedIds, setExpandedIds] = useState(new Set());
-  const [open, setOpen] = useState(false);
+  const [expandedIds, setExpandedIds] = useState(() => new Set(useFontStore.getState().layers.map(l => l.id)));
+  const [open, setOpen] = useState(true);
   const panelRef = useRef(null);
 
   // "Layers" 헤더 클릭으로만 닫힘 (바깥 클릭으로 닫히지 않음)
@@ -113,7 +113,7 @@ export default function LayerPanel() {
   return (
     <div
       ref={panelRef}
-      className="fixed left-4 top-[120px] z-40 select-none cursor-pointer"
+      className="fixed left-4 top-[90px] z-40 select-none cursor-pointer"
       style={{
         pointerEvents: 'auto',
         width: open ? openW : closedW,
@@ -164,7 +164,12 @@ export default function LayerPanel() {
             Layers
           </span>
           <button
-            onClick={(e) => { e.stopPropagation(); addLayer(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              addLayer();
+              const newId = useFontStore.getState().layers.at(-1)?.id;
+              if (newId) setExpandedIds((prev) => new Set([...prev, newId]));
+            }}
             className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] transition-colors cursor-pointer"
             title="Add layer"
           >

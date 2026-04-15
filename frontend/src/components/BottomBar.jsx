@@ -7,6 +7,40 @@ import ArchiveModal from './ArchiveModal';
 import { uploadFont, getGlyphs } from '../api/client';
 
 
+function StrokeNumberInput({ value, onCommit }) {
+  const [draft, setDraft] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(String(value));
+  }, [value, focused]);
+  function commit() {
+    const n = parseInt(draft, 10);
+    if (Number.isFinite(n)) {
+      const clamped = Math.max(0, Math.min(300, n));
+      onCommit(clamped);
+      setDraft(String(clamped));
+    } else {
+      setDraft(String(value));
+    }
+  }
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+      onFocus={(e) => { setFocused(true); e.target.select(); }}
+      onBlur={() => { setFocused(false); commit(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.target.blur();
+        if (e.key === 'Escape') { setDraft(String(value)); e.target.blur(); }
+      }}
+      style={{ width: `${Math.max(2, draft.length)}ch` }}
+      className="text-xs text-gray-500 bg-transparent outline-none text-center tabular-nums p-0 cursor-text border-0 border-b border-gray-500"
+    />
+  );
+}
+
 function Divider({ className = 'mx-2' }) {
   return <div className={`w-px h-5 bg-gray-400/50 shrink-0 ${className}`} />;
 }
@@ -73,8 +107,6 @@ export default function BottomBar() {
     backgroundImages,
     glyphSize,
     setGlyphSize,
-    bgColor,
-    setBgColor,
     fontLoading,
     activeLayerId,
     setFont,
@@ -355,7 +387,13 @@ export default function BottomBar() {
 
               {/* Stroke Width */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className={labelCls}>Stroke</span>
+                <div className="flex flex-col items-center leading-tight">
+                  <span className={labelCls}>Stroke</span>
+                  <StrokeNumberInput
+                    value={strokeParams.width}
+                    onCommit={(v) => { stopAnimation(); setStrokeParams({ width: v }); }}
+                  />
+                </div>
                 <input
                   type="range"
                   min={0}
@@ -387,44 +425,6 @@ export default function BottomBar() {
                 </div>
               </div>
 
-              {/* Color pickers */}
-              <div className="flex items-center gap-[9px] shrink-0">
-                {/* Centerline Color */}
-                <div className="flex items-center gap-1">
-                  <span className={labelCls}>C</span>
-                  <input
-                    type="color"
-                    value={strokeParams.centerlineColor}
-                    onChange={(e) => setStrokeParams({ centerlineColor: e.target.value })}
-                    className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer overflow-hidden"
-                    style={{ padding: 0 }}
-                  />
-                </div>
-
-                {/* Stroke Color */}
-                <div className="flex items-center gap-1">
-                  <span className={labelCls}>S</span>
-                  <input
-                    type="color"
-                    value={strokeParams.strokeColor}
-                    onChange={(e) => setStrokeParams({ strokeColor: e.target.value })}
-                    className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer overflow-hidden"
-                    style={{ padding: 0 }}
-                  />
-                </div>
-
-                {/* Background Color */}
-                <div className="flex items-center gap-1">
-                  <span className={labelCls}>BG</span>
-                  <input
-                    type="color"
-                    value={bgColor}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer overflow-hidden"
-                    style={{ padding: 0 }}
-                  />
-                </div>
-              </div>
             </>
           )}
 

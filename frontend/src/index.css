@@ -29,6 +29,13 @@ input[type="range"].slider-white::-webkit-slider-thumb {
   margin-top: -4px;
   cursor: pointer;
 }
+/* Safari: thumb is auto-centered, margin-top causes misalignment */
+@supports (-webkit-hyphens: none) and (not (-moz-appearance: none)) {
+  input[type="range"].slider-white::-webkit-slider-thumb {
+    margin-top: 0;
+    transform: translateY(-4px);
+  }
+}
 input[type="range"].slider-white::-moz-range-track {
   background: #ffffff;
   height: 4px;
