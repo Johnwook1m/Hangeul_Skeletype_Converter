@@ -2,11 +2,12 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from config import ARCHIVE_DIR
 from database import Archive, get_session
+from services import google_sync
 
 router = APIRouter(prefix="/api", tags=["archive"])
 
@@ -20,6 +21,7 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 @router.post("/archive", status_code=201)
 async def create_archive(
+    background_tasks: BackgroundTasks,
     author_name: str = Form(...),
     font_name: str = Form(...),
     features_used: str = Form(...),      # JSON-encoded list
@@ -65,6 +67,10 @@ async def create_archive(
     db.add(record)
     db.commit()
     db.refresh(record)
+
+    # Google Drive + Sheets 동기화 (백그라운드, 실패해도 응답에 영향 없음)
+    mime_type = preview_image.content_type or "image/jpeg"
+    background_tasks.add_task(google_sync.sync, record, content, mime_type)
 
     return _to_response(record)
 
@@ -121,4 +127,5 @@ def _to_response(record: Archive) -> dict:
         "features_used": json.loads(record.features_used),
         "created_at": record.created_at.isoformat() if record.created_at else None,
         "preview_image_url": f"/archive-images/{record.preview_image_path}",
+        "google_drive_url": record.google_drive_url or None,
     }

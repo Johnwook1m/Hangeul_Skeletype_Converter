@@ -26,6 +26,7 @@ class Archive(Base):
     settings_snapshot   = Column(Text, nullable=False)   # JSON object string
     preview_image_path  = Column(String(512), nullable=False)
     created_at          = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    google_drive_url    = Column(String(512), nullable=True)   # populated after Google sync
 
 
 def init_db():

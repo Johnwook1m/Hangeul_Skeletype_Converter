@@ -5,6 +5,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
+# Load .env file if present (python-dotenv)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env")
+except ImportError:
+    pass
+
 # Temporary file storage
 UPLOAD_DIR = Path("/tmp/skeletype-web/uploads")
 TEMP_DIR = Path("/tmp/skeletype-web/temp")
@@ -20,6 +27,18 @@ DEBUG_KEEP_TEMP = os.environ.get("DEBUG_KEEP_TEMP", "false").lower() == "true"
 # Persistent archive storage (images + SQLite DB live here)
 ARCHIVE_DIR = Path(__file__).parent / "data" / "archives"
 ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Google API integration (optional — all three must be set to enable sync)
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+GOOGLE_DRIVE_ROOT_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
+GOOGLE_SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID", "")
+GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "Archives")
+
+GOOGLE_SYNC_ENABLED = bool(
+    GOOGLE_SERVICE_ACCOUNT_JSON
+    and GOOGLE_DRIVE_ROOT_FOLDER_ID
+    and GOOGLE_SPREADSHEET_ID
+)
 
 
 def find_tool(name: str, extra_paths: list[str] | None = None) -> str | None:
