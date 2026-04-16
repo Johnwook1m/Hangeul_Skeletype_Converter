@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { uploadFont, getGlyphs } from '../api/client';
+import { uploadFont, getGlyphs, runExtraction } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
 export default function FontUpload() {
@@ -10,7 +10,8 @@ export default function FontUpload() {
   const fileRef = useRef(null);
   const hideTimer = useRef(null);
   const dragCounter = useRef(0);
-  const { fontId, isDemo, setFont, setGlyphs, setFontBlobUrl, setFontLoading } = useFontStore();
+  const { fontId, isDemo, setFont, setGlyphs, setFontBlobUrl, setFontLoading,
+    setMixMode, addFontSlot, updateFontSlot, setSlotCenterline, setLayerPinnedSlot } = useFontStore();
 
   // Clear timer on unmount
   useEffect(() => {
@@ -76,8 +77,77 @@ export default function FontUpload() {
 
     setLoading(true);
     setError(null);
-    setFontLoading(true);
 
+    const store = useFontStore.getState();
+    const hasFont = store.fontId && !store.isDemo;
+
+    // 폰트가 이미 로드된 상태 → 새 폰트를 Mix 슬롯으로 추가 (기존 레이어 보존)
+    if (hasFont) {
+      const slotId = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      if (!store.mixMode) {
+        setMixMode(true);
+        // 기존 레이어들을 mainSlot(Font A)에 고정해서 기존 렌더링 보존
+        const afterMix = useFontStore.getState();
+        const mainSlot = afterMix.fontSlots[0];
+        if (mainSlot) {
+          for (const layer of afterMix.layers) {
+            if (!layer.pinnedSlotId) setLayerPinnedSlot(layer.id, mainSlot.slotId);
+          }
+        }
+      }
+      if (useFontStore.getState().fontSlots.length >= 3) {
+        setError('Mix mode supports up to 3 fonts.');
+        setLoading(false);
+        return;
+      }
+      addFontSlot({
+        slotId, fontId: null, fontName: file.name,
+        glyphs: [], centerlines: {}, loading: true, testing: false, error: null,
+        unitsPerEm: 1000, ascender: null, descender: null, spaceAdvanceWidth: null,
+      });
+      try {
+        const data = await uploadFont(file);
+        const glyphData = await getGlyphs(data.font_id);
+        const fontName = (data.family_name && data.family_name.trim() && data.family_name !== '.') ? data.family_name : file.name;
+        updateFontSlot(slotId, {
+          fontId: data.font_id, fontName,
+          glyphs: glyphData.glyphs,
+          unitsPerEm: data.units_per_em,
+          ascender: data.ascender ?? null,
+          descender: data.descender ?? null,
+          spaceAdvanceWidth: data.space_advance_width ?? null,
+          loading: false,
+        });
+        // 현재 활성 레이어를 새 슬롯에 고정
+        setLayerPinnedSlot(useFontStore.getState().activeLayerId, slotId);
+        // 현재 텍스트 기준으로 자동 추출
+        const latestStore = useFontStore.getState();
+        const allText = latestStore.layers.map(l => l.previewText ?? '').join('') || latestStore.previewText || '';
+        const charSet = new Set([...allText].filter(c => c !== ' ' && c !== '\n'));
+        if (charSet.size > 0) {
+          const namesToExtract = glyphData.glyphs
+            .filter(g => g.character && g.has_outline && charSet.has(g.character))
+            .map(g => g.name);
+          if (namesToExtract.length > 0) {
+            updateFontSlot(slotId, { testing: true });
+            await runExtraction(data.font_id, namesToExtract, (glyphName, clData) => {
+              setSlotCenterline(slotId, glyphName, clData);
+            });
+            updateFontSlot(slotId, { testing: false });
+          }
+        }
+        setVisible(false);
+      } catch (err) {
+        updateFontSlot(slotId, { loading: false, error: err.response?.data?.detail || 'Upload failed.' });
+        setError(err.response?.data?.detail || 'Failed to upload font.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 첫 폰트 업로드 → 기존 방식
+    setFontLoading(true);
     try {
       const data = await uploadFont(file);
       setFont(data);

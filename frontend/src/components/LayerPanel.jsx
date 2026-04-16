@@ -67,6 +67,9 @@ export default function LayerPanel() {
     setLayerEffectVisible,
     setScaleVisible,
     resetLayerScale,
+    mixMode,
+    fontSlots,
+    setLayerPinnedSlot,
   } = useFontStore();
 
   const [editingId, setEditingId] = useState(null);
@@ -286,6 +289,38 @@ export default function LayerPanel() {
                     </button>
                   )}
                 </div>
+
+                {/* ── Mix 슬롯 고정 선택 (Mix 모드 활성 시) ── */}
+                {mixMode && fontSlots.length > 0 && (
+                  <div className="ml-6 mb-0.5">
+                    <select
+                      value={layer.pinnedSlotId ?? ''}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setLayerPinnedSlot(layer.id, e.target.value || null);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full text-[10px] rounded-md px-1.5 py-0.5 cursor-pointer outline-none"
+                      style={{
+                        background: '#d1d5db',
+                        color: '#374151',
+                        border: 'none',
+                        appearance: 'none',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 4px center',
+                        paddingRight: '18px',
+                      }}
+                    >
+                      <option value="">Mix (random)</option>
+                      {fontSlots.map((slot) => (
+                        <option key={slot.slotId} value={slot.slotId}>
+                          {slot.fontName || `Font ${fontSlots.indexOf(slot) + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* ── Effect sub-items (expanded) ── */}
                 {isExpanded && effectItems.length > 0 && (

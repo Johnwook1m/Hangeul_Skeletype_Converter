@@ -188,9 +188,19 @@ export default function GlyphPreview({ large = false }) {
 
     // Lookup helper: returns { glyphName, centerline, srcFontToDisplay } for a char
     const useMix = mixMode && slotMaps && slotMaps.length > 0;
-    function lookupChar(char, layerId, charIdx) {
+    function lookupChar(char, layerId, charIdx, layer) {
       if (useMix) {
-        // Try the randomly-picked slot first; fall back to any slot that has a centerline
+        // pinnedSlotId가 있으면 해당 슬롯에서만 찾음 (레이어별 폰트 고정)
+        if (layer?.pinnedSlotId) {
+          const pinnedSm = slotMaps.find(sm => sm.slot.slotId === layer.pinnedSlotId);
+          if (pinnedSm) {
+            const name = pinnedSm.map.get(char);
+            if (!name) return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
+            const cl = pinnedSm.slot.centerlines[name];
+            return { glyphName: name, centerline: cl ?? null, srcFontToDisplay: pinnedSm.slotFontToDisplay };
+          }
+        }
+        // pinnedSlotId 없으면 기존 random mix 로직
         const startIdx = pickSlotIdx(mixSeed, layerId, charIdx, slotMaps.length);
         let fallback = null;
         for (let off = 0; off < slotMaps.length; off++) {
@@ -242,7 +252,7 @@ export default function GlyphPreview({ large = false }) {
           continue;
         }
 
-        const { glyphName, centerline, srcFontToDisplay } = lookupChar(char, layer.id, myIdx);
+        const { glyphName, centerline, srcFontToDisplay } = lookupChar(char, layer.id, myIdx, layer);
         if (!glyphName) continue;
 
         const glyphWidth = centerline

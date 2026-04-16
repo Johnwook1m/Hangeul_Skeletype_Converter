@@ -74,6 +74,7 @@ const createLayer = (id, name, colorIndex = 0) => ({
   visible: true,
   glyphSize: 100,
   previewText: '',
+  pinnedSlotId: null,  // Mix 모드에서 고정할 슬롯 ID (null = random mix)
   strokeParams: defaultLayerStrokeParams(LAYER_COLORS[colorIndex % LAYER_COLORS.length]),
   connectionParams: defaultConnectionParams(),
   branchParams: defaultBranchParams(),
@@ -746,7 +747,7 @@ const useFontStore = create((set) => ({
         fontId: state.fontId,
         fontName: state.fontName,
         glyphs: state.glyphs,
-        centerlines: {},
+        centerlines: state.centerlines,  // 기존에 추출된 centerlines 보존
         unitsPerEm: state.unitsPerEm,
         ascender: state.ascender,
         descender: state.descender,
@@ -773,6 +774,16 @@ const useFontStore = create((set) => ({
     set((state) => ({
       fontSlots: state.fontSlots.filter((s) => s.slotId !== slotId),
       mainSlotId: state.mainSlotId === slotId ? null : state.mainSlotId,
+      // 삭제된 슬롯에 고정된 레이어들의 pinnedSlotId를 초기화
+      layers: state.layers.map(l =>
+        l.pinnedSlotId === slotId ? { ...l, pinnedSlotId: null } : l
+      ),
+    })),
+  setLayerPinnedSlot: (layerId, slotId) =>
+    set((state) => ({
+      layers: state.layers.map(l =>
+        l.id === layerId ? { ...l, pinnedSlotId: slotId } : l
+      ),
     })),
   setSlotCenterline: (slotId, glyphName, data) =>
     set((state) => {

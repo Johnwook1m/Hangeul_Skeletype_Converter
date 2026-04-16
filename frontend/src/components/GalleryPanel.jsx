@@ -8,6 +8,7 @@ function ArchiveRow({ archive, onClick }) {
   const date = new Date(archive.created_at).toLocaleString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
+    timeZone: 'Asia/Seoul',
   });
 
   return (
