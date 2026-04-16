@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, text
 from sqlalchemy.orm import DeclarativeBase, Session
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +31,17 @@ class Archive(Base):
 
 def init_db():
     Base.metadata.create_all(engine)
+    _migrate()
+
+
+def _migrate():
+    """Add missing columns to existing tables. Safe to run on every startup."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("PRAGMA table_info(archives)")).fetchall()
+        existing_columns = {row[1] for row in rows}
+        if "google_drive_url" not in existing_columns:
+            conn.execute(text("ALTER TABLE archives ADD COLUMN google_drive_url VARCHAR(512)"))
+            conn.commit()
 
 
 def get_session():
