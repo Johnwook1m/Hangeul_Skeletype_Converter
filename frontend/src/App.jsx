@@ -44,7 +44,7 @@ async function loadDemoFont() {
     }
     store.setExtractionStatus({ status: 'done', current: entries.length, total: entries.length });
   } catch (err) {
-    console.error('Demo font initialization failed:', err);
+    console.error('Demo font initialization failed:', err?.message ?? err);
   }
 }
 

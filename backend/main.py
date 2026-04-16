@@ -31,6 +31,26 @@ app.add_middleware(SlowAPIMiddleware)
 def on_startup():
     init_db()
 
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "font-src 'self' https://cdn.jsdelivr.net data:; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none';"
+    )
+    return response
+
+
 # CORS — allow localhost (dev) + any deployed domain via env var
 _extra_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",")
 app.add_middleware(

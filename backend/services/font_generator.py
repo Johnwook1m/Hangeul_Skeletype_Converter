@@ -4,11 +4,14 @@ Takes expanded stroke outlines and builds a new font file.
 """
 
 import json
+import logging
 import subprocess
 import tempfile
 from pathlib import Path
 
 from config import FONTFORGE_CMD
+
+logger = logging.getLogger(__name__)
 
 
 # FontForge script for font generation
@@ -261,20 +264,20 @@ def generate_font(
         )
 
         if result.stdout:
-            print(f"FontForge stdout:\n{result.stdout}")
+            logger.debug("FontForge stdout: %s", result.stdout)
         if result.stderr:
-            print(f"FontForge stderr:\n{result.stderr}")
+            logger.debug("FontForge stderr: %s", result.stderr)
         if result.returncode != 0:
-            print(f"Font generation failed (rc={result.returncode})")
+            logger.error("Font generation failed (rc=%d)", result.returncode)
             return False
 
         return output_path.exists()
 
     except subprocess.TimeoutExpired:
-        print("Font generation timed out")
+        logger.error("Font generation timed out")
         return False
     except Exception as e:
-        print(f"Font generation error: {e}")
+        logger.error("Font generation error: %s", e)
         return False
     finally:
         Path(script_path).unlink(missing_ok=True)

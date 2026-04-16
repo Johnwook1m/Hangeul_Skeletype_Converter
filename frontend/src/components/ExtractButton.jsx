@@ -156,7 +156,7 @@ export default function ExtractButton({ inline = false, extractRef }) {
       }
     } catch (err) {
       setExtractionStatus({ status: 'idle' });
-      console.error('Extraction failed:', err);
+      console.error('Extraction failed:', err?.message ?? err);
     }
 
     // Mix 슬롯도 함께 추출
