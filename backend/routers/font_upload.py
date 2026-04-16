@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
@@ -25,9 +26,9 @@ async def upload_font(file: UploadFile = File(...)):
             detail=f"Unsupported format: {ext}. Use .ttf or .otf"
         )
 
-    # Save uploaded file
+    # Save uploaded file — use UUID filename to prevent command injection
     temp_dir = Path(tempfile.mkdtemp(dir=str(UPLOAD_DIR)))
-    font_path = temp_dir / file.filename
+    font_path = temp_dir / f"{uuid.uuid4().hex}{ext}"
 
     try:
         with open(font_path, "wb") as f:

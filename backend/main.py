@@ -33,8 +33,8 @@ app.add_middleware(
         *[o.strip() for o in _extra_origins if o.strip()],
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept", "Authorization"],
 )
 
 # Mount API routers
