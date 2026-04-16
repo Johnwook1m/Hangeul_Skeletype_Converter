@@ -31,3 +31,12 @@ temp/
 
 # Archive runtime data (user-generated images + DB)
 backend/data/
+
+# Secrets & credentials
+backend/.env
+backend/Skeletype.json
+backend/oauth_client.json
+backend/oauth_token.json
+
+# Claude local settings
+.claude/settings.local.json
