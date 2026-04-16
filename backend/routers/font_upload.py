@@ -3,18 +3,22 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 
 from config import UPLOAD_DIR
+from limiter import limiter
 from models.schemas import FontUploadResponse
 from models.font_session import session_store
 from services.font_parser import parse_font
 
 router = APIRouter(prefix="/api/font", tags=["font"])
 
+MAX_FONT_SIZE = 50 * 1024 * 1024  # 50MB
+
 
 @router.post("/upload", response_model=FontUploadResponse)
-async def upload_font(file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def upload_font(request: Request, file: UploadFile = File(...)):
     """Upload a TTF/OTF font file."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -32,7 +36,10 @@ async def upload_font(file: UploadFile = File(...)):
 
     try:
         with open(font_path, "wb") as f:
-            content = await file.read()
+            content = await file.read(MAX_FONT_SIZE + 1)
+            if len(content) > MAX_FONT_SIZE:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                raise HTTPException(status_code=413, detail="Font file too large (max 50MB)")
             f.write(content)
     except Exception as e:
         shutil.rmtree(temp_dir, ignore_errors=True)

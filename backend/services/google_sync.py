@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import os
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ def _build_credentials():
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
             token_file.write_text(creds.to_json())
+            os.chmod(token_file, 0o600)
         return creds
 
     # 폴백: 서비스 계정

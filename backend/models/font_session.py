@@ -1,3 +1,4 @@
+import secrets
 import time
 import uuid
 from pathlib import Path
@@ -31,7 +32,7 @@ class SessionStore:
         self._expiry = expiry_seconds
 
     def create(self, font_path: Path, tt_font: TTFont, temp_dir: Path) -> FontSession:
-        font_id = uuid.uuid4().hex[:12]
+        font_id = secrets.token_urlsafe(32)
 
         cmap = tt_font.getBestCmap() or {}
         glyph_order = tt_font.getGlyphOrder()

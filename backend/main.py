@@ -7,9 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from config import check_dependencies, ARCHIVE_DIR
 from database import init_db
+from limiter import limiter
 from routers import font_upload, glyphs, centerline, export, archive
 
 app = FastAPI(
@@ -17,6 +21,10 @@ app = FastAPI(
     description="Font centerline extraction and stroke-based font generation",
     version="0.1.0",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 @app.on_event("startup")
