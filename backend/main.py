@@ -9,7 +9,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 
 from config import check_dependencies, ARCHIVE_DIR
 from database import init_db
@@ -22,9 +21,10 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# SlowAPIMiddleware는 BaseHTTPMiddleware 기반이라 SSE 스트리밍을 깨뜨림.
+# 예외 핸들러만 등록하고 미들웨어는 사용하지 않음 — @limiter.limit() 데코레이터는 독립 작동.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
 
 
 @app.on_event("startup")
