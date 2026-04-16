@@ -161,52 +161,6 @@ function AboutPanel({ onClose, onClosingStart }) {
   );
 }
 
-function ColorPickerStack() {
-  const strokeParams = useFontStore((s) => s.strokeParams);
-  const setStrokeParams = useFontStore((s) => s.setStrokeParams);
-  const bgColor = useFontStore((s) => s.bgColor);
-  const setBgColor = useFontStore((s) => s.setBgColor);
-
-  const items = [
-    {
-      label: 'C',
-      value: strokeParams.centerlineColor,
-      onChange: (v) => setStrokeParams({ centerlineColor: v }),
-      title: 'Centerline color',
-    },
-    {
-      label: 'S',
-      value: strokeParams.strokeColor,
-      onChange: (v) => setStrokeParams({ strokeColor: v }),
-      title: 'Stroke color',
-    },
-    {
-      label: 'BG',
-      value: bgColor,
-      onChange: (v) => setBgColor(v),
-      title: 'Background color',
-    },
-  ];
-
-  return (
-    <div className="fixed left-4 top-4 z-40 flex flex-row gap-3">
-      {items.map(({ label, value, onChange, title }) => (
-        <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{ position: 'relative', width: 20, height: 20, borderRadius: '50%', border: '1px solid #d1d5db', flexShrink: 0, cursor: 'pointer', background: value }}>
-            <input
-              type="color"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              title={title}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
-            />
-          </div>
-          <span style={{ fontSize: 9, color: '#6b7280', lineHeight: 1 }}>{label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function MixToggleButton() {
   const mixMode = useFontStore((s) => s.mixMode);
@@ -301,7 +255,10 @@ function BackgroundImageLayer({ img }) {
 function App() {
   const fontId = useFontStore((s) => s.fontId);
   const bgColor = useFontStore((s) => s.bgColor);
+  const theme = useFontStore((s) => s.theme);
+  const toggleTheme = useFontStore((s) => s.toggleTheme);
   const backgroundImages = useFontStore((s) => s.backgroundImages);
+  const isDark = theme === 'dark';
   const initDone = useRef(false);
   const [showAbout, setShowAbout] = useState(false);
   const [aboutButtonActive, setAboutButtonActive] = useState(false);
@@ -337,13 +294,32 @@ function App() {
       ))}
 
       {/* Logo — top center, resets to home */}
-      <SkeletypeLogo onClick={handleLogoClick} />
+      <SkeletypeLogo onClick={handleLogoClick} isDark={isDark} />
 
       {/* Full-screen preview area — pb-[20%] shifts visual center 10% above screen center */}
       <div className="w-full h-full pt-[52px] pb-[120px]">
         <GlyphPreview large />
       </div>
 
+      {/* Theme toggle switch - top left (폰트 로드 후에만 표시) */}
+      {fontId && (
+        <div className="fixed top-4 left-4 z-50 flex items-center">
+          <button onClick={toggleTheme} className="cursor-pointer active:scale-95 transition-transform">
+            <div
+              className="relative w-11 h-6 rounded-full transition-colors"
+              style={{ background: '#e5e7eb' }}
+            >
+              <div
+                className="absolute top-1 w-4 h-4 rounded-full transition-all shadow-sm"
+                style={{
+                  background: '#333333',
+                  left: isDark ? '24px' : '4px',
+                }}
+              />
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Mix + Gallery + About button — top right */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-0">
@@ -394,8 +370,7 @@ function App() {
         </>
       )}
 
-      {/* Color pickers + Layer panel — left fixed, shown after font loaded */}
-      {fontId && <ColorPickerStack />}
+      {/* Layer panel — left fixed, shown after font loaded */}
       {fontId && <LayerPanel />}
 
       {/* Bottom menu bar */}

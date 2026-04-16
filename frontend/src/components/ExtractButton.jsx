@@ -1,4 +1,4 @@
-import { extractCenterlines } from '../api/client';
+import { extractCenterlines, runExtraction } from '../api/client';
 import useFontStore from '../stores/fontStore';
 
 export default function ExtractButton({ inline = false, extractRef }) {
@@ -13,6 +13,9 @@ export default function ExtractButton({ inline = false, extractRef }) {
     setCenterline,
     addExtractionError,
     selectGlyph,
+    fontSlots,
+    updateFontSlot,
+    setSlotCenterline,
   } = useFontStore();
 
   const isRunning = extraction.status === 'running';
@@ -24,6 +27,47 @@ export default function ExtractButton({ inline = false, extractRef }) {
 
   // Expose handleExtract to parent via ref
   if (extractRef) extractRef.current = () => handleExtract(false);
+
+  // Mix 슬롯 전체 추출
+  async function extractAllSlots() {
+    const store = useFontStore.getState();
+    const allText = store.layers.map((l) => l.previewText ?? '').join('') || store.previewText || '';
+    const charSet = new Set([...allText].filter((c) => c !== ' ' && c !== '\n'));
+    if (charSet.size === 0) return;
+
+    for (const slot of store.fontSlots) {
+      if (!slot.fontId || slot.testing || slot.loading) continue;
+
+      // 메인 폰트와 같은 슬롯이면 이미 추출된 centerlines 복사
+      if (slot.fontId === store.fontId) {
+        const mainCls = useFontStore.getState().centerlines;
+        const missing = Object.keys(mainCls).filter((n) => !slot.centerlines[n]);
+        if (missing.length > 0) {
+          const patch = {};
+          for (const n of missing) patch[n] = mainCls[n];
+          updateFontSlot(slot.slotId, { centerlines: { ...slot.centerlines, ...patch } });
+        }
+        continue;
+      }
+
+      const latestSlot = useFontStore.getState().fontSlots.find((s) => s.slotId === slot.slotId) ?? slot;
+      const namesToExtract = latestSlot.glyphs
+        .filter((g) => g.character && g.has_outline && charSet.has(g.character) && !latestSlot.centerlines[g.name])
+        .map((g) => g.name);
+      if (namesToExtract.length === 0) continue;
+
+      updateFontSlot(slot.slotId, { testing: true, error: null });
+      try {
+        await runExtraction(slot.fontId, namesToExtract, (glyphName, data) => {
+          setSlotCenterline(slot.slotId, glyphName, data);
+        });
+      } catch {
+        updateFontSlot(slot.slotId, { error: 'Extraction error — try re-uploading' });
+      } finally {
+        updateFontSlot(slot.slotId, { testing: false });
+      }
+    }
+  }
 
   async function handleExtract(extractAll = false) {
     firstExtractedGlyph = null;
@@ -113,6 +157,11 @@ export default function ExtractButton({ inline = false, extractRef }) {
     } catch (err) {
       setExtractionStatus({ status: 'idle' });
       console.error('Extraction failed:', err);
+    }
+
+    // Mix 슬롯도 함께 추출
+    if (useFontStore.getState().fontSlots.length > 0) {
+      await extractAllSlots();
     }
   }
 

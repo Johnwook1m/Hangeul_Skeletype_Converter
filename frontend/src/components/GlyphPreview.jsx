@@ -154,9 +154,9 @@ export default function GlyphPreview({ large = false }) {
   // Line wrapping: width-based (handles mixed English/Korean glyph widths)
   const ROW_GAP = EM_UNIT * 0; // vertical gap between rows
 
-  // Mix mode: per-slot char→glyph maps and per-slot fontToDisplay
+  // per-slot char→glyph maps (mixMode 여부 관계없이 슬롯이 있으면 항상 빌드 — pinnedSlotId 렌더링에 필요)
   const slotMaps = useMemo(() => {
-    if (!mixMode) return null;
+    if (fontSlots.length === 0) return null;
     return fontSlots.map((slot) => {
       const map = new Map();
       for (const g of slot.glyphs || []) {
@@ -189,17 +189,17 @@ export default function GlyphPreview({ large = false }) {
     // Lookup helper: returns { glyphName, centerline, srcFontToDisplay } for a char
     const useMix = mixMode && slotMaps && slotMaps.length > 0;
     function lookupChar(char, layerId, charIdx, layer) {
-      if (useMix) {
-        // pinnedSlotId가 있으면 해당 슬롯에서만 찾음 (레이어별 폰트 고정)
-        if (layer?.pinnedSlotId) {
-          const pinnedSm = slotMaps.find(sm => sm.slot.slotId === layer.pinnedSlotId);
-          if (pinnedSm) {
-            const name = pinnedSm.map.get(char);
-            if (!name) return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
-            const cl = pinnedSm.slot.centerlines[name];
-            return { glyphName: name, centerline: cl ?? null, srcFontToDisplay: pinnedSm.slotFontToDisplay };
-          }
+      // pinnedSlotId는 mixMode 여부와 무관하게 항상 해당 슬롯 폰트로 렌더링
+      if (slotMaps && layer?.pinnedSlotId) {
+        const pinnedSm = slotMaps.find(sm => sm.slot.slotId === layer.pinnedSlotId);
+        if (pinnedSm) {
+          const name = pinnedSm.map.get(char);
+          if (!name) return { glyphName: null, centerline: null, srcFontToDisplay: fontToDisplay };
+          const cl = pinnedSm.slot.centerlines[name];
+          return { glyphName: name, centerline: cl ?? null, srcFontToDisplay: pinnedSm.slotFontToDisplay };
         }
+      }
+      if (useMix) {
         // pinnedSlotId 없으면 기존 random mix 로직
         const startIdx = pickSlotIdx(mixSeed, layerId, charIdx, slotMaps.length);
         let fallback = null;
@@ -314,12 +314,18 @@ export default function GlyphPreview({ large = false }) {
   const maxRowWidth = Math.max(...allLayouts.map(l => l.maxRowWidth), 0);
   const totalRows = Math.max(...allLayouts.map(l => l.totalRows), 1);
 
-  // Active layer layout for placeholders and visibility checks
+  // Active layer layout for placeholders
   const activeLayout = perLayerLayouts[activeLayerId];
   const activeGlyphList = activeLayout?.glyphs ?? [];
   const hasCenterlines = activeGlyphList.some((g) => g.centerline);
   const anyLayerHasText = layers.some(l => l.visible && (l.previewText ?? ''));
-  const showSvg = anyLayerHasText && activeGlyphList.length > 0 && hasCenterlines;
+  // SVG 표시 조건: 활성 레이어뿐 아니라 어떤 visible 레이어든 렌더링 가능한 글리프가 있으면 표시
+  const anyLayerHasCenterlines = layers.some(l => {
+    if (!l.visible) return false;
+    const layout = perLayerLayouts[l.id];
+    return layout?.glyphs.some(g => g.centerline);
+  });
+  const showSvg = anyLayerHasText && anyLayerHasCenterlines;
 
   // Entrance animation: fade + slide up whenever content appears
   const [introVisible, setIntroVisible] = useState(false);
@@ -350,14 +356,14 @@ export default function GlyphPreview({ large = false }) {
     placeholder = glyphs.length > 0 ? (
       <p className="text-[15px] text-gray-500">Enter text in the bottom bar</p>
     ) : null;
-  } else if (activeGlyphList.length === 0) {
+  } else if (!anyLayerHasCenterlines && activeGlyphList.length === 0) {
     placeholder = (
       <div className="text-center text-gray-500">
         <p className="text-lg mb-2">"{previewText}"</p>
         <p className="text-sm">No glyph found in font for this character.</p>
       </div>
     );
-  } else if (!hasCenterlines) {
+  } else if (!anyLayerHasCenterlines && !hasCenterlines) {
     placeholder = (
       <div className="text-center text-gray-500">
         <p className="text-xl mb-3 font-light">"{previewText}"</p>
@@ -417,19 +423,22 @@ export default function GlyphPreview({ large = false }) {
             {layers.filter(l => l.visible).map(layer => {
               const layout = perLayerLayouts[layer.id];
               if (!layout) return null;
+              const ox = layer.offsetX ?? 0;
+              const oy = layer.offsetY ?? 0;
               return (
-                <GlyphLayerRenderer
-                  key={layer.id}
-                  layer={layer}
-                  glyphList={layout.glyphs}
-                  fontToDisplay={fontToDisplay}
-                  fontAscender={fontAscender}
-                  EM_UNIT={EM_UNIT}
-                  theme={theme}
-                  showFlesh={showFlesh}
-                  maxRowWidth={maxRowWidth}
-                  totalRows={totalRows}
-                />
+                <g key={layer.id} transform={ox !== 0 || oy !== 0 ? `translate(${ox}, ${oy})` : undefined}>
+                  <GlyphLayerRenderer
+                    layer={layer}
+                    glyphList={layout.glyphs}
+                    fontToDisplay={fontToDisplay}
+                    fontAscender={fontAscender}
+                    EM_UNIT={EM_UNIT}
+                    theme={theme}
+                    showFlesh={showFlesh}
+                    maxRowWidth={maxRowWidth}
+                    totalRows={totalRows}
+                  />
+                </g>
               );
             })}
 

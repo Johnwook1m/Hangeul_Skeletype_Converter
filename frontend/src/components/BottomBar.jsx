@@ -118,6 +118,11 @@ export default function BottomBar() {
     updateFontSlot,
     setSlotCenterline,
     setLayerPinnedSlot,
+    fontSlots,
+    mixMode,
+    layers,
+    bgColor,
+    setBgColor,
   } = useFontStore();
 
   const uploadFileRef = useRef(null);
@@ -125,12 +130,19 @@ export default function BottomBar() {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [showArchive, setShowArchive] = useState(false);
+  const uploadErrorTimer = useRef(null);
+
+  function showUploadError(msg) {
+    setUploadError(msg);
+    clearTimeout(uploadErrorTimer.current);
+    uploadErrorTimer.current = setTimeout(() => setUploadError(null), 3000);
+  }
 
   async function handleUploadFile(file) {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['ttf', 'otf', 'woff'].includes(ext)) {
-      setUploadError('Only TTF, OTF, WOFF files are supported.');
+      showUploadError('Only TTF, OTF, WOFF files are supported.');
       return;
     }
     setUploadLoading(true);
@@ -153,8 +165,8 @@ export default function BottomBar() {
           }
         }
       }
-      if (useFontStore.getState().fontSlots.length >= 3) {
-        setUploadError('Mix mode supports up to 3 fonts.');
+      if (useFontStore.getState().fontSlots.length >= useFontStore.getState().layers.length) {
+        showUploadError('Add more layers to use additional fonts.');
         setUploadLoading(false);
         return;
       }
@@ -196,7 +208,7 @@ export default function BottomBar() {
         }
       } catch (err) {
         updateFontSlot(slotId, { loading: false, error: err.response?.data?.detail || 'Upload failed.' });
-        setUploadError(err.response?.data?.detail || 'Failed to upload font.');
+        showUploadError(err.response?.data?.detail || 'Failed to upload font.');
       } finally {
         setUploadLoading(false);
       }
@@ -212,12 +224,18 @@ export default function BottomBar() {
       const glyphData = await getGlyphs(data.font_id);
       setGlyphs(glyphData.glyphs);
     } catch (err) {
-      setUploadError(err.response?.data?.detail || 'Failed to upload font.');
+      showUploadError(err.response?.data?.detail || 'Failed to upload font.');
       setFontLoading(false);
     } finally {
       setUploadLoading(false);
     }
   }
+
+  // Mix 모드에서 활성 레이어가 슬롯에 고정된 경우 해당 슬롯의 폰트명 표시
+  const activeLayer = layers.find(l => l.id === activeLayerId);
+  const displayFontName = activeLayer?.pinnedSlotId
+    ? (fontSlots.find(s => s.slotId === activeLayer.pinnedSlotId)?.fontName ?? fontName)
+    : fontName;
 
   const bgImageActive = backgroundImages.some(i => i.enabled && i.imageUrl);
   const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
@@ -339,12 +357,12 @@ export default function BottomBar() {
             <FontChipButton
               onClick={() => uploadFileRef.current?.click()}
               hoverLabel="Upload Font"
-              className={`shrink-0 max-w-[120px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${chipInactive}`}
+              className={`shrink-0 max-w-[100px] px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${chipInactive}`}
             >
               {fontLoading ? (
                 <span className="block truncate">Loading{loadingDots}</span>
               ) : (
-                <span className="block truncate">{fontName}</span>
+                <span className="block truncate">{displayFontName}</span>
               )}
             </FontChipButton>
           )}
@@ -396,7 +414,7 @@ export default function BottomBar() {
               }}
               placeholder={!fontId ? 'Upload a font first' : 'Type text'}
               disabled={!hasGlyphs || isDemo}
-              className={`w-[180px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed ${!fontId ? 'pointer-events-none' : ''}`}
+              className={`w-[170px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed ${!fontId ? 'pointer-events-none' : ''}`}
             />
             <Divider className="mx-2" />
           </>
@@ -507,7 +525,29 @@ export default function BottomBar() {
         </div>
         <Divider />
 
-        {/* ── Right section: Extract + Archive + Export ── */}
+        {/* ── Right section: Color pickers + Extract + Archive + Export ── */}
+        <div className={`flex items-center gap-2 shrink-0`}>
+          {/* C / S / BG color pickers */}
+          {[
+            { label: 'C', value: strokeParams.centerlineColor, onChange: (v) => setStrokeParams({ centerlineColor: v }), title: 'Centerline color' },
+            { label: 'S', value: strokeParams.strokeColor, onChange: (v) => setStrokeParams({ strokeColor: v }), title: 'Stroke color' },
+            { label: 'BG', value: bgColor, onChange: (v) => setBgColor(v), title: 'Background color' },
+          ].map(({ label, value, onChange, title }) => (
+            <div key={label} className="flex flex-col items-center gap-0.5">
+              <div style={{ position: 'relative', width: 20, height: 20, borderRadius: '50%', border: '1px solid #d1d5db', flexShrink: 0, cursor: 'pointer', background: value }}>
+                <input
+                  type="color"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  title={title}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
+                />
+              </div>
+              <span style={{ fontSize: 9, color: '#6b7280', lineHeight: 1 }}>{label}</span>
+            </div>
+          ))}
+          <Divider />
+        </div>
         <div className={`flex items-center gap-2 shrink-0 ${!fontId ? 'pointer-events-none' : ''}`}>
           <ExtractButton inline extractRef={extractRef} />
           {fontId && !isDemo && (

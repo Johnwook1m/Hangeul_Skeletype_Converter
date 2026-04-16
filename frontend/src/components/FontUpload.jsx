@@ -95,8 +95,8 @@ export default function FontUpload() {
           }
         }
       }
-      if (useFontStore.getState().fontSlots.length >= 3) {
-        setError('Mix mode supports up to 3 fonts.');
+      if (useFontStore.getState().fontSlots.length >= useFontStore.getState().layers.length) {
+        setError('Add more layers to use additional fonts.');
         setLoading(false);
         return;
       }

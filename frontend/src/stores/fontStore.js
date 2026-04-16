@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 // ─── 레이어 색상 팔레트 (새 레이어 자동 색상) ────────────────────────────────
-const LAYER_COLORS = ['#FF5714', '#1a1a1a', '#ffffff', '#4A90D9', '#7ED321', '#BD10E0'];
+const LAYER_COLORS = ['#FF5714', '#1a1a1a', '#4A90D9', '#7ED321', '#BD10E0', '#E8A020'];
 
 // ─── 레이어별 기본값 팩토리 ────────────────────────────────────────────────────
 const defaultLayerStrokeParams = (strokeColor = '#FF5714') => ({
@@ -75,6 +75,8 @@ const createLayer = (id, name, colorIndex = 0) => ({
   glyphSize: 100,
   previewText: '',
   pinnedSlotId: null,  // Mix 모드에서 고정할 슬롯 ID (null = random mix)
+  offsetX: 0,          // 레이어 X 오프셋 (SVG 단위)
+  offsetY: 0,          // 레이어 Y 오프셋 (SVG 단위)
   strokeParams: defaultLayerStrokeParams(LAYER_COLORS[colorIndex % LAYER_COLORS.length]),
   connectionParams: defaultConnectionParams(),
   branchParams: defaultBranchParams(),
@@ -763,7 +765,7 @@ const useFontStore = create((set) => ({
   rerollMix: () => set((state) => ({ mixSeed: (state.mixSeed * 1103515245 + 12345) & 0x7fffffff })),
   addFontSlot: (slot) =>
     set((state) => {
-      if (state.fontSlots.length >= 3) return {};
+      if (state.fontSlots.length >= state.layers.length) return {};
       return { fontSlots: [...state.fontSlots, slot] };
     }),
   updateFontSlot: (slotId, patch) =>
@@ -783,6 +785,12 @@ const useFontStore = create((set) => ({
     set((state) => ({
       layers: state.layers.map(l =>
         l.id === layerId ? { ...l, pinnedSlotId: slotId } : l
+      ),
+    })),
+  setLayerOffset: (layerId, x, y) =>
+    set((state) => ({
+      layers: state.layers.map(l =>
+        l.id === layerId ? { ...l, offsetX: x, offsetY: y } : l
       ),
     })),
   setSlotCenterline: (slotId, glyphName, data) =>

@@ -1,12 +1,11 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import useFontStore from '../stores/fontStore';
 import { uploadFont, getGlyphs, runExtraction } from '../api/client';
-
-const MAX_SLOTS = 3;
 
 export default function MixPanel({ onClose }) {
   const {
     fontSlots,
+    layers,
     mixMode,
     setMixMode,
     addFontSlot,
@@ -16,6 +15,8 @@ export default function MixPanel({ onClose }) {
     rerollMix,
     previewText,
   } = useFontStore();
+
+  const MAX_SLOTS = layers.length;
 
   const fileRefs = useRef({});
 
@@ -135,7 +136,11 @@ export default function MixPanel({ onClose }) {
         </span>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => setMixMode(!mixMode)}
+            onClick={() => {
+              const next = !mixMode;
+              setMixMode(next);
+              if (next) fontSlots.forEach((s) => handleTestSlot(s));
+            }}
             className={`px-2 h-6 text-[11px] rounded-full transition-colors cursor-pointer ${
               mixMode ? 'bg-[#FF5714] text-white' : 'bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0]'
             }`}
@@ -173,12 +178,12 @@ export default function MixPanel({ onClose }) {
 
       {/* Description */}
       <p className="px-3 pt-1 pb-2 text-[10px] text-gray-500 leading-snug">
-        Upload up to 3 fonts. When Mix is On, each character is rendered with a random font's glyph.
+        Upload up to {MAX_SLOTS} fonts (= number of layers). When Mix is On, each character is rendered with a random font's glyph.
       </p>
 
       {/* Slot rows */}
       <div className="pb-2 px-1.5">
-        {[0, 1, 2].map((i) => {
+        {Array.from({ length: MAX_SLOTS }, (_, i) => i).map((i) => {
           const slot = fontSlots[i];
           const hasSlot = !!slot;
           return (
