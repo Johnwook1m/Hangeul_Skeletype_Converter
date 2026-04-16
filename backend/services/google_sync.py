@@ -28,32 +28,25 @@ SHEET_HEADERS = [
 
 
 def _build_credentials():
-    """OAuth 토큰 또는 서비스 계정으로 Google API 자격증명 생성.
-    oauth_token.json이 있으면 OAuth 우선 사용 (Drive 업로드 가능).
-    없으면 서비스 계정으로 폴백.
+    """서비스 계정으로 Google API 자격증명 생성.
+
+    우선순위:
+    1. GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT 환경변수 (JSON 문자열) ← Railway 권장
+    2. GOOGLE_SERVICE_ACCOUNT_JSON 환경변수 (파일 경로) ← 로컬 레거시
     """
-    from pathlib import Path
-    from config import GOOGLE_SERVICE_ACCOUNT_JSON
-
-    token_file = Path(__file__).parent.parent / "oauth_token.json"
-
-    if token_file.exists():
-        from google.oauth2.credentials import Credentials
-        from google.auth.transport.requests import Request
-
-        creds = Credentials.from_authorized_user_file(str(token_file))
-        if creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            token_file.write_text(creds.to_json())
-            os.chmod(token_file, 0o600)
-        return creds
-
-    # 폴백: 서비스 계정
+    import json
+    from config import GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT
     from google.oauth2 import service_account
+
     scopes = [
         "https://www.googleapis.com/auth/drive",
         "https://www.googleapis.com/auth/spreadsheets",
     ]
+
+    if GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT:
+        info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT)
+        return service_account.Credentials.from_service_account_info(info, scopes=scopes)
+
     return service_account.Credentials.from_service_account_file(
         GOOGLE_SERVICE_ACCOUNT_JSON, scopes=scopes
     )

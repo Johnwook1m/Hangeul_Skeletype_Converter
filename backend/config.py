@@ -29,13 +29,18 @@ ARCHIVE_DIR = Path(__file__).parent / "data" / "archives"
 ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Google API integration (optional — all three must be set to enable sync)
+#
+# 인증 방식 (둘 중 하나만 설정):
+#   GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT : 서비스 계정 JSON 파일의 내용 전체 (문자열)  ← 권장
+#   GOOGLE_SERVICE_ACCOUNT_JSON         : 서비스 계정 JSON 파일의 경로 (레거시)
+GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT", "")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 GOOGLE_DRIVE_ROOT_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
 GOOGLE_SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID", "")
 GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "Archives")
 
 GOOGLE_SYNC_ENABLED = bool(
-    GOOGLE_SERVICE_ACCOUNT_JSON
+    (GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT or GOOGLE_SERVICE_ACCOUNT_JSON)
     and GOOGLE_DRIVE_ROOT_FOLDER_ID
     and GOOGLE_SPREADSHEET_ID
 )
