@@ -3,10 +3,9 @@ import json
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from limiter import limiter
 from models.schemas import ExtractRequest
 from models.font_session import session_store
 from services.rasterizer import rasterize_glyph
@@ -22,8 +21,7 @@ MAX_RETRIES = 2  # Retry failed glyphs up to 2 times (sequentially)
 
 
 @router.post("/{font_id}/extract")
-@limiter.limit("5/minute")
-async def extract_centerlines(font_id: str, request: ExtractRequest, http_request: Request):
+async def extract_centerlines(font_id: str, request: ExtractRequest):
     """
     Extract centerlines from glyphs.
     Returns SSE stream with progress updates.
