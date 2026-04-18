@@ -153,8 +153,8 @@ export default function BottomBar() {
 
     // 폰트가 이미 로드된 상태
     if (hasFont) {
-      // Mix 모드 OFF → 교체 (기존 "첫 폰트" 경로와 동일하게 처리)
-      if (!store.mixMode) {
+      // Mix 모드 OFF + 레이어 1개 → 교체 (기존 "첫 폰트" 경로와 동일하게 처리)
+      if (!store.mixMode && store.layers.length === 1) {
         setFontLoading(true);
         try {
           const data = await uploadFont(file);
@@ -171,8 +171,19 @@ export default function BottomBar() {
         return;
       }
 
-      // Mix 모드 ON → 새 폰트를 Mix 슬롯으로 추가 (기존 레이어 보존)
+      // Mix 모드 OFF + 레이어 2개 이상, 또는 Mix 모드 ON → Mix 슬롯으로 추가
       const slotId = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      if (!store.mixMode) {
+        setMixMode(true);
+        // 기존 레이어들을 mainSlot(Font A)에 고정해서 기존 렌더링 보존
+        const afterMix = useFontStore.getState();
+        const mainSlot = afterMix.fontSlots[0];
+        if (mainSlot) {
+          for (const layer of afterMix.layers) {
+            if (!layer.pinnedSlotId) setLayerPinnedSlot(layer.id, mainSlot.slotId);
+          }
+        }
+      }
       if (useFontStore.getState().fontSlots.length >= useFontStore.getState().layers.length) {
         showUploadError('Add more layers to use additional fonts.');
         setUploadLoading(false);
