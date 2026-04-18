@@ -29,6 +29,9 @@ export default function GlyphLayerRenderer({
   const scaleX = (strokeParams.scaleXVisible !== false) ? (strokeParams.scaleX ?? 1) : 1;
   const scaleY = (strokeParams.scaleYVisible !== false) ? (strokeParams.scaleY ?? 1) : 1;
 
+  // 레이어 균등 스케일 (Width/Height와 독립)
+  const layerScale = layer.layerScale ?? 1.0;
+
   // ─── 레이어별 독립 computed values ────────────────────────────────────────────
 
   const slantAngle = slantParams.enabled && slantParams.visible !== false ? slantParams.angle : 0;
@@ -82,8 +85,15 @@ export default function GlyphLayerRenderer({
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
+  const cx = maxRowWidth / 2;
+  const cy = (totalRows * EM_UNIT) / 2;
+  const layerScaleTransform = layerScale !== 1
+    ? `translate(${cx}, ${cy}) scale(${layerScale}) translate(${-cx}, ${-cy})`
+    : undefined;
+
   return (
-    <g>
+    <g transform={layerScaleTransform}>
+      <g>
       {/* Per-glyph rendering */}
       {glyphList.map((glyph, index) => {
         if (!glyph.centerline) return null; // 센터라인 없는 글리프는 GlyphPreview의 placeholder가 처리
@@ -268,6 +278,7 @@ export default function GlyphLayerRenderer({
           ))}
         </g>
       )}
+      </g>
     </g>
   );
 }

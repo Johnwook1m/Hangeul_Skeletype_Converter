@@ -77,6 +77,7 @@ const createLayer = (id, name, colorIndex = 0) => ({
   pinnedSlotId: null,  // Mix 모드에서 고정할 슬롯 ID (null = random mix)
   offsetX: 0,          // 레이어 X 오프셋 (SVG 단위)
   offsetY: 0,          // 레이어 Y 오프셋 (SVG 단위)
+  layerScale: 1.0,     // 레이어 균등 스케일 (0.2 ~ 2.0, Width/Height와 독립)
   strokeParams: defaultLayerStrokeParams(LAYER_COLORS[colorIndex % LAYER_COLORS.length]),
   connectionParams: defaultConnectionParams(),
   branchParams: defaultBranchParams(),
@@ -97,6 +98,7 @@ const updateEffectOrder = (order = [], effectKey, enabling) => {
 // 레이어의 params를 top-level state로 복사 (active layer 전환 시 사용)
 const syncLayerToTopLevel = (layer, currentStrokeParams) => ({
   glyphSize: layer.glyphSize ?? 100,
+  layerScale: layer.layerScale ?? 1.0,
   previewText: layer.previewText ?? '',
   strokeParams: {
     ...currentStrokeParams,
@@ -791,6 +793,12 @@ const useFontStore = create((set) => ({
     set((state) => ({
       layers: state.layers.map(l =>
         l.id === layerId ? { ...l, offsetX: x, offsetY: y } : l
+      ),
+    })),
+  setLayerScale: (layerId, scale) =>
+    set((state) => ({
+      layers: state.layers.map(l =>
+        l.id === layerId ? { ...l, layerScale: scale } : l
       ),
     })),
   setSlotCenterline: (slotId, glyphName, data) =>

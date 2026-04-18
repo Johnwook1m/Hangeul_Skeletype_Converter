@@ -1,18 +1,24 @@
 import { useState, useRef } from 'react';
 import useFontStore from '../stores/fontStore';
 
-function OffsetInput({ value, onChange }) {
+function OffsetInput({ value, onChange, suffix = '' }) {
   // key=value로 외부 값 변경 시 input 리셋 (uncontrolled)
   return (
     <input
       key={value}
       type="text"
       inputMode="numeric"
-      defaultValue={String(value)}
+      defaultValue={String(value) + suffix}
+      onFocus={(e) => {
+        if (suffix) {
+          e.target.value = String(value);
+          e.target.select();
+        }
+      }}
       onBlur={(e) => {
         const v = parseInt(e.target.value, 10);
         if (!isNaN(v)) onChange(v);
-        else e.target.value = String(value);
+        else e.target.value = String(value) + suffix;
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.target.blur();
@@ -93,6 +99,7 @@ export default function LayerPanel() {
     fontSlots,
     setLayerPinnedSlot,
     setLayerOffset,
+    setLayerScale,
   } = useFontStore();
 
   const [editingId, setEditingId] = useState(null);
@@ -325,11 +332,11 @@ export default function LayerPanel() {
                       />
                       <button
                         className="w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer text-[10px] leading-none"
-                        onClick={() => setLayerOffset(layer.id, (layer.offsetX ?? 0) - 100, layer.offsetY ?? 0)}
+                        onClick={() => setLayerOffset(layer.id, (layer.offsetX ?? 0) - 500, layer.offsetY ?? 0)}
                       ><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M5 1L2 4l3 3"/></svg></button>
                       <button
                         className="w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer text-[10px] leading-none"
-                        onClick={() => setLayerOffset(layer.id, (layer.offsetX ?? 0) + 100, layer.offsetY ?? 0)}
+                        onClick={() => setLayerOffset(layer.id, (layer.offsetX ?? 0) + 500, layer.offsetY ?? 0)}
                       ><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M3 1l3 3-3 3"/></svg></button>
                     </div>
                     {/* Y offset */}
@@ -341,12 +348,29 @@ export default function LayerPanel() {
                       />
                       <button
                         className="w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer text-[10px] leading-none"
-                        onClick={() => setLayerOffset(layer.id, layer.offsetX ?? 0, (layer.offsetY ?? 0) - 100)}
+                        onClick={() => setLayerOffset(layer.id, layer.offsetX ?? 0, (layer.offsetY ?? 0) - 500)}
                       ><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5l3-3 3 3"/></svg></button>
                       <button
                         className="w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer text-[10px] leading-none"
-                        onClick={() => setLayerOffset(layer.id, layer.offsetX ?? 0, (layer.offsetY ?? 0) + 100)}
+                        onClick={() => setLayerOffset(layer.id, layer.offsetX ?? 0, (layer.offsetY ?? 0) + 500)}
                       ><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3l3 3 3-3"/></svg></button>
+                    </div>
+                    {/* Size (균등 스케일) */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-gray-400 w-3">S</span>
+                      <OffsetInput
+                        value={Math.round((layer.layerScale ?? 1.0) * 100)}
+                        onChange={(v) => setLayerScale(layer.id, Math.max(20, Math.min(500, v)) / 100)}
+                        suffix="%"
+                      />
+                      <button
+                        className="w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer text-[10px] leading-none"
+                        onClick={() => setLayerScale(layer.id, Math.max(0.2, Math.round(((layer.layerScale ?? 1) - 0.1) * 100) / 100))}
+                      ><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4h6"/></svg></button>
+                      <button
+                        className="w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer text-[10px] leading-none"
+                        onClick={() => setLayerScale(layer.id, Math.min(5.0, Math.round(((layer.layerScale ?? 1) + 0.1) * 100) / 100))}
+                      ><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M4 1v6M1 4h6"/></svg></button>
                     </div>
                   </div>
                 )}
