@@ -151,20 +151,28 @@ export default function BottomBar() {
     const store = useFontStore.getState();
     const hasFont = store.fontId && !store.isDemo;
 
-    // 폰트가 이미 로드된 상태 → 새 폰트를 Mix 슬롯으로 추가 (기존 레이어 보존)
+    // 폰트가 이미 로드된 상태
     if (hasFont) {
-      const slotId = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      // Mix 모드 OFF → 교체 (기존 "첫 폰트" 경로와 동일하게 처리)
       if (!store.mixMode) {
-        setMixMode(true);
-        // 기존 레이어들을 mainSlot(Font A)에 고정해서 기존 렌더링 보존
-        const afterMix = useFontStore.getState();
-        const mainSlot = afterMix.fontSlots[0];
-        if (mainSlot) {
-          for (const layer of afterMix.layers) {
-            if (!layer.pinnedSlotId) setLayerPinnedSlot(layer.id, mainSlot.slotId);
-          }
+        setFontLoading(true);
+        try {
+          const data = await uploadFont(file);
+          setFont(data);
+          setFontBlobUrl(URL.createObjectURL(file));
+          const glyphData = await getGlyphs(data.font_id);
+          setGlyphs(glyphData.glyphs);
+        } catch (err) {
+          showUploadError(err.response?.data?.detail || 'Failed to upload font.');
+          setFontLoading(false);
+        } finally {
+          setUploadLoading(false);
         }
+        return;
       }
+
+      // Mix 모드 ON → 새 폰트를 Mix 슬롯으로 추가 (기존 레이어 보존)
+      const slotId = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       if (useFontStore.getState().fontSlots.length >= useFontStore.getState().layers.length) {
         showUploadError('Add more layers to use additional fonts.');
         setUploadLoading(false);
