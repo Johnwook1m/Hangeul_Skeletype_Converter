@@ -281,8 +281,7 @@ function App() {
   }, []);
 
   function handleLogoClick() {
-    useFontStore.getState().reset();
-    loadDemoFont();
+    window.location.reload();
   }
 
   return (
