@@ -125,3 +125,74 @@ async def admin_status(x_admin_secret: str = Header(default="")):
         record_count = db.query(Archive).count()
     image_count = len(list(ARCHIVE_DIR.glob("*")))
     return {"record_count": record_count, "image_count": image_count}
+
+
+@router.post("/sync-all")
+async def sync_all(x_admin_secret: str = Header(default="")):
+    """google_drive_url이 없는 아카이브를 Google Drive + Sheets에 소급 동기화합니다."""
+    _check_secret(x_admin_secret)
+
+    from config import GOOGLE_SHEET_NAME, GOOGLE_SPREADSHEET_ID, GOOGLE_SYNC_ENABLED
+    from services import google_sync
+
+    if not GOOGLE_SYNC_ENABLED:
+        raise HTTPException(503, "Google 동기화가 비활성화 상태입니다.")
+
+    with Session(engine) as db:
+        records = db.query(Archive).order_by(Archive.created_at.asc()).all()
+
+    results = []
+    for record in records:
+        if getattr(record, "google_drive_url", None):
+            results.append({"id": record.id, "status": "skipped"})
+            continue
+
+        image_path = ARCHIVE_DIR / record.preview_image_path
+        if not image_path.exists():
+            results.append({"id": record.id, "status": "no_image"})
+            continue
+
+        suffix = image_path.suffix.lower()
+        mime_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+        mime_type = mime_map.get(suffix, "image/jpeg")
+        image_bytes = image_path.read_bytes()
+
+        try:
+            import json as _json
+            drive, sheets = google_sync._get_clients()
+            date_str = record.created_at.strftime("%Y-%m-%d") if record.created_at else "unknown"
+            drive_url = google_sync._upload_image(drive, date_str, record.preview_image_path, image_bytes, mime_type)
+
+            google_sync._ensure_sheet_headers(sheets, GOOGLE_SPREADSHEET_ID, GOOGLE_SHEET_NAME)
+
+            try:
+                snapshot = _json.loads(record.settings_snapshot)
+                layer_count = len(snapshot.get("layers", []))
+                bg_color = snapshot.get("bgColor", "")
+            except Exception:
+                layer_count, bg_color = "", ""
+
+            try:
+                features_str = ", ".join(_json.loads(record.features_used))
+            except Exception:
+                features_str = record.features_used
+
+            google_sync._append_row(sheets, GOOGLE_SPREADSHEET_ID, GOOGLE_SHEET_NAME, [
+                record.id, record.author_name, record.font_name,
+                features_str, layer_count, bg_color,
+                record.created_at.isoformat() if record.created_at else "",
+                drive_url,
+            ])
+
+            with Session(engine) as db:
+                r = db.get(Archive, record.id)
+                if r:
+                    r.google_drive_url = drive_url
+                    db.commit()
+
+            results.append({"id": record.id, "status": "ok", "drive_url": drive_url})
+
+        except Exception as exc:
+            results.append({"id": record.id, "status": "failed", "error": str(exc)})
+
+    return {"results": results}
