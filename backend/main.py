@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from config import check_dependencies, ARCHIVE_DIR
 from database import init_db
 from limiter import limiter
-from routers import font_upload, glyphs, centerline, export, archive
+from routers import font_upload, glyphs, centerline, export, archive, admin
 
 app = FastAPI(
     title="Hanguel Skeletype Web",
@@ -71,6 +71,7 @@ app.include_router(glyphs.router)
 app.include_router(centerline.router)
 app.include_router(export.router)
 app.include_router(archive.router)
+app.include_router(admin.router)
 
 
 @app.get("/api/health")

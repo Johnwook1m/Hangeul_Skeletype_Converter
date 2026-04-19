@@ -217,12 +217,21 @@ def sync(record, image_bytes: bytes, mime_type: str = "image/jpeg") -> None:
         _append_row(sheets, GOOGLE_SPREADSHEET_ID, GOOGLE_SHEET_NAME, row)
         logger.info("Google Sheets 행 추가 완료 (archive id=%d)", record.id)
 
-        # DB에 drive_url 저장 (컬럼이 존재하는 경우에만)
+        # DB에 drive_url 저장 — 새 세션으로 직접 commit (background task는 request 세션이 닫힌 후 실행됨)
         try:
-            if hasattr(record, "google_drive_url"):
-                record.google_drive_url = drive_url
-        except Exception:
-            pass
+            from database import Archive, engine
+            from sqlalchemy.orm import Session as OrmSession
+            with OrmSession(engine) as db:
+                obj = db.get(Archive, record.id)
+                if obj is not None:
+                    obj.google_drive_url = drive_url
+                    db.commit()
+        except Exception as e:
+            logger.warning("google_drive_url DB 업데이트 실패 (archive id=%s): %s", record.id, e)
 
     except Exception as exc:
-        logger.error("Google 동기화 실패 (archive id=%s): %s", getattr(record, "id", "?"), exc)
+        import traceback
+        logger.error(
+            "Google 동기화 실패 (archive id=%s): %s\n%s",
+            getattr(record, "id", "?"), exc, traceback.format_exc(),
+        )
