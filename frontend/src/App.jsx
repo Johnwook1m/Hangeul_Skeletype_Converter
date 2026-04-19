@@ -280,6 +280,19 @@ function App() {
     loadDemoFont();
   }, []);
 
+  useEffect(() => {
+    window.history.pushState({ skeletype: true }, '');
+    const handlePopState = () => {
+      window.history.pushState({ skeletype: true }, '');
+      if (useFontStore.getState().fontId) {
+        const ok = window.confirm('작업 중인 내용이 초기화됩니다.\n페이지를 새로 시작하시겠습니까?');
+        if (ok) window.location.reload();
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   function handleLogoClick() {
     window.location.reload();
   }
