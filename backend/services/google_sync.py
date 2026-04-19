@@ -28,15 +28,35 @@ SHEET_HEADERS = [
 
 
 def _build_credentials():
-    """서비스 계정으로 Google API 자격증명 생성.
+    """Google API 자격증명 생성.
 
     우선순위:
-    1. GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT 환경변수 (JSON 문자열) ← Railway 권장
-    2. GOOGLE_SERVICE_ACCOUNT_JSON 환경변수 (파일 경로) ← 로컬 레거시
+    1. GOOGLE_OAUTH_REFRESH_TOKEN (사용자 OAuth) ← 개인 Drive 업로드 가능
+    2. GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT (서비스 계정 JSON 문자열)
+    3. GOOGLE_SERVICE_ACCOUNT_JSON (서비스 계정 파일 경로)
     """
-    import json
-    from config import GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT
-    from google.oauth2 import service_account
+    from config import (
+        GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN,
+        GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT,
+    )
+
+    # OAuth 사용자 자격증명 우선 (서비스 계정은 개인 Drive 업로드 불가)
+    if GOOGLE_OAUTH_REFRESH_TOKEN and GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET:
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        creds = Credentials(
+            token=None,
+            refresh_token=GOOGLE_OAUTH_REFRESH_TOKEN,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=GOOGLE_OAUTH_CLIENT_ID,
+            client_secret=GOOGLE_OAUTH_CLIENT_SECRET,
+            scopes=[
+                "https://www.googleapis.com/auth/drive",
+                "https://www.googleapis.com/auth/spreadsheets",
+            ],
+        )
+        creds.refresh(Request())
+        return creds
 
     scopes = [
         "https://www.googleapis.com/auth/drive",
@@ -44,9 +64,11 @@ def _build_credentials():
     ]
 
     if GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT:
+        from google.oauth2 import service_account
         info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT)
         return service_account.Credentials.from_service_account_info(info, scopes=scopes)
 
+    from google.oauth2 import service_account
     return service_account.Credentials.from_service_account_file(
         GOOGLE_SERVICE_ACCOUNT_JSON, scopes=scopes
     )
