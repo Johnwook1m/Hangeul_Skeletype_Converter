@@ -121,8 +121,8 @@ function AboutPanel({ onClose, onClosingStart }) {
               <td className="pb-12 text-white whitespace-nowrap pt-1">INFO</td>
               <td className="pb-12 pt-1">
                 <div className="text-white leading-relaxed" style={{ wordBreak: 'keep-all' }}>
-                  <p>SkeleType은 한글 서체 제작을 도와주는 웹 기반 도구입니다. 사용자가 폰트 파일을 업로드하면 한글 글리프의 중심선을 자동으로 추출하고, 다양한 시각 효과를 적용할 수 있습니다. 추출된 중심선을 바탕으로 형태를 자유롭게 변형하고, 여러 파라미터를 조정해 새로운 시각적 결과물을 만들어낼 수 있습니다.</p>
-                  <p style={{ marginTop: '0.6em' }}>SkeleType is a web-based tool for designing Hanguel typefaces. Simply upload a font file to automatically extract the skeletons of Hanguel glyphs and apply various visual effects. You can then freely transform shapes and fine-tune parameters to generate unique visual results.</p>
+                  <p>Skeletype은 한글 글리프의 중심선을 추출한 뒤, 이를 다양한 방식으로 변형하고 확장할 수 있게 하는 웹 기반 도구입니다. 사용자는 폰트 파일을 업로드해 중심선을 자동으로 추출하고, 여러 시각 효과와 파라미터를 적용해 새로운 형태의 결과물을 만들 수 있습니다.</p>
+                  <p style={{ marginTop: '0.6em' }}>Skeletype is a web-based tool that extracts the centerlines of Hanguel glyphs and allows them to be transformed and extended in various ways. Users can upload a font file to automatically extract the centerlines, then apply visual effects and adjust parameters to generate new forms and visual outcomes.</p>
                 </div>
               </td>
             </tr>
