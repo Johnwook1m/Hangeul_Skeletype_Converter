@@ -1,14 +1,13 @@
 import { useState, useCallback } from 'react';
 import useFontStore from '../stores/fontStore';
-import { exportFont } from '../api/client';
 import EffectPopover from './effects/EffectPopover';
 import { capturePreviewBlob } from '../utils/capturePreview';
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ExportMenu() {
-  const { fontId, fontName, strokeParams, previewText, isDemo } = useFontStore();
+  const { fontId, fontName, previewText, isDemo } = useFontStore();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(null); // 'svg' | 'jpg' | 'otf'
+  const [loading, setLoading] = useState(null); // 'svg' | 'jpg'
 
   const canExport = !!fontId && !isDemo;
   const closePopover = useCallback(() => setOpen(false), []);
@@ -39,27 +38,6 @@ export default function ExportMenu() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `${fontName || 'skeletype'}_preview.jpg`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } finally {
-      setLoading(null); setOpen(false);
-    }
-  }
-
-  // ── OTF ────────────────────────────────────────────────────────────────────
-  async function handleOTF() {
-    if (!fontId) return;
-    setLoading('otf');
-    try {
-      const blob = await exportFont(fontId, {
-        stroke_width: strokeParams.width + 1,
-        stroke_cap: strokeParams.cap,
-        stroke_join: strokeParams.join,
-        format: 'otf',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${fontName}_Skeletype.otf`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } finally {
@@ -110,21 +88,6 @@ export default function ExportMenu() {
                   {loading === 'jpg' ? 'Saving...' : 'Screen capture'}
                 </p>
                 <p className="text-[10px] text-gray-500 mt-0.5">Current view as-is</p>
-              </div>
-            </button>
-
-            {/* OTF */}
-            <button
-              onClick={handleOTF}
-              disabled={loading === 'otf'}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 disabled:opacity-40 transition-colors text-left"
-            >
-              <span className="text-xs font-mono font-semibold text-[#FF5714] w-8">OTF</span>
-              <div>
-                <p className="text-xs font-medium text-gray-200">
-                  {loading === 'otf' ? 'Generating...' : 'Font export'}
-                </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">Skeleton font file</p>
               </div>
             </button>
 
