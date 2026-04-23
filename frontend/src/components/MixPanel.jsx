@@ -5,9 +5,6 @@ import { uploadFont, getGlyphs, runExtraction } from '../api/client';
 export default function MixPanel({ onClose }) {
   const {
     fontSlots,
-    layers,
-    mixMode,
-    setMixMode,
     addFontSlot,
     updateFontSlot,
     removeFontSlot,
@@ -16,9 +13,7 @@ export default function MixPanel({ onClose }) {
     previewText,
   } = useFontStore();
 
-  const MAX_SLOTS = layers.length;
-
-  const fileRefs = useRef({});
+  const uploadRef = useRef(null);
 
   async function handleUpload(file) {
     if (!file) return;
@@ -66,6 +61,14 @@ export default function MixPanel({ onClose }) {
           glyphs: glyphData.glyphs,
         });
         useFontStore.setState({ mainSlotId: slotId });
+      }
+
+      // 텍스트가 이미 입력되어 있으면 자동으로 테스트 실행
+      const freshStore = useFontStore.getState();
+      const hasText = freshStore.layers.map(l => l.previewText ?? '').join('') || freshStore.previewText;
+      if (hasText) {
+        const freshSlot = freshStore.fontSlots.find(s => s.slotId === slotId);
+        if (freshSlot) handleTestSlot(freshSlot);
       }
     } catch (err) {
       updateFontSlot(slotId, { loading: false, error: err.response?.data?.detail || 'Upload failed' });
@@ -136,18 +139,6 @@ export default function MixPanel({ onClose }) {
         </span>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => {
-              const next = !mixMode;
-              setMixMode(next);
-              if (next) fontSlots.forEach((s) => handleTestSlot(s));
-            }}
-            className={`px-2 h-6 text-[11px] rounded-full transition-colors cursor-pointer ${
-              mixMode ? 'bg-[#FF5714] text-white' : 'bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0]'
-            }`}
-          >
-            {mixMode ? 'On' : 'Off'}
-          </button>
-          <button
             onClick={() => { fontSlots.forEach((s) => handleTestSlot(s)); }}
             disabled={fontSlots.length === 0 || !previewText}
             className="px-2 h-6 text-[11px] rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] disabled:opacity-40 transition-colors cursor-pointer"
@@ -157,8 +148,7 @@ export default function MixPanel({ onClose }) {
           </button>
           <button
             onClick={rerollMix}
-            disabled={!mixMode}
-            className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] disabled:opacity-40 text-[11px] leading-none transition-colors cursor-pointer"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-[#d1d1d1] text-gray-600 hover:bg-[#c0c0c0] text-[11px] leading-none transition-colors cursor-pointer"
             title="Reshuffle"
           >
             ↻
@@ -178,67 +168,64 @@ export default function MixPanel({ onClose }) {
 
       {/* Description */}
       <p className="px-3 pt-1 pb-2 text-[10px] text-gray-500 leading-snug">
-        Upload up to {MAX_SLOTS} fonts (= number of layers). When Mix is On, each character is rendered with a random font's glyph.
+        Upload fonts. When Mix is On, each character is rendered with a random font's glyph.
       </p>
 
       {/* Slot rows */}
       <div className="pb-2 px-1.5">
-        {Array.from({ length: MAX_SLOTS }, (_, i) => i).map((i) => {
-          const slot = fontSlots[i];
-          const hasSlot = !!slot;
+        {fontSlots.map((slot, i) => {
+          const needsTest = !!(slot.fontId && !slot.loading && !slot.testing && !slot.error && previewText && Object.keys(slot.centerlines).length === 0);
           return (
-            <div
-              key={i}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-full group transition-colors"
-              style={{ background: 'transparent' }}
+          <div
+            key={slot.slotId}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-full group transition-colors"
+            style={{ background: 'transparent' }}
+          >
+            <span className="text-[11px] text-gray-400 w-3 shrink-0">{i + 1}</span>
+            <span
+              className="text-[11px] flex-1 truncate min-w-0"
+              style={{ color: slot.error ? '#c0392b' : '#4b5563' }}
             >
-              {/* Slot number */}
-              <span className="text-[11px] text-gray-400 w-3 shrink-0">{i + 1}</span>
-
-              {hasSlot ? (
-                <>
-                  <span
-                    className="text-[11px] flex-1 truncate min-w-0"
-                    style={{ color: slot.error ? '#c0392b' : '#4b5563' }}
-                  >
-                    {slot.loading ? 'Loading…' : slot.error ? '⚠ ' + slot.error : slot.fontName}
-                  </span>
-                  <button
-                    onClick={() => handleTestSlot(slot)}
-                    disabled={!slot.fontId || slot.testing || !previewText}
-                    className="px-2 h-5 text-[10px] rounded-full bg-[#FF5714] text-white hover:bg-[#FF5714]/80 disabled:opacity-30 cursor-pointer shrink-0 transition-colors"
-                  >
-                    {slot.testing ? '…' : 'Test'}
-                  </button>
-                  <button
-                    onClick={() => removeFontSlot(slot.slotId)}
-                    className="text-[10px] shrink-0 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer leading-none"
-                    title="Remove slot"
-                  >
-                    ✕
-                  </button>
-                </>
-              ) : (
-                <>
-                  <input
-                    ref={(el) => (fileRefs.current[i] = el)}
-                    type="file"
-                    accept=".ttf,.otf,.woff"
-                    className="hidden"
-                    onChange={(e) => handleUpload(e.target.files[0])}
-                  />
-                  <button
-                    onClick={() => fileRefs.current[i]?.click()}
-                    disabled={fontSlots.length >= MAX_SLOTS}
-                    className="flex-1 text-[11px] text-gray-400 hover:text-gray-600 text-left truncate cursor-pointer transition-colors"
-                  >
-                    + Upload font
-                  </button>
-                </>
-              )}
-            </div>
+              {slot.loading ? 'Loading…' : slot.error ? '⚠ ' + slot.error : slot.fontName}
+            </span>
+            <button
+              onClick={() => handleTestSlot(slot)}
+              disabled={!slot.fontId || slot.testing || !previewText}
+              className={`px-2 h-5 text-[10px] rounded-full bg-[#FF5714] text-white hover:bg-[#FF5714]/80 disabled:opacity-30 cursor-pointer shrink-0 transition-colors ${needsTest ? 'animate-pulse' : ''}`}
+            >
+              {slot.testing ? '…' : 'Test'}
+            </button>
+            <button
+              onClick={() => removeFontSlot(slot.slotId)}
+              className="text-[10px] shrink-0 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer leading-none"
+              title="Remove slot"
+            >
+              ✕
+            </button>
+          </div>
           );
         })}
+
+        {/* Always-visible upload row */}
+        <div
+          className="flex items-center gap-1.5 px-2 py-1.5 rounded-full"
+          style={{ background: 'transparent' }}
+        >
+          <span className="text-[11px] text-gray-400 w-3 shrink-0">{fontSlots.length + 1}</span>
+          <input
+            ref={uploadRef}
+            type="file"
+            accept=".ttf,.otf,.woff"
+            className="hidden"
+            onChange={(e) => { handleUpload(e.target.files[0]); e.target.value = ''; }}
+          />
+          <button
+            onClick={() => uploadRef.current?.click()}
+            className="flex-1 text-[11px] text-gray-400 hover:text-gray-600 text-left truncate cursor-pointer transition-colors"
+          >
+            + Upload font
+          </button>
+        </div>
       </div>
     </div>
   );

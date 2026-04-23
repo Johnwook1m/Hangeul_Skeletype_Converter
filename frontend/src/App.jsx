@@ -167,10 +167,16 @@ function MixToggleButton() {
   const setMixMode = useFontStore((s) => s.setMixMode);
   const [open, setOpen] = useState(false);
 
+  function handleClose() {
+    setOpen(false);
+    setMixMode(false);
+  }
+
   function handleClick() {
     const next = !open;
     setOpen(next);
     if (next) setMixMode(true);
+    else setMixMode(false);
   }
 
   return (
@@ -185,8 +191,7 @@ function MixToggleButton() {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <MixPanel onClose={() => setOpen(false)} />
+          <MixPanel onClose={handleClose} />
         </>
       )}
     </>

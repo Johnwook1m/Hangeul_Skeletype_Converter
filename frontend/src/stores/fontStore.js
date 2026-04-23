@@ -744,6 +744,7 @@ const useFontStore = create((set) => ({
 
   // ─── Mix Mode actions ───────────────────────────────────────────────────────
   setMixMode: (v) => set((state) => {
+    // Mix 켤 때: 슬롯이 없으면 현재 메인 폰트를 첫 슬롯으로 자동 추가
     if (v && state.fontSlots.length === 0 && state.fontId) {
       const slotId = `slot-main-${Date.now()}`;
       const mainSlot = {
@@ -751,7 +752,7 @@ const useFontStore = create((set) => ({
         fontId: state.fontId,
         fontName: state.fontName,
         glyphs: state.glyphs,
-        centerlines: state.centerlines,  // 기존에 추출된 centerlines 보존
+        centerlines: state.centerlines,
         unitsPerEm: state.unitsPerEm,
         ascender: state.ascender,
         descender: state.descender,
@@ -760,16 +761,35 @@ const useFontStore = create((set) => ({
         testing: false,
         error: null,
       };
-      return { mixMode: v, fontSlots: [mainSlot] };
+      return { mixMode: v, fontSlots: [mainSlot], mainSlotId: slotId };
+    }
+    // Mix 끌 때: 남은 슬롯 중 mainSlotId 또는 첫 번째 슬롯을 메인 폰트로 채택
+    if (!v && state.fontSlots.length > 0) {
+      const target = state.fontSlots.find(s => s.slotId === state.mainSlotId) ?? state.fontSlots[0];
+      if (target?.fontId) {
+        return {
+          mixMode: false,
+          fontId: target.fontId,
+          fontName: target.fontName,
+          unitsPerEm: target.unitsPerEm,
+          ascender: target.ascender ?? null,
+          descender: target.descender ?? null,
+          spaceAdvanceWidth: target.spaceAdvanceWidth ?? null,
+          glyphs: target.glyphs,
+          centerlines: target.centerlines,
+          isDemo: false,
+          fontLoading: false,
+          mainSlotId: target.slotId,
+        };
+      }
     }
     return { mixMode: v };
   }),
-  rerollMix: () => set((state) => ({ mixSeed: (state.mixSeed * 1103515245 + 12345) & 0x7fffffff })),
+  rerollMix: () => set({ mixSeed: (Math.random() * 0x7fffffff) | 0 || 1 }),
   addFontSlot: (slot) =>
-    set((state) => {
-      if (state.fontSlots.length >= state.layers.length) return {};
-      return { fontSlots: [...state.fontSlots, slot] };
-    }),
+    set((state) => ({
+      fontSlots: [...state.fontSlots, slot],
+    })),
   updateFontSlot: (slotId, patch) =>
     set((state) => ({
       fontSlots: state.fontSlots.map((s) => (s.slotId === slotId ? { ...s, ...patch } : s)),

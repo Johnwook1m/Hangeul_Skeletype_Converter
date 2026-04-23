@@ -279,9 +279,11 @@ export default function BottomBar() {
 
   const hasCenterlines = Object.keys(centerlines).length > 0;
 
-  // Reset local state when font changes
+  // Reset local state when font changes.
+  // Use store's current previewText instead of '' so Mix Off doesn't clear existing text
+  // (setFont resets previewText to '' before fontId changes, so new uploads still clear correctly)
   useEffect(() => {
-    setText('');
+    setText(useFontStore.getState().previewText);
     hasAnimated.current = false;
     setAnimating(false);
     setActiveTab('basic');
