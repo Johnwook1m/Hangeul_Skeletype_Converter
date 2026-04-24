@@ -125,7 +125,7 @@ def _to_response(record: Archive) -> dict:
         "author_name": record.author_name,
         "font_name": record.font_name,
         "features_used": json.loads(record.features_used),
-        "created_at": record.created_at.isoformat() if record.created_at else None,
+        "created_at": record.created_at.replace(tzinfo=timezone.utc).isoformat() if record.created_at else None,
         "preview_image_url": f"/archive-images/{record.preview_image_path}",
         "google_drive_url": record.google_drive_url or None,
     }
