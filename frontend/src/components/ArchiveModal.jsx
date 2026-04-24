@@ -6,6 +6,12 @@ import { capturePreviewBlob } from '../utils/capturePreview';
 
 export default function ArchiveModal({ onClose, onSuccess }) {
   const fontName = useFontStore((s) => s.fontName);
+  const mixMode = useFontStore((s) => s.mixMode);
+  const fontSlots = useFontStore((s) => s.fontSlots);
+
+  const displayFontName = mixMode && fontSlots.length > 0
+    ? fontSlots.map((s) => s.fontName).filter(Boolean).join(' · ')
+    : fontName;
   const [authorName, setAuthorName] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'error' | 'flying' | 'done'
   const [errorMsg, setErrorMsg] = useState('');
@@ -24,7 +30,7 @@ export default function ArchiveModal({ onClose, onSuccess }) {
       const snapshot = buildSettingsSnapshot(storeState);
       const result = await submitArchive({
         authorName: authorName.trim(),
-        fontName,
+        fontName: displayFontName,
         featuresUsed,
         settingsSnapshot: snapshot,
         previewBlob,
@@ -123,7 +129,7 @@ export default function ArchiveModal({ onClose, onSuccess }) {
 
         {/* Font name */}
         <p className="text-xs text-gray-500 mb-4">
-          Font: <span className="text-gray-300">{fontName}</span>
+          Font: <span className="text-gray-300">{displayFontName}</span>
         </p>
 
         {/* Error */}
