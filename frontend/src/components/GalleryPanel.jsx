@@ -96,7 +96,7 @@ export default function GalleryPanel({ onClose }) {
         <div className="mx-3 h-px bg-gray-400/40 mb-1 shrink-0" />
 
         {/* Scrollable list */}
-        <div className="overflow-y-auto flex-1 pb-2 px-2.5">
+        <div className="overflow-y-auto scrollbar-hide flex-1 pb-2 px-2.5">
           {archives.length === 0 && !loading && (
             <p className="text-[10px] text-gray-400 text-center py-8 px-4">
               No archives yet. Be the first to archive an artwork!

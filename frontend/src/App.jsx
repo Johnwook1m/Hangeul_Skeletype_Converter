@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { subscribe } from './api/client';
 import GlyphPreview from './components/GlyphPreview';
 import FontUpload from './components/FontUpload';
 import BottomBar from './components/BottomBar';

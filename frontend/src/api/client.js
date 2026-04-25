@@ -118,3 +118,8 @@ export async function getArchiveDetail(id) {
   const res = await api.get(`/archives/${id}`);
   return res.data;
 }
+
+export async function subscribe(email) {
+  const res = await api.post('/subscribe', { email });
+  return res.data;
+}

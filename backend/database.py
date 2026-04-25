@@ -29,6 +29,14 @@ class Archive(Base):
     google_drive_url    = Column(String(512), nullable=True)   # populated after Google sync
 
 
+class Subscriber(Base):
+    __tablename__ = "subscribers"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    email      = Column(String(255), nullable=False, unique=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 def init_db():
     Base.metadata.create_all(engine)
     _migrate()

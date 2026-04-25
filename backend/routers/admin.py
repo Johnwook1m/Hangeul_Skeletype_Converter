@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, Header, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from config import ARCHIVE_DIR
-from database import Archive, engine
+from database import Archive, Subscriber, engine
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -123,8 +123,21 @@ async def admin_status(x_admin_secret: str = Header(default="")):
     _check_secret(x_admin_secret)
     with Session(engine) as db:
         record_count = db.query(Archive).count()
+        subscriber_count = db.query(Subscriber).count()
     image_count = len(list(ARCHIVE_DIR.glob("*")))
-    return {"record_count": record_count, "image_count": image_count}
+    return {"record_count": record_count, "image_count": image_count, "subscriber_count": subscriber_count}
+
+
+@router.get("/subscribers")
+async def list_subscribers(x_admin_secret: str = Header(default="")):
+    """구독자 이메일 목록을 반환합니다."""
+    _check_secret(x_admin_secret)
+    with Session(engine) as db:
+        rows = db.query(Subscriber).order_by(Subscriber.created_at.desc()).all()
+    return {
+        "total": len(rows),
+        "subscribers": [{"id": r.id, "email": r.email, "created_at": r.created_at.isoformat()} for r in rows],
+    }
 
 
 @router.post("/sync-all")
