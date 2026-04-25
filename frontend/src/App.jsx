@@ -479,7 +479,7 @@ function App() {
       )}
 
       {/* Mix + Gallery + About button — top right */}
-      <div className={`fixed top-4 right-4 z-30 flex items-center gap-0 transition-opacity duration-200 ${showGallery ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className="fixed top-4 right-4 z-30 flex items-center gap-0">
         <button
           id="archives-btn"
           onClick={() => setShowGallery((v) => !v)}
