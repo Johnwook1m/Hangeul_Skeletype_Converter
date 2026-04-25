@@ -55,7 +55,7 @@ export default function EffectPopover({ children, onClose }) {
             transform: 'translateX(-50%)',
             zIndex: 9999,
           }}
-          className="bg-gray-800/95 backdrop-blur-md rounded-2xl px-5 py-4 shadow-xl w-[280px] pointer-events-auto"
+          className="bg-gray-800 rounded-2xl px-5 py-4 shadow-xl w-[280px] pointer-events-auto"
         >
           {children}
         </div>,

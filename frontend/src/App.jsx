@@ -53,7 +53,7 @@ function SkeletypeLogo({ onClick, isDark }) {
   return (
     <button
       onClick={onClick}
-      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 opacity-100 hover:opacity-60 transition-all active:scale-90 cursor-pointer"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-30 opacity-100 hover:opacity-60 transition-all active:scale-90 cursor-pointer"
     >
       <img
         src="/logo.png"
@@ -461,7 +461,7 @@ function App() {
 
       {/* Theme toggle switch - top left (폰트 로드 후에만 표시) */}
       {fontId && (
-        <div className="fixed top-4 left-4 z-50 flex items-center">
+        <div className="fixed top-4 left-4 z-30 flex items-center">
           <button onClick={toggleTheme} className="cursor-pointer active:scale-95 transition-transform">
             <div
               className="relative w-11 h-6 rounded-full transition-colors"
@@ -480,7 +480,7 @@ function App() {
       )}
 
       {/* Mix + Gallery + About button — top right */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-0">
+      <div className={`fixed top-4 right-4 z-30 flex items-center gap-0 transition-opacity duration-200 ${showGallery ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <button
           id="archives-btn"
           onClick={() => setShowGallery((v) => !v)}

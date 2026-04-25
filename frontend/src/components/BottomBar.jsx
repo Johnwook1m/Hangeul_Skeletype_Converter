@@ -435,7 +435,7 @@ export default function BottomBar() {
               }}
               placeholder={!fontId ? 'Upload a font first' : 'Type text'}
               disabled={!hasGlyphs || isDemo}
-              className={`w-[170px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed ${!fontId ? 'pointer-events-none' : ''}`}
+              className={`w-[170px] shrink-0 px-3 py-1 text-xs border border-gray-300 rounded-xl bg-white focus:outline-none focus:border-[#FF5714] disabled:bg-gray-100 resize-none leading-relaxed scrollbar-hide ${!fontId ? 'pointer-events-none' : ''}`}
             />
             <Divider className="mx-2" />
           </>

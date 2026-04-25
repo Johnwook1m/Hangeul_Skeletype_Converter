@@ -82,7 +82,7 @@ export default function ArchiveModal({ onClose, onSuccess }) {
       {/* Modal card — flies to Archives button on submit */}
       <div
         ref={cardRef}
-        className="relative bg-gray-800 rounded-2xl p-6 w-[320px] shadow-2xl"
+        className="relative bg-[#161d2a] rounded-2xl p-6 w-[320px] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{
           transform: isFlying && flyTransform
@@ -101,7 +101,7 @@ export default function ArchiveModal({ onClose, onSuccess }) {
         <input
           type="text"
           maxLength={120}
-          placeholder="e.g. Jane Kim"
+          placeholder="Ex. Jongwook Kim"
           value={authorName}
           onChange={(e) => setAuthorName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
