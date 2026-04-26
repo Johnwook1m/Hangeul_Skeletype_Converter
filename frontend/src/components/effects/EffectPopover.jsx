@@ -54,9 +54,9 @@ export default function EffectPopover({ children, onClose }) {
             left: pos.left,
             transform: 'translateX(-50%)',
             zIndex: 9999,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
           }}
           className="bg-gray-800 rounded-2xl px-5 py-4 w-[280px] pointer-events-auto"
-          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
         >
           {children}
         </div>,
