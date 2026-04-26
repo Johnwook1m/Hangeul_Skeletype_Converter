@@ -71,7 +71,7 @@ export default function GalleryPanel({ onClose }) {
           borderRadius: 20,
           boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
           overflow: 'hidden',
-          maxHeight: 'calc(95vh - 120px)',
+          maxHeight: 'calc(80.75vh - 102px)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
