@@ -257,7 +257,7 @@ export default function BottomBar() {
     : fontName;
 
   const bgImageActive = backgroundImages.some(i => i.enabled && i.imageUrl);
-  const chipInactive = 'bg-[#d9d9d9] text-gray-600 hover:bg-[#c9c9c9]';
+  const chipInactive = 'bg-[#d9d9d9] text-[#333333] hover:bg-[#c9c9c9]';
   const labelCls = 'text-xs text-gray-500';
 
   const [text, setText] = useState('');

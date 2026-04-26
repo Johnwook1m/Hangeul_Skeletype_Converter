@@ -77,7 +77,7 @@ export default function GalleryPanel({ onClose }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 shrink-0">
-          <span className="text-[12px] text-gray-500 tracking-wide font-medium">Archives</span>
+          <span className="text-[12px] text-[#333333] tracking-wide font-medium">Archives</span>
           <div className="flex items-center gap-1.5">
             {total > 0 && (
               <span className="text-[10px] text-gray-400">{total} artwork{total !== 1 ? 's' : ''}</span>

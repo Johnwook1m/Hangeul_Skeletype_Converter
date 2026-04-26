@@ -134,7 +134,7 @@ export default function MixPanel({ onClose }) {
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-        <span className="text-[12px] text-gray-500 tracking-wide font-medium">
+        <span className="text-[12px] text-[#333333] tracking-wide font-medium">
           Mix
         </span>
         <div className="flex items-center gap-1.5">
