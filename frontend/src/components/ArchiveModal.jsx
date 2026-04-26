@@ -82,7 +82,8 @@ export default function ArchiveModal({ onClose, onSuccess }) {
       {/* Modal card — flies to Archives button on submit */}
       <div
         ref={cardRef}
-        className="relative bg-[#161d2a] rounded-2xl p-6 w-[320px] shadow-2xl"
+        className="relative bg-[#161d2a] rounded-2xl p-6 w-[320px]"
+        style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
         onClick={(e) => e.stopPropagation()}
         style={{
           transform: isFlying && flyTransform

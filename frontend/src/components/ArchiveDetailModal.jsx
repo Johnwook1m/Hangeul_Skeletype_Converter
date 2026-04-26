@@ -59,7 +59,8 @@ export default function ArchiveDetailModal({ archive, onClose }) {
       >
         <div className="absolute inset-0 bg-black/60" />
         <div
-          className="relative bg-gray-800 rounded-2xl overflow-hidden w-full max-w-2xl shadow-2xl mx-4"
+          className="relative bg-gray-800 rounded-2xl overflow-hidden w-full max-w-2xl mx-4"
+          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button — top right */}
