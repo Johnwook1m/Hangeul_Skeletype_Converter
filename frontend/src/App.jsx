@@ -247,7 +247,7 @@ function AboutPanel({ onClose, onClosingStart }) {
                   {CHANGELOG.map(({ date, en, kr: krText }, i) => (
                     <div key={i} style={{ display: 'flex' }}>
                       <div style={{ width: col2W, flexShrink: 0, color: 'white', fontSize: fsBody, lineHeight: lhBody }}>
-                        {date}
+                        {kr ? date.split('/').reverse().join('/') : date}
                       </div>
                       <div className="text-white" style={{ flex: 1, fontSize: fsBody, lineHeight: lhBody, maxWidth: Math.round(bodyMaxW * 0.80), wordBreak: kr ? 'keep-all' : 'normal' }}>
                         {kr ? krText : en}
